@@ -106,3 +106,12 @@ ipcMain.handle('mt5:getMarketData', async (event, symbol) => {
         return { success: false, error: error.message };
     }
 });
+
+ipcMain.handle('mt5:modifyPosition', async (event, { ticket, stopLoss, takeProfit }) => {
+    try {
+        const result = await mt5Bridge.modifyPosition(ticket, stopLoss, takeProfit);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});

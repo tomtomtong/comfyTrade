@@ -46,9 +46,11 @@ function setupEventListeners() {
     });
   });
   
-  // Node selection handler
+  // Node selection handler - track changes to avoid unnecessary updates
+  let lastSelectedNode = null;
   setInterval(() => {
-    if (nodeEditor.selectedNode) {
+    if (nodeEditor.selectedNode !== lastSelectedNode) {
+      lastSelectedNode = nodeEditor.selectedNode;
       updatePropertiesPanel(nodeEditor.selectedNode);
     }
   }, 100);
@@ -129,13 +131,107 @@ async function handleRefreshPositions() {
             </span>
           </div>
           <div class="position-details">
-            Vol: ${pos.volume} | Entry: ${pos.openPrice.toFixed(5)} | Current: ${pos.currentPrice.toFixed(5)}
+            Vol: ${pos.volume} | Entry: ${pos.open_price.toFixed(5)} | Current: ${pos.current_price.toFixed(5)}
+          </div>
+          <div class="position-details">
+            SL: ${pos.stop_loss > 0 ? pos.stop_loss.toFixed(5) : 'None'} | TP: ${pos.take_profit > 0 ? pos.take_profit.toFixed(5) : 'None'}
+          </div>
+          <div class="position-actions">
+            <button class="btn btn-small btn-primary" onclick="showModifyModal(${pos.ticket}, ${pos.stop_loss}, ${pos.take_profit})">Modify</button>
+            <button class="btn btn-small btn-danger" onclick="closePosition(${pos.ticket})">Close</button>
           </div>
         </div>
       `).join('');
     }
   }
 }
+
+async function closePosition(ticket) {
+  if (!confirm('Are you sure you want to close this position?')) {
+    return;
+  }
+
+  showMessage('Closing position...', 'info');
+
+  const result = await window.mt5API.closePosition(ticket);
+
+  if (result.success && result.data.success) {
+    showMessage('Position closed successfully!', 'success');
+    handleRefreshAccount();
+    handleRefreshPositions();
+  } else {
+    showMessage('Failed to close position: ' + (result.data?.error || result.error), 'error');
+  }
+}
+
+function showModifyModal(ticket, currentSL, currentTP) {
+  const modal = document.getElementById('modifyModal');
+  if (!modal) {
+    createModifyModal();
+  }
+  
+  document.getElementById('modifyTicket').value = ticket;
+  document.getElementById('modifyStopLoss').value = currentSL > 0 ? currentSL : '';
+  document.getElementById('modifyTakeProfit').value = currentTP > 0 ? currentTP : '';
+  document.getElementById('modifyModal').classList.add('show');
+}
+
+function hideModifyModal() {
+  document.getElementById('modifyModal').classList.remove('show');
+}
+
+async function handleModifyPosition() {
+  const ticket = parseInt(document.getElementById('modifyTicket').value);
+  const slValue = document.getElementById('modifyStopLoss').value;
+  const tpValue = document.getElementById('modifyTakeProfit').value;
+  
+  const stopLoss = slValue ? parseFloat(slValue) : 0;
+  const takeProfit = tpValue ? parseFloat(tpValue) : 0;
+
+  hideModifyModal();
+  showMessage('Modifying position...', 'info');
+
+  const result = await window.mt5API.modifyPosition(ticket, stopLoss, takeProfit);
+
+  if (result.success && result.data.success) {
+    showMessage('Position modified successfully!', 'success');
+    handleRefreshPositions();
+  } else {
+    showMessage('Failed to modify position: ' + (result.data?.error || result.error), 'error');
+  }
+}
+
+function createModifyModal() {
+  const modalHTML = `
+    <div id="modifyModal" class="modal">
+      <div class="modal-content">
+        <h2>Modify Position</h2>
+        <input type="hidden" id="modifyTicket">
+        <div class="form-group">
+          <label>Stop Loss:</label>
+          <input type="number" id="modifyStopLoss" step="0.00001" placeholder="0 for none">
+        </div>
+        <div class="form-group">
+          <label>Take Profit:</label>
+          <input type="number" id="modifyTakeProfit" step="0.00001" placeholder="0 for none">
+        </div>
+        <div class="modal-actions">
+          <button id="confirmModifyBtn" class="btn btn-primary">Modify</button>
+          <button id="cancelModifyBtn" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  document.getElementById('confirmModifyBtn').addEventListener('click', handleModifyPosition);
+  document.getElementById('cancelModifyBtn').addEventListener('click', hideModifyModal);
+}
+
+// Make functions globally available
+window.closePosition = closePosition;
+window.showModifyModal = showModifyModal;
 
 // Node Strategy Execution
 async function executeNodeStrategy() {
@@ -168,10 +264,24 @@ async function executeNodeStrategy() {
 function updatePropertiesPanel(node) {
   const panel = document.getElementById('nodeProperties');
   
+  if (!node) {
+    panel.innerHTML = '<p class="no-selection">Select a node to edit properties</p>';
+    return;
+  }
+  
   const paramEntries = Object.entries(node.params);
   
   if (paramEntries.length === 0) {
-    panel.innerHTML = '<p class="no-selection">This node has no parameters</p>';
+    panel.innerHTML = `
+      <div class="property-item">
+        <label>Node Type:</label>
+        <input type="text" value="${node.title}" disabled>
+      </div>
+      <p class="no-selection">This node has no parameters</p>
+      <div class="property-actions">
+        <button class="btn btn-danger btn-small">Delete Node</button>
+      </div>
+    `;
     return;
   }
 
@@ -190,10 +300,13 @@ function updatePropertiesPanel(node) {
       </div>
     `).join('')}
     <div class="property-actions">
-      <button class="btn btn-danger btn-small" onclick="deleteSelectedNode()">Delete Node</button>
+      <button class="btn btn-danger btn-small">Delete Node</button>
     </div>
   `;
 }
+
+// Make updatePropertiesPanel available globally for node-editor.js
+window.updatePropertiesPanel = updatePropertiesPanel;
 
 window.updateNodeParam = function(key, value) {
   if (nodeEditor.selectedNode) {
@@ -202,12 +315,19 @@ window.updateNodeParam = function(key, value) {
 };
 
 window.deleteSelectedNode = function() {
-  if (nodeEditor.selectedNode) {
-    nodeEditor.removeNode(nodeEditor.selectedNode);
-    document.getElementById('nodeProperties').innerHTML = 
-      '<p class="no-selection">Select a node to edit properties</p>';
+  if (nodeEditor && nodeEditor.selectedNode) {
+    nodeEditor.deleteSelectedNode();
+    showMessage('Node deleted', 'info');
   }
 };
+
+// Add event delegation for delete button to prevent issues with dynamic content
+document.addEventListener('click', (e) => {
+  if (e.target.matches('.property-actions .btn-danger')) {
+    e.preventDefault();
+    window.deleteSelectedNode();
+  }
+});
 
 // Graph Management
 function saveGraph() {

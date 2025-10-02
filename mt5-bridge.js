@@ -200,6 +200,20 @@ class MT5Bridge {
     return response.data;
   }
 
+  async modifyPosition(ticket, stopLoss, takeProfit) {
+    if (!this.connected) {
+      throw new Error('Not connected to MT5');
+    }
+
+    console.log('Modifying position:', ticket, 'SL:', stopLoss, 'TP:', takeProfit);
+    const response = await this.sendMessage('modifyPosition', { 
+      ticket, 
+      stopLoss, 
+      takeProfit 
+    });
+    return response.data;
+  }
+
   async executeNodeStrategy(nodeGraph) {
     if (!this.connected) {
       throw new Error('Not connected to MT5');

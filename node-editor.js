@@ -28,6 +28,7 @@ class NodeEditor {
     this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
     this.canvas.addEventListener('wheel', this.onWheel.bind(this));
     window.addEventListener('resize', () => this.setupCanvas());
+    window.addEventListener('keydown', this.onKeyDown.bind(this));
   }
 
   onMouseDown(e) {
@@ -100,6 +101,26 @@ class NodeEditor {
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
     this.scale *= delta;
     this.scale = Math.max(0.5, Math.min(2, this.scale));
+  }
+
+  onKeyDown(e) {
+    // Delete selected node with Delete or Backspace key
+    if ((e.key === 'Delete' || e.key === 'Backspace') && this.selectedNode) {
+      // Prevent backspace from navigating back in browser
+      e.preventDefault();
+      this.deleteSelectedNode();
+    }
+  }
+
+  deleteSelectedNode() {
+    if (this.selectedNode) {
+      this.removeNode(this.selectedNode);
+      this.selectedNode = null;
+      // Trigger property panel update
+      if (window.updatePropertiesPanel) {
+        window.updatePropertiesPanel(null);
+      }
+    }
   }
 
   addNode(type, x, y) {

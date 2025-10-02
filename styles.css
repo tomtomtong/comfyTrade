@@ -498,3 +498,53 @@ h4 {
 ::-webkit-scrollbar-thumb:hover {
   background: #555;
 }
+
+/* Position Actions */
+.position-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn-small {
+  padding: 4px 10px;
+  font-size: 11px;
+}
+
+/* Modify Position Modal */
+#modifyModal .modal-content {
+  max-width: 400px;
+}
+
+#modifyModal .form-group {
+  margin-bottom: 15px;
+}
+
+#modifyModal .form-group label {
+  display: block;
+  margin-bottom: 5px;
+  color: #b0b0b0;
+  font-size: 13px;
+}
+
+#modifyModal .form-group input[type="number"] {
+  width: 100%;
+  padding: 8px;
+  background: #1e1e1e;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 13px;
+}
+
+#modifyModal .form-group input[type="number"]:focus {
+  outline: none;
+  border-color: #64B5F6;
+}
+
+#modifyModal .modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}

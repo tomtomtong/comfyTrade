@@ -158,6 +158,38 @@ class MT5Bridge:
         
         return {"success": True, "message": "Position closed"}
     
+    def modify_position(self, ticket, sl=None, tp=None):
+        """Modify stop loss and take profit of a position"""
+        if not self.connected_to_mt5:
+            return {"success": False, "error": "Not connected to MT5"}
+        
+        positions = mt5.positions_get(ticket=ticket)
+        if positions is None or len(positions) == 0:
+            return {"success": False, "error": "Position not found"}
+        
+        position = positions[0]
+        
+        # Use existing values if not provided
+        new_sl = sl if sl is not None else position.sl
+        new_tp = tp if tp is not None else position.tp
+        
+        request = {
+            "action": mt5.TRADE_ACTION_SLTP,
+            "symbol": position.symbol,
+            "position": ticket,
+            "sl": new_sl,
+            "tp": new_tp,
+            "magic": 234000,
+            "comment": "Modify SL/TP",
+        }
+        
+        result = mt5.order_send(request)
+        
+        if result.retcode != mt5.TRADE_RETCODE_DONE:
+            return {"success": False, "error": f"Modify failed: {result.comment}"}
+        
+        return {"success": True, "message": "Position modified"}
+    
     def get_market_data(self, symbol):
         """Get current market data for a symbol"""
         if not self.connected_to_mt5:
@@ -210,6 +242,14 @@ class MT5Bridge:
                 
             elif action == 'closePosition':
                 result = self.close_position(data.get('ticket'))
+                response['data'] = result
+            
+            elif action == 'modifyPosition':
+                result = self.modify_position(
+                    data.get('ticket'),
+                    data.get('stopLoss'),
+                    data.get('takeProfit')
+                )
                 response['data'] = result
                 
             elif action == 'getMarketData':
