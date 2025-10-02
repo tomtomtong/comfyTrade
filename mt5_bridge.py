@@ -114,6 +114,9 @@ class MT5Bridge:
         
         result = mt5.order_send(request)
         
+        if result is None:
+            return {"success": False, "error": "Order send failed - MT5 returned None. Check connection and parameters."}
+        
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             return {"success": False, "error": f"Order failed: {result.comment}"}
         
@@ -153,6 +156,9 @@ class MT5Bridge:
         
         result = mt5.order_send(request)
         
+        if result is None:
+            return {"success": False, "error": "Order send failed - MT5 returned None. Check connection and parameters."}
+        
         if result.retcode != mt5.TRADE_RETCODE_DONE:
             return {"success": False, "error": f"Close failed: {result.comment}"}
         
@@ -169,9 +175,14 @@ class MT5Bridge:
         
         position = positions[0]
         
-        # Use existing values if not provided
-        new_sl = sl if sl is not None else position.sl
-        new_tp = tp if tp is not None else position.tp
+        # Use existing values if not provided, allow 0 to remove SL/TP
+        new_sl = position.sl if sl is None else float(sl)
+        new_tp = position.tp if tp is None else float(tp)
+        
+        # Get symbol info for validation
+        symbol_info = mt5.symbol_info(position.symbol)
+        if symbol_info is None:
+            return {"success": False, "error": f"Symbol {position.symbol} not found"}
         
         request = {
             "action": mt5.TRADE_ACTION_SLTP,
@@ -179,14 +190,15 @@ class MT5Bridge:
             "position": ticket,
             "sl": new_sl,
             "tp": new_tp,
-            "magic": 234000,
-            "comment": "Modify SL/TP",
         }
         
         result = mt5.order_send(request)
         
+        if result is None:
+            return {"success": False, "error": "Order send failed - MT5 returned None. Check connection and parameters."}
+        
         if result.retcode != mt5.TRADE_RETCODE_DONE:
-            return {"success": False, "error": f"Modify failed: {result.comment}"}
+            return {"success": False, "error": f"Modify failed: {result.comment} (retcode: {result.retcode})"}
         
         return {"success": True, "message": "Position modified"}
     

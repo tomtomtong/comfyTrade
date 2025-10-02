@@ -131,7 +131,7 @@ class NodeEditor {
       x: x,
       y: y,
       width: 180,
-      height: 80 + nodeConfig.inputs.length * 25,
+      height: this.calculateNodeHeight(nodeConfig),
       title: nodeConfig.title,
       inputs: nodeConfig.inputs,
       outputs: nodeConfig.outputs,
@@ -139,6 +139,17 @@ class NodeEditor {
     };
     this.nodes.push(node);
     return node;
+  }
+
+  calculateNodeHeight(nodeConfig) {
+    const baseHeight = 80;
+    const inputHeight = nodeConfig.inputs.length * 25;
+    
+    // Estimate parameter text height
+    const paramCount = Object.keys(nodeConfig.params).length;
+    const estimatedParamHeight = paramCount > 0 ? Math.max(30, paramCount * 15) : 0;
+    
+    return baseHeight + inputHeight + estimatedParamHeight;
   }
 
   getNodeConfig(type) {
@@ -183,7 +194,13 @@ class NodeEditor {
         title: 'Trade Signal',
         inputs: ['condition'],
         outputs: [],
-        params: { action: 'BUY', volume: 0.1 }
+        params: { 
+          action: 'BUY', 
+          symbol: 'EURUSD',
+          volume: 0.1,
+          stopLoss: 0,
+          takeProfit: 0
+        }
       },
       'stop-loss': {
         title: 'Stop Loss',
@@ -365,15 +382,62 @@ class NodeEditor {
       ctx.fillText(node.outputs[0], pos.x - 10, pos.y + 4);
     }
 
-    // Parameters
+    // Parameters with text wrapping
     ctx.fillStyle = '#888';
     ctx.font = '10px Arial';
-    ctx.textAlign = 'center';
-    let paramY = node.y + node.height - 15;
-    const paramText = Object.entries(node.params)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-    ctx.fillText(paramText, node.x + node.width / 2, paramY);
+    this.drawWrappedParameters(ctx, node);
+  }
+
+  drawWrappedParameters(ctx, node) {
+    const params = Object.entries(node.params);
+    if (params.length === 0) return;
+
+    const padding = 10;
+    const lineHeight = 12;
+    const maxWidth = node.width - (padding * 2);
+    const startY = node.y + 40 + (node.inputs.length * 25) + 10;
+    const maxY = node.y + node.height - 10;
+
+    let currentY = startY;
+    
+    for (let [key, value] of params) {
+      if (currentY + lineHeight > maxY) break; // Stop if we run out of space
+      
+      const paramText = `${key}: ${value}`;
+      const wrappedLines = this.wrapText(ctx, paramText, maxWidth);
+      
+      for (let line of wrappedLines) {
+        if (currentY + lineHeight > maxY) break; // Stop if we run out of space
+        
+        ctx.textAlign = 'left';
+        ctx.fillText(line, node.x + padding, currentY);
+        currentY += lineHeight;
+      }
+    }
+  }
+
+  wrapText(ctx, text, maxWidth) {
+    const words = text.split(' ');
+    const lines = [];
+    let currentLine = '';
+
+    for (let word of words) {
+      const testLine = currentLine + (currentLine ? ' ' : '') + word;
+      const metrics = ctx.measureText(testLine);
+      
+      if (metrics.width > maxWidth && currentLine) {
+        lines.push(currentLine);
+        currentLine = word;
+      } else {
+        currentLine = testLine;
+      }
+    }
+    
+    if (currentLine) {
+      lines.push(currentLine);
+    }
+    
+    return lines;
   }
 
   exportGraph() {
