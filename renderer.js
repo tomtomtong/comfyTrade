@@ -716,9 +716,6 @@ async function calculateVolumeLoss() {
   
   try {
     let currentPrice;
-    let contractSize = 1;
-    let tickValue = 1;
-    let tickSize = 1;
     
     // Check if MT5 is connected, otherwise use mock data for testing
     if (isConnected && window.mt5API) {
@@ -728,9 +725,6 @@ async function calculateVolumeLoss() {
         if (symbolInfoResult.success && symbolInfoResult.data) {
           const symbolInfo = symbolInfoResult.data;
           currentPrice = symbolInfo.bid || symbolInfo.ask;
-          contractSize = symbolInfo.trade_contract_size || 1;
-          tickValue = symbolInfo.trade_tick_value || 1;
-          tickSize = symbolInfo.trade_tick_size || 1;
         } else {
           // Fallback to market data only
           const marketResult = await window.mt5API.getMarketData(symbol);
@@ -751,17 +745,85 @@ async function calculateVolumeLoss() {
       return;
     }
     
-    // Calculate accurate loss using standard MT5 formula
-    // Loss = (Price Change) × Contract Size × Volume
-    // For a 1% drop: price change = currentPrice * 0.01
-    const priceChange = currentPrice * 0.01; // 1% of current price
-    const totalLoss = priceChange * contractSize * volume;
+    // Calculate accurate loss using real contract information from MetaTrader
+    let pipValue, pipSize, contractSize;
+    let tickSize, tickValue;
+    
+    // Step 1: Retrieve real contract specifications from MT5
+    if (isConnected && window.mt5API) {
+      try {
+        const symbolInfoResult = await window.mt5API.getSymbolInfo(symbol);
+        if (symbolInfoResult.success && symbolInfoResult.data) {
+          const symbolInfo = symbolInfoResult.data;
+          
+          // Get tick size and tick value from MT5
+          tickSize = symbolInfo.trade_tick_size || symbolInfo.point || 0.00001;
+          tickValue = symbolInfo.trade_tick_value || 1;
+          contractSize = symbolInfo.trade_contract_size || 100000;
+          
+          // Determine pip size based on symbol type
+          const isYenPair = symbol.includes('JPY');
+          pipSize = isYenPair ? 0.01 : 0.0001;
+          
+          // Calculate pip value from tick value
+          // If tick size is 0.00001 (point) and pip is 0.0001, then 1 pip = 10 ticks
+          const ticksPerPip = pipSize / tickSize;
+          pipValue = tickValue * ticksPerPip;
+          
+          console.log('Using real MT5 contract data:');
+          console.log('Tick size:', tickSize);
+          console.log('Tick value per lot:', tickValue);
+          console.log('Pip size:', pipSize);
+          console.log('Ticks per pip:', ticksPerPip);
+          console.log('Pip value per lot:', pipValue);
+          console.log('Contract size:', contractSize);
+        }
+      } catch (err) {
+        console.warn('Failed to get symbol info from MT5, using fallback calculation:', err);
+      }
+    }
+    
+    // Step 2: Fallback calculation if MT5 data is not available
+    if (!pipValue || !pipSize) {
+      const isYenPair = symbol.includes('JPY');
+      
+      if (isYenPair) {
+        pipSize = 0.01;
+        pipValue = (0.01 * 100000) / currentPrice;
+      } else {
+        pipSize = 0.0001;
+        pipValue = (0.0001 * 100000) / currentPrice;
+      }
+      
+      if (symbol.endsWith('USD')) {
+        pipValue = 10;
+      }
+      
+      contractSize = 100000;
+      console.log('Using fallback calculation (MT5 not connected)');
+    }
+    
+    // Step 3: Calculate 1% price decrease in pips
+    const priceChangeInPips = (currentPrice * 0.01) / pipSize;
+    
+    // Step 4: Calculate loss using proper formula
+    // Loss = Number of pips × Pip value × Lot size
+    const totalLoss = priceChangeInPips * pipValue * volume;
     
     document.getElementById('potentialLoss').textContent = `$${totalLoss.toFixed(2)}`;
     document.getElementById('volumeLossInfo').style.display = 'block';
     
-    // Show immediate popup reminder
-    showVolumeLossReminder(symbol, volume, currentPrice, totalLoss);
+    // Show immediate popup reminder with contract info
+    const contractInfo = {
+      tickSize: tickSize,
+      pipSize: pipSize,
+      tickValue: tickValue,
+      pipValue: pipValue,
+      contractSize: contractSize,
+      ticksPerPip: pipSize / tickSize,
+      priceChangeInPips: priceChangeInPips
+    };
+    showVolumeLossReminder(symbol, volume, currentPrice, totalLoss, contractInfo);
     
   } catch (error) {
     console.error('Error calculating volume loss:', error);
@@ -770,7 +832,7 @@ async function calculateVolumeLoss() {
 }
 
 // Volume Loss Reminder Popup
-function showVolumeLossReminder(symbol, volume, currentPrice, potentialLoss) {
+function showVolumeLossReminder(symbol, volume, currentPrice, potentialLoss, contractInfo = {}) {
   const alertModal = document.getElementById('priceDropAlert');
   
   // Calculate price after 1% drop
@@ -783,6 +845,15 @@ function showVolumeLossReminder(symbol, volume, currentPrice, potentialLoss) {
   document.getElementById('alertCurrentPrice').textContent = priceAfter1PercentDrop.toFixed(5);
   document.getElementById('alertPriceChange').textContent = '-1.00%';
   document.getElementById('alertCurrentLoss').textContent = `$${potentialLoss.toFixed(2)}`;
+  
+  // Update MT5 contract information
+  document.getElementById('alertTickSize').textContent = contractInfo.tickSize ? contractInfo.tickSize.toFixed(5) : '-';
+  document.getElementById('alertPipSize').textContent = contractInfo.pipSize ? contractInfo.pipSize.toFixed(5) : '-';
+  document.getElementById('alertTickValue').textContent = contractInfo.tickValue ? `$${contractInfo.tickValue.toFixed(2)}` : '-';
+  document.getElementById('alertPipValue').textContent = contractInfo.pipValue ? `$${contractInfo.pipValue.toFixed(2)}` : '-';
+  document.getElementById('alertContractSize').textContent = contractInfo.contractSize ? contractInfo.contractSize.toLocaleString() : '-';
+  document.getElementById('alertTicksPerPip').textContent = contractInfo.ticksPerPip ? contractInfo.ticksPerPip.toFixed(0) : '-';
+  document.getElementById('alertPriceChangePips').textContent = contractInfo.priceChangeInPips ? contractInfo.priceChangeInPips.toFixed(2) : '-';
   
   // Show alert
   alertModal.style.display = 'block';
@@ -834,9 +905,6 @@ function testVolumeLossFromNode(nodeId) {
   async function calculateAndShowLoss() {
     try {
       let currentPrice;
-      let contractSize = 1;
-      let tickValue = 1;
-      let tickSize = 1;
       
       // Check if MT5 is connected
       if (isConnected && window.mt5API) {
@@ -852,14 +920,8 @@ function testVolumeLossFromNode(nodeId) {
           if (symbolInfoResult.success && symbolInfoResult.data) {
             const symbolInfo = symbolInfoResult.data;
             currentPrice = symbolInfo.bid || symbolInfo.ask;
-            contractSize = symbolInfo.trade_contract_size || 1;
-            tickValue = symbolInfo.trade_tick_value || 1;
-            tickSize = symbolInfo.trade_tick_size || 1;
             
             console.log('Symbol info retrieved:', symbolInfo);
-            console.log('Contract size:', contractSize);
-            console.log('Tick value:', tickValue);
-            console.log('Tick size:', tickSize);
           } else {
             console.log('Symbol info failed, trying market data...');
             // Fallback to market data only
@@ -888,23 +950,93 @@ function testVolumeLossFromNode(nodeId) {
         return;
       }
       
-      // Calculate accurate loss using standard MT5 formula
-      // Loss = (Price Change) × Contract Size × Volume
-      // For a 1% drop: price change = currentPrice * 0.01
-      const priceChange = currentPrice * 0.01; // 1% of current price
-      const totalLoss = priceChange * contractSize * volume;
+      // Calculate accurate loss using real contract information from MetaTrader
+      let pipValue, pipSize, contractSize;
+      let tickSize, tickValue;
+      
+      // Step 1: Retrieve real contract specifications from MT5
+      if (isConnected && window.mt5API) {
+        try {
+          const symbolInfoResult = await window.mt5API.getSymbolInfo(symbol);
+          console.log('Symbol info result:', symbolInfoResult);
+          
+          if (symbolInfoResult.success && symbolInfoResult.data) {
+            const symbolInfo = symbolInfoResult.data;
+            
+            // Get tick size and tick value from MT5
+            tickSize = symbolInfo.trade_tick_size || symbolInfo.point || 0.00001;
+            tickValue = symbolInfo.trade_tick_value || 1;
+            contractSize = symbolInfo.trade_contract_size || 100000;
+            
+            // Determine pip size based on symbol type
+            const isYenPair = symbol.includes('JPY');
+            pipSize = isYenPair ? 0.01 : 0.0001;
+            
+            // Calculate pip value from tick value
+            // If tick size is 0.00001 (point) and pip is 0.0001, then 1 pip = 10 ticks
+            const ticksPerPip = pipSize / tickSize;
+            pipValue = tickValue * ticksPerPip;
+            
+            console.log('Using real MT5 contract data:');
+            console.log('Tick size:', tickSize);
+            console.log('Tick value per lot:', tickValue);
+            console.log('Pip size:', pipSize);
+            console.log('Ticks per pip:', ticksPerPip);
+            console.log('Pip value per lot:', pipValue);
+            console.log('Contract size:', contractSize);
+          }
+        } catch (err) {
+          console.warn('Failed to get symbol info from MT5, using fallback calculation:', err);
+        }
+      }
+      
+      // Step 2: Fallback calculation if MT5 data is not available
+      if (!pipValue || !pipSize) {
+        const isYenPair = symbol.includes('JPY');
+        
+        if (isYenPair) {
+          pipSize = 0.01;
+          pipValue = (0.01 * 100000) / currentPrice;
+        } else {
+          pipSize = 0.0001;
+          pipValue = (0.0001 * 100000) / currentPrice;
+        }
+        
+        if (symbol.endsWith('USD')) {
+          pipValue = 10;
+        }
+        
+        contractSize = 100000;
+        console.log('Using fallback calculation (MT5 not connected)');
+      }
+      
+      // Step 3: Calculate 1% price decrease in pips
+      const priceChangeInPips = (currentPrice * 0.01) / pipSize;
+      
+      // Step 4: Calculate loss using proper formula
+      // Loss = Number of pips × Pip value × Lot size
+      const totalLoss = priceChangeInPips * pipValue * volume;
       
       console.log('Calculation details:');
       console.log('Current price:', currentPrice);
-      console.log('1% price change:', priceChange);
+      console.log('Pip size:', pipSize);
+      console.log('Pip value for 1 lot:', pipValue);
       console.log('Contract size:', contractSize);
-      console.log('Volume:', volume);
-      console.log('Tick value:', tickValue);
-      console.log('Tick size:', tickSize);
+      console.log('1% price change in pips:', priceChangeInPips);
+      console.log('Volume (lots):', volume);
       console.log('Final loss for 1% move:', totalLoss);
       
-      // Show the popup reminder with trade node data
-      showVolumeLossReminder(symbol, volume, currentPrice, totalLoss);
+      // Show the popup reminder with trade node data and contract info
+      const contractInfo = {
+        tickSize: tickSize,
+        pipSize: pipSize,
+        tickValue: tickValue,
+        pipValue: pipValue,
+        contractSize: contractSize,
+        ticksPerPip: pipSize / tickSize,
+        priceChangeInPips: priceChangeInPips
+      };
+      showVolumeLossReminder(symbol, volume, currentPrice, totalLoss, contractInfo);
       
       showMessage(`Testing volume loss for ${symbol} (${action}) with volume ${volume}`, 'info');
     } catch (error) {

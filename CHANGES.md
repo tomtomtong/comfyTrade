@@ -1,37 +1,73 @@
 # Recent Changes
 
-## Volume Loss Reminder Fix (Latest)
+## Pip-Based Loss Calculation with MT5 Contract Data (Latest)
 
 ### Summary
-Fixed incorrect loss calculation and improved clarity of the Volume Loss Reminder dialog.
+Updated loss calculation to use proper pip-based methodology with real contract information retrieved from MetaTrader 5 for accurate calculations.
 
-### Issues Fixed
-1. **Incorrect calculation**: The loss was being multiplied by an extra `pointValue` factor, resulting in losses that were 10-100x too large
-2. **Confusing UI labels**: Both "Entry Price" and "Current Price" showed the same value
-3. **Missing price change indicator**: The price change field showed "0.00%" instead of "-1.00%"
+### Important Fix (Latest Update)
+**Fixed tick vs pip confusion:**
+- MT5 returns **tick size** (0.00001 for EUR/USD = 1 point) and **tick value** ($1 per point)
+- We need **pip size** (0.0001 for EUR/USD = 10 points) and **pip value** ($10 per pip)
+- Now correctly converts: `pip value = tick value × (pip size / tick size)`
+- Example: $1/tick × (0.0001/0.00001) = $10/pip ✓
+
+### Features Added
+1. **Real MT5 Contract Data Retrieval**
+   - Retrieves `trade_tick_size` (smallest price movement) from MT5
+   - Retrieves `trade_tick_value` ($ value per tick) from MT5
+   - Retrieves `trade_contract_size` (contract size) from MT5
+   - **Converts tick values to pip values** for proper calculation
+
+2. **Proper Pip-Based Calculation**
+   - Step 1: Retrieve real contract specifications from MT5
+   - Step 2: Calculate 1% price decrease in pips
+   - Step 3: Apply formula: `Loss = Number of pips × Pip value × Lot size`
+   
+3. **Smart Fallback System**
+   - If MT5 is not connected, uses intelligent fallback calculations
+   - Detects yen pairs (JPY) automatically for correct pip sizing
+   - Applies simplified pip values for USD quote currencies
 
 ### Changes Made
 1. **renderer.js**
-   - Fixed `calculateVolumeLoss()`: Simplified formula to `Loss = priceChange × contractSize × volume`
-   - Fixed `testLossFromNode()`: Same simplified formula
-   - Updated `showVolumeLossReminder()`: Now shows the price after 1% drop and displays "-1.00%" change
+   - Updated `calculateVolumeLoss()`: Now retrieves symbol info from MT5 API
+   - Updated `testVolumeLossFromNode()`: Same MT5 contract data retrieval
+   - Added fallback calculations for offline/disconnected scenarios
+   - Enhanced logging to show pip size, pip value, and contract size
+   - **Enhanced popup UI**: Now displays all MT5 contract details in the volume loss reminder
 
 2. **index.html**
-   - Updated dialog description: "If you execute this volume and price moves 1% against you:"
-   - Renamed labels for clarity:
-     - "Entry Price" → "Current Price"
-     - "Current Price" → "Price After 1% Drop"
-     - "Current Loss" → "Potential Loss"
+   - Added MT5 Contract Details section to volume loss popup
+   - Shows tick size, pip size, tick value, pip value, contract size, ticks per pip, and price change in pips
 
 ### Formula
-The corrected formula for 1% price move loss:
+The proper pip-based formula for 1% price move loss:
 ```
-Loss = (Current Price × 0.01) × Contract Size × Volume
+Step 1: Get pip size and pip value from MT5
+Step 2: Calculate price change in pips = (Current Price × 0.01) / Pip Size
+Step 3: Loss = Price Change in Pips × Pip Value × Volume
 ```
 
-For example, USOIL.cash at 60.98400 with 1 lot (100 barrels):
-- Price change: 60.98400 × 0.01 = 0.60984
-- Loss: 0.60984 × 100 × 1 = $60.98
+### Examples
+
+**EUR/USD at 1.1000 with 1 lot:**
+- Pip size: 0.0001
+- Pip value: $10 per pip for 1 lot
+- 1% price change: 110 pips
+- Loss: 110 × $10 × 1 = **$1,100**
+
+**USD/JPY at 150.00 with 1 lot:**
+- Pip size: 0.01
+- Pip value: $6.67 per pip for 1 lot
+- 1% price change: 150 pips
+- Loss: 150 × $6.67 × 1 = **$1,000**
+
+### Benefits
+- More accurate calculations using real broker specifications
+- Correctly handles different symbol types (forex pairs, metals, indices, etc.)
+- Accounts for actual tick sizes and values from MT5
+- Fallback ensures functionality even when disconnected
 
 ---
 
