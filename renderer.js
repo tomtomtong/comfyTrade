@@ -543,6 +543,31 @@ function updatePropertiesPanel(node) {
             </select>
           </div>
         `;
+      } else if (key === 'operator' && node.type === 'conditional-check') {
+        return `
+          <div class="property-item">
+            <label>${key}:</label>
+            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
+              <option value=">" ${value === '>' ? 'selected' : ''}>> (Greater Than)</option>
+              <option value="<" ${value === '<' ? 'selected' : ''}>< (Less Than)</option>
+              <option value=">=" ${value === '>=' ? 'selected' : ''}>>= (Greater or Equal)</option>
+              <option value="<=" ${value === '<=' ? 'selected' : ''}><= (Less or Equal)</option>
+              <option value="==" ${value === '==' ? 'selected' : ''}>= (Equal)</option>
+              <option value="!=" ${value === '!=' ? 'selected' : ''}>!= (Not Equal)</option>
+            </select>
+          </div>
+        `;
+      } else if (key === 'price' && node.type === 'conditional-check') {
+        return `
+          <div class="property-item">
+            <label>${key}:</label>
+            <input type="number" 
+                   value="${value}" 
+                   step="0.00001"
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseFloat(this.value))">
+          </div>
+        `;
       } else {
         return `
           <div class="property-item">
@@ -560,6 +585,15 @@ function updatePropertiesPanel(node) {
   
   // Add action buttons
   let actionButtons = '';
+  
+  // Add get current price button for conditional check nodes
+  if (node.type === 'conditional-check') {
+    actionButtons += `
+      <button class="btn btn-info btn-small" onclick="getCurrentPriceForNode('${node.id}')">
+        Get Current Price
+      </button>
+    `;
+  }
   
   // Add test loss button for trade nodes
   if (node.type === 'trade-signal') {
@@ -1071,6 +1105,64 @@ function testVolumeLossFromNode(nodeId) {
   // Execute the calculation
   calculateAndShowLoss();
 }
+
+// Get current price for conditional check node
+async function getCurrentPriceForNode(nodeId) {
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  if (!node) {
+    showMessage('Node not found', 'error');
+    return;
+  }
+  
+  if (node.type !== 'conditional-check') {
+    showMessage('This function only works with conditional check nodes', 'error');
+    return;
+  }
+  
+  const symbol = node.params.symbol;
+  if (!symbol) {
+    showMessage('Please set a symbol first', 'error');
+    return;
+  }
+  
+  try {
+    showMessage(`Fetching current price for ${symbol}...`, 'info');
+    
+    // Fetch current market data from MT5 via exposed API
+    if (!window.mt5API || !window.mt5API.getMarketData) {
+      showMessage('MT5 API not available. Please connect to MT5 first.', 'error');
+      return;
+    }
+    
+    const result = await window.mt5API.getMarketData(symbol);
+    
+    if (!result || result.success === false) {
+      const errMsg = result && result.error ? result.error : 'Unknown error';
+      showMessage(`Error fetching price: ${errMsg}`, 'error');
+      return;
+    }
+    
+    const data = result.data || result; // support both wrapped and direct responses
+    if (data && data.bid) {
+      // Update the node's price parameter with current bid price
+      node.params.price = parseFloat(Number(data.bid).toFixed(5));
+      
+      // Update the properties panel to show the new price
+      updatePropertiesPanel(node);
+      
+      showMessage(`Current price for ${symbol}: ${node.params.price} (Bid: ${data.bid}, Ask: ${data.ask})`, 'success');
+    } else {
+      showMessage('Failed to get current price. No data returned.', 'error');
+    }
+    
+  } catch (error) {
+    console.error('Error fetching current price:', error);
+    showMessage('Error fetching current price: ' + error.message, 'error');
+  }
+}
+
+// Make function globally available
+window.getCurrentPriceForNode = getCurrentPriceForNode;
 
 // Log Modal Functions
 function showLogModal() {

@@ -192,45 +192,43 @@ class NodeEditor {
           unit: 'seconds'
         }
       },
-      'market-data': {
-        title: 'Market Data',
-        inputs: [],
-        outputs: ['price', 'volume'],
-        params: { symbol: 'EURUSD' }
-      },
       'indicator-ma': {
         title: 'Moving Average',
-        inputs: ['price'],
-        outputs: ['ma'],
+        inputs: ['trigger'],
+        outputs: ['trigger'],
         params: { period: 20 }
       },
       'indicator-rsi': {
         title: 'RSI',
-        inputs: ['price'],
-        outputs: ['rsi'],
+        inputs: ['trigger'],
+        outputs: ['trigger'],
         params: { period: 14 }
       },
-      'compare': {
-        title: 'Compare',
-        inputs: ['value1', 'value2'],
-        outputs: ['result'],
-        params: { operator: '>' }
+      'conditional-check': {
+        title: 'Conditional Check',
+        inputs: ['trigger'],
+        outputs: ['trigger'],
+        params: { 
+          symbol: 'EURUSD',
+          operator: '>',
+          price: 1.1000
+        }
       },
       'logic-and': {
         title: 'AND Gate',
-        inputs: ['input1', 'input2'],
-        outputs: ['output'],
+        inputs: ['trigger', 'trigger'],
+        outputs: ['trigger'],
         params: {}
       },
       'logic-or': {
         title: 'OR Gate',
-        inputs: ['input1', 'input2'],
-        outputs: ['output'],
+        inputs: ['trigger', 'trigger'],
+        outputs: ['trigger'],
         params: {}
       },
       'trade-signal': {
         title: 'Trade',
-        inputs: ['condition'],
+        inputs: ['trigger'],
         outputs: [],
         params: { 
           action: 'BUY', 
@@ -241,7 +239,7 @@ class NodeEditor {
       'constant': {
         title: 'Constant',
         inputs: [],
-        outputs: ['value'],
+        outputs: ['trigger'],
         params: { value: 0 }
       }
     };
@@ -249,6 +247,18 @@ class NodeEditor {
   }
 
   addConnection(fromNode, toNode, inputIndex) {
+    // Validate connection types - only trigger to trigger connections allowed
+    if (fromNode.outputs.length === 0 || toNode.inputs.length === 0) {
+      console.log('Cannot connect: missing trigger output or input');
+      return;
+    }
+
+    // Validate input index
+    if (inputIndex >= toNode.inputs.length) {
+      console.log('Cannot connect: invalid input index');
+      return;
+    }
+
     // Remove existing connection to this input
     this.connections = this.connections.filter(
       conn => !(conn.to === toNode && conn.toInput === inputIndex)
@@ -464,11 +474,15 @@ class NodeEditor {
       ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
       ctx.fill();
 
-      // Input label
+      // Input label - show "trigger" or "trigger1/trigger2" for logic gates
       ctx.fillStyle = '#b0b0b0';
       ctx.font = '11px Arial';
       ctx.textAlign = 'left';
-      ctx.fillText(node.inputs[i], pos.x + 10, pos.y + 4);
+      let label = 'trigger';
+      if (node.type === 'logic-and' || node.type === 'logic-or') {
+        label = i === 0 ? 'trigger1' : 'trigger2';
+      }
+      ctx.fillText(label, pos.x + 10, pos.y + 4);
     }
 
     // Output socket
@@ -479,11 +493,11 @@ class NodeEditor {
       ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
       ctx.fill();
 
-      // Output label
+      // Output label - always show "trigger" for all outputs
       ctx.fillStyle = '#b0b0b0';
       ctx.font = '11px Arial';
       ctx.textAlign = 'right';
-      ctx.fillText(node.outputs[0], pos.x - 10, pos.y + 4);
+      ctx.fillText('trigger', pos.x - 10, pos.y + 4);
     }
 
     // Parameters with text wrapping
@@ -652,11 +666,57 @@ class NodeEditor {
       .filter(c => c.from === node)
       .map(c => c.to);
     
+    // Execute the connected nodes in sequence
+    for (let connectedNode of connectedNodes) {
+      this.executeNode(connectedNode);
+    }
+    
     if (window.onTriggerExecute) {
       window.onTriggerExecute(node, connectedNodes);
     }
     
     console.log('Trigger executed:', node.title, 'Connected nodes:', connectedNodes.length);
+  }
+
+  executeNode(node) {
+    // Execute the node's specific logic based on its type
+    console.log('Executing node:', node.title, 'Type:', node.type);
+    
+    // Add specific execution logic for each node type here
+    // For now, just log the execution
+    switch (node.type) {
+      case 'indicator-ma':
+        console.log('Calculating Moving Average with period:', node.params.period);
+        break;
+      case 'indicator-rsi':
+        console.log('Calculating RSI with period:', node.params.period);
+        break;
+      case 'conditional-check':
+        console.log('Checking if', node.params.symbol, 'is', node.params.operator, node.params.price);
+        // TODO: Implement actual price comparison with MT5 data
+        break;
+      case 'logic-and':
+        console.log('Executing AND logic - requires both inputs to be triggered');
+        break;
+      case 'logic-or':
+        console.log('Executing OR logic - requires either input to be triggered');
+        break;
+      case 'trade-signal':
+        console.log('Executing trade:', node.params.action, node.params.symbol, node.params.volume);
+        break;
+      case 'constant':
+        console.log('Constant value:', node.params.value);
+        break;
+    }
+    
+    // Continue the trigger chain to connected nodes
+    const connectedNodes = this.connections
+      .filter(c => c.from === node)
+      .map(c => c.to);
+    
+    for (let connectedNode of connectedNodes) {
+      this.executeNode(connectedNode);
+    }
   }
 
   startPeriodTrigger(node) {

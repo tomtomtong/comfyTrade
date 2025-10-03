@@ -1,6 +1,111 @@
 # Recent Changes
 
-## Pip-Based Loss Calculation with MT5 Contract Data (Latest)
+## Simplified Node System - Trigger-Only Inputs/Outputs (Latest)
+
+### Summary
+Completely redesigned the node system to use only trigger inputs and trigger outputs for all nodes, creating a simplified and consistent execution flow system.
+
+### Key Changes
+1. **Unified Connection System**: All nodes now use `trigger` input and `trigger` output types
+2. **Simplified Node Definitions**: Removed complex input/output type management
+3. **Consistent Execution Flow**: All nodes execute in a linear trigger chain
+4. **Updated Documentation**: Comprehensive guide for the new trigger-based system
+
+### Node Type Updates
+- **Manual Trigger**: No inputs, `trigger` output (entry point)
+- **Period Trigger**: No inputs, `trigger` output (entry point)  
+// Market Data node removed
+- **Indicators (MA, RSI)**: `trigger` input, `trigger` output
+- **Logic Gates (AND, OR)**: `trigger1` + `trigger2` inputs, `trigger` output
+- **Conditional Check**: `trigger` input, `trigger` output (with symbol price comparison)
+- **Trade Signal**: `trigger` input, no outputs (end point)
+- **Constant Node**: No inputs, `trigger` output (standalone)
+
+### Benefits
+- **Simplified Connections**: No more complex type matching between nodes
+- **Consistent Interface**: All nodes follow the same input/output pattern
+- **Clear Execution Flow**: Easy to understand trigger-based execution chains
+- **Reduced Complexity**: Eliminated type validation and matching logic
+- **Better UX**: Users can connect any trigger output to any trigger input
+
+### Files Modified
+1. **node-editor.js**
+   - Updated `getNodeConfig()` to use only trigger types
+   - Modified socket drawing to show "trigger" labels (with "trigger1/trigger2" for logic gates)
+   - Added connection validation for trigger types
+   - Enhanced execution flow with `executeNode()` method
+   - Updated trigger chain execution logic
+   - **Fixed Logic Gates**: AND and OR gates now have two trigger inputs as expected
+   - **Enhanced Compare Node**: Changed to "Conditional Check" with symbol price comparison functionality
+
+2. **index.html**
+   - Updated canvas hints to reflect trigger-only connections
+   - Clarified connection instructions for users
+
+3. **TRIGGER_NODES.md**
+   - Complete rewrite with all node types documented
+   - Added input/output specifications for each node
+   - Updated usage instructions for trigger-based flows
+   - Added connection rules and examples
+
+### Usage
+1. Start with a trigger node (Manual or Period)
+2. Add processing nodes (Indicators, Logic)
+3. Connect trigger outputs to trigger inputs
+4. End with action nodes (Trade Signal)
+5. All nodes execute in sequence when triggered
+
+---
+
+## Enhanced Conditional Check Node (Latest)
+
+### Summary
+Replaced the generic "Compare" node with a practical "Conditional Check" node that allows price-based conditions for specific trading symbols.
+
+### Key Features
+1. **Symbol Selection**: Choose any trading symbol (EURUSD, GBPUSD, etc.)
+2. **Price Comparison**: Compare current market price with target price
+3. **Multiple Operators**: Support for >, <, >=, <=, ==, != operators
+4. **Conditional Execution**: Only passes trigger if condition is met
+5. **Precise Price Input**: Decimal precision up to 5 decimal places
+6. **Get Current Price Button**: Fetch live market price from MT5 with one click
+
+### Parameters
+- **symbol** (string): Trading symbol to monitor
+- **operator** (string): Comparison operator with user-friendly labels
+- **price** (number): Target price for comparison
+
+### Use Cases
+- **Entry Conditions**: "Buy when EURUSD > 1.1000"
+- **Support/Resistance**: "Sell when GBPUSD < 1.2500"
+- **Breakout Detection**: "Execute when USDJPY >= 150.00"
+- **Price Thresholds**: Monitor specific price levels
+
+### Files Modified
+1. **node-editor.js**: Updated node definition and execution logic
+2. **index.html**: Changed button text to "Conditional Check"
+3. **renderer.js**: 
+   - Added specialized property panel with dropdown operators and number input
+   - Added "Get Current Price" button in property panel
+   - Added `getCurrentPriceForNode()` function to fetch live MT5 prices
+4. **TRIGGER_NODES.md**: Complete documentation update with button feature
+5. **CHANGES.md**: Added this enhancement section
+
+---
+
+## Removal: Market Data Node
+
+### Summary
+Removed the standalone Market Data node to simplify the node library and avoid redundancy with the Conditional Check node's built-in price fetch capability.
+
+### Changes
+- node-editor.js: Removed `market-data` node definition and execution case
+- index.html: Removed "Market Data" button from Data Sources
+- TRIGGER_NODES.md: Removed Market Data section and renumbered subsequent nodes
+
+---
+
+## Pip-Based Loss Calculation with MT5 Contract Data
 
 ### Summary
 Updated loss calculation to use proper pip-based methodology with real contract information retrieved from MetaTrader 5 for accurate calculations.
