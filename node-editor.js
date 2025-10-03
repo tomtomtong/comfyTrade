@@ -8,21 +8,10 @@ class NodeEditor {
     this.selectedNode = null;
     this.draggingNode = null;
     this.connectingFrom = null;
-    this.hoveredConnection = null;
     this.offset = { x: 0, y: 0 };
     this.scale = 1;
     this.mousePos = { x: 0, y: 0 };
-    
-    // Data type definitions
-    this.dataTypes = {
-      'trigger': { color: '#4CAF50', name: 'Trigger' },
-      'price': { color: '#2196F3', name: 'Price' },
-      'number': { color: '#FF9800', name: 'Number' },
-      'boolean': { color: '#F44336', name: 'Boolean' },
-      'signal': { color: '#9C27B0', name: 'Signal' },
-      'indicator': { color: '#00BCD4', name: 'Indicator' },
-      'any': { color: '#757575', name: 'Any' }
-    };
+    this.hoveredConnection = null;
     
     this.setupCanvas();
     this.setupEventListeners();
@@ -39,25 +28,8 @@ class NodeEditor {
     this.canvas.addEventListener('mousemove', this.onMouseMove.bind(this));
     this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
     this.canvas.addEventListener('wheel', this.onWheel.bind(this));
-    this.canvas.addEventListener('contextmenu', this.onContextMenu.bind(this));
     window.addEventListener('resize', () => this.setupCanvas());
     window.addEventListener('keydown', this.onKeyDown.bind(this));
-  }
-  
-  onContextMenu(e) {
-    e.preventDefault();
-    const rect = this.canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Check if right-clicking on a connection
-    const clickedConnection = this.getConnectionAtPoint(x, y);
-    if (clickedConnection) {
-      this.removeConnection(clickedConnection);
-      if (window.showMessage) {
-        window.showMessage('Connection removed', 'info');
-      }
-    }
   }
 
   onMouseDown(e) {
@@ -65,26 +37,10 @@ class NodeEditor {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
 
-    // Check for connection click (right-click or with ctrl key for disconnect)
-    if (e.button === 2 || e.ctrlKey) {
-      const clickedConnection = this.getConnectionAtPoint(x, y);
-      if (clickedConnection) {
-        this.removeConnection(clickedConnection);
-        if (window.showMessage) {
-          window.showMessage('Connection removed', 'info');
-        }
-        e.preventDefault();
-        return;
-      }
-    }
-    
-    // Check for connection click (left-click to select and delete)
-    const clickedConnection = this.getConnectionAtPoint(x, y);
-    if (clickedConnection) {
-      this.selectedConnection = clickedConnection;
-      if (window.showMessage) {
-        window.showMessage('Connection selected. Click again or press Delete to remove', 'info');
-      }
+    // Check for connection line click (disconnect)
+    if (this.hoveredConnection) {
+      this.removeConnection(this.hoveredConnection);
+      this.hoveredConnection = null;
       return;
     }
 
@@ -117,13 +73,11 @@ class NodeEditor {
         this.selectedNode = this.nodes[i];
         this.offset.x = x - this.nodes[i].x;
         this.offset.y = y - this.nodes[i].y;
-        this.selectedConnection = null;
         return;
       }
     }
 
     this.selectedNode = null;
-    this.selectedConnection = null;
   }
 
   onMouseMove(e) {
@@ -134,12 +88,9 @@ class NodeEditor {
     if (this.draggingNode) {
       this.draggingNode.x = this.mousePos.x - this.offset.x;
       this.draggingNode.y = this.mousePos.y - this.offset.y;
-    }
-    
-    // Update hovered connection for visual feedback
-    if (!this.draggingNode && !this.connectingFrom) {
+    } else {
+      // Check for connection line hover
       this.hoveredConnection = this.getConnectionAtPoint(this.mousePos.x, this.mousePos.y);
-      this.canvas.style.cursor = this.hoveredConnection ? 'pointer' : 'default';
     }
   }
 
@@ -176,18 +127,8 @@ class NodeEditor {
   }
 
   onKeyDown(e) {
-    // Delete key to remove selected connection or node
-    if (e.key === 'Delete') {
-      if (this.selectedConnection) {
-        this.removeConnection(this.selectedConnection);
-        this.selectedConnection = null;
-        if (window.showMessage) {
-          window.showMessage('Connection deleted', 'info');
-        }
-      }
-      // Note: Node deletion via Delete key is currently disabled
-      // Users can still delete nodes via the properties panel button
-    }
+    // Delete key functionality disabled - nodes cannot be deleted with Delete key
+    // This method is kept for potential future keyboard shortcuts
   }
 
   deleteSelectedNode() {
@@ -212,9 +153,7 @@ class NodeEditor {
       height: this.calculateNodeHeight(nodeConfig),
       title: nodeConfig.title,
       inputs: nodeConfig.inputs,
-      inputTypes: nodeConfig.inputTypes,
       outputs: nodeConfig.outputs,
-      outputTypes: nodeConfig.outputTypes,
       params: { ...nodeConfig.params }
     };
     this.nodes.push(node);
@@ -237,9 +176,7 @@ class NodeEditor {
       'trigger-manual': {
         title: 'Manual Trigger',
         inputs: [],
-        inputTypes: [],
         outputs: ['trigger'],
-        outputTypes: ['trigger'],
         params: { 
           enabled: true,
           description: 'Click to execute'
@@ -248,9 +185,7 @@ class NodeEditor {
       'trigger-period': {
         title: 'Period Trigger',
         inputs: [],
-        inputTypes: [],
         outputs: ['trigger'],
-        outputTypes: ['trigger'],
         params: { 
           enabled: true,
           interval: 60,
@@ -259,58 +194,44 @@ class NodeEditor {
       },
       'market-data': {
         title: 'Market Data',
-        inputs: ['trigger'],
-        inputTypes: ['trigger'],
+        inputs: [],
         outputs: ['price', 'volume'],
-        outputTypes: ['price', 'number'],
         params: { symbol: 'EURUSD' }
       },
       'indicator-ma': {
         title: 'Moving Average',
         inputs: ['price'],
-        inputTypes: ['price'],
-        outputs: ['indicator'],
-        outputTypes: ['indicator'],
+        outputs: ['ma'],
         params: { period: 20 }
       },
       'indicator-rsi': {
         title: 'RSI',
         inputs: ['price'],
-        inputTypes: ['price'],
-        outputs: ['indicator'],
-        outputTypes: ['indicator'],
+        outputs: ['rsi'],
         params: { period: 14 }
       },
       'compare': {
         title: 'Compare',
         inputs: ['value1', 'value2'],
-        inputTypes: ['number', 'number'],
         outputs: ['result'],
-        outputTypes: ['boolean'],
         params: { operator: '>' }
       },
       'logic-and': {
         title: 'AND Gate',
         inputs: ['input1', 'input2'],
-        inputTypes: ['boolean', 'boolean'],
         outputs: ['output'],
-        outputTypes: ['boolean'],
         params: {}
       },
       'logic-or': {
         title: 'OR Gate',
         inputs: ['input1', 'input2'],
-        inputTypes: ['boolean', 'boolean'],
         outputs: ['output'],
-        outputTypes: ['boolean'],
         params: {}
       },
       'trade-signal': {
         title: 'Trade',
-        inputs: ['signal'],
-        inputTypes: ['boolean'],
+        inputs: ['condition'],
         outputs: [],
-        outputTypes: [],
         params: { 
           action: 'BUY', 
           symbol: 'EURUSD',
@@ -320,28 +241,14 @@ class NodeEditor {
       'constant': {
         title: 'Constant',
         inputs: [],
-        inputTypes: [],
         outputs: ['value'],
-        outputTypes: ['number'],
         params: { value: 0 }
       }
     };
     return configs[type] || configs['constant'];
   }
 
-  addConnection(fromNode, toNode, inputIndex, outputIndex = 0) {
-    // Check type compatibility
-    const fromType = fromNode.outputTypes && fromNode.outputTypes[outputIndex] ? fromNode.outputTypes[outputIndex] : 'any';
-    const toType = toNode.inputTypes && toNode.inputTypes[inputIndex] ? toNode.inputTypes[inputIndex] : 'any';
-    
-    if (!this.areTypesCompatible(fromType, toType)) {
-      console.warn(`Type mismatch: Cannot connect ${fromType} to ${toType}`);
-      if (window.showMessage) {
-        window.showMessage(`Type mismatch: Cannot connect ${this.dataTypes[fromType]?.name || fromType} to ${this.dataTypes[toType]?.name || toType}`, 'error');
-      }
-      return false;
-    }
-    
+  addConnection(fromNode, toNode, inputIndex) {
     // Remove existing connection to this input
     this.connections = this.connections.filter(
       conn => !(conn.to === toNode && conn.toInput === inputIndex)
@@ -350,32 +257,8 @@ class NodeEditor {
     this.connections.push({
       from: fromNode,
       to: toNode,
-      toInput: inputIndex,
-      fromOutput: outputIndex,
-      fromType: fromType,
-      toType: toType
+      toInput: inputIndex
     });
-    
-    return true;
-  }
-  
-  areTypesCompatible(fromType, toType) {
-    // 'any' type is compatible with everything
-    if (fromType === 'any' || toType === 'any') return true;
-    
-    // Same types are compatible
-    if (fromType === toType) return true;
-    
-    // Price can connect to number
-    if (fromType === 'price' && toType === 'number') return true;
-    
-    // Indicator can connect to number
-    if (fromType === 'indicator' && toType === 'number') return true;
-    
-    // Number can accept price and indicator
-    if (toType === 'number' && (fromType === 'price' || fromType === 'indicator')) return true;
-    
-    return false;
   }
 
   removeNode(node) {
@@ -384,39 +267,53 @@ class NodeEditor {
       c => c.from !== node && c.to !== node
     );
   }
-  
+
   removeConnection(connection) {
     this.connections = this.connections.filter(c => c !== connection);
   }
-  
-  getConnectionAtPoint(x, y, threshold = 10) {
+
+  getConnectionAtPoint(x, y) {
+    const tolerance = 8; // Click tolerance for connection lines
+    
     for (let conn of this.connections) {
-      const fromOutputIndex = conn.fromOutput || 0;
-      const from = this.getOutputSocketPos(conn.from, fromOutputIndex);
+      const from = this.getOutputSocketPos(conn.from);
       const to = this.getInputSocketPos(conn.to, conn.toInput);
       
-      // Check distance from point to bezier curve (simplified)
-      const midX = (from.x + to.x) / 2;
-      
-      // Sample points along the bezier curve
-      for (let t = 0; t <= 1; t += 0.05) {
-        const t2 = t * t;
-        const t3 = t2 * t;
-        const mt = 1 - t;
-        const mt2 = mt * mt;
-        const mt3 = mt2 * mt;
-        
-        // Cubic bezier formula
-        const bx = mt3 * from.x + 3 * mt2 * t * midX + 3 * mt * t2 * midX + t3 * to.x;
-        const by = mt3 * from.y + 3 * mt2 * t * from.y + 3 * mt * t2 * to.y + t3 * to.y;
-        
-        const dist = Math.hypot(x - bx, y - by);
-        if (dist < threshold) {
-          return conn;
-        }
+      // Check if point is near the bezier curve
+      if (this.isPointNearBezierCurve(x, y, from, to, tolerance)) {
+        return conn;
       }
     }
+    
     return null;
+  }
+
+  isPointNearBezierCurve(x, y, from, to, tolerance) {
+    // Sample points along the bezier curve and check distance
+    const samples = 20;
+    
+    for (let i = 0; i <= samples; i++) {
+      const t = i / samples;
+      const midX = (from.x + to.x) / 2;
+      
+      // Calculate point on bezier curve
+      const curveX = Math.pow(1 - t, 3) * from.x + 
+                    3 * Math.pow(1 - t, 2) * t * midX + 
+                    3 * (1 - t) * Math.pow(t, 2) * midX + 
+                    Math.pow(t, 3) * to.x;
+      
+      const curveY = Math.pow(1 - t, 3) * from.y + 
+                    3 * Math.pow(1 - t, 2) * t * from.y + 
+                    3 * (1 - t) * Math.pow(t, 2) * to.y + 
+                    Math.pow(t, 3) * to.y;
+      
+      const distance = Math.hypot(x - curveX, y - curveY);
+      if (distance <= tolerance) {
+        return true;
+      }
+    }
+    
+    return false;
   }
 
   isPointInNode(x, y, node) {
@@ -431,10 +328,10 @@ class NodeEditor {
     };
   }
 
-  getOutputSocketPos(node, index = 0) {
+  getOutputSocketPos(node) {
     return {
       x: node.x + node.width,
-      y: node.y + 40 + index * 25
+      y: node.y + 40
     };
   }
 
@@ -452,25 +349,13 @@ class NodeEditor {
 
     // Draw connections
     for (let conn of this.connections) {
-      const fromOutputIndex = conn.fromOutput || 0;
-      const from = this.getOutputSocketPos(conn.from, fromOutputIndex);
+      const from = this.getOutputSocketPos(conn.from);
       const to = this.getInputSocketPos(conn.to, conn.toInput);
       
-      // Get color based on data type
-      const typeColor = this.dataTypes[conn.fromType]?.color || '#64B5F6';
-      
-      // Highlight if hovered or selected
+      // Highlight hovered connection
       const isHovered = conn === this.hoveredConnection;
-      const isSelected = conn === this.selectedConnection;
-      
-      ctx.strokeStyle = isHovered || isSelected ? '#FFA726' : typeColor;
-      ctx.lineWidth = isHovered || isSelected ? 3 : 2;
-      
-      // Add glow effect for selected/hovered
-      if (isHovered || isSelected) {
-        ctx.shadowBlur = 10;
-        ctx.shadowColor = '#FFA726';
-      }
+      ctx.strokeStyle = isHovered ? '#FF6B6B' : '#64B5F6';
+      ctx.lineWidth = isHovered ? 4 : 2;
       
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
@@ -479,24 +364,33 @@ class NodeEditor {
       ctx.bezierCurveTo(midX, from.y, midX, to.y, to.x, to.y);
       ctx.stroke();
       
-      // Reset shadow
-      ctx.shadowBlur = 0;
+      // Add visual indicator for hovered connection
+      if (isHovered) {
+        ctx.fillStyle = '#FF6B6B';
+        ctx.beginPath();
+        ctx.arc(midX, (from.y + to.y) / 2, 6, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Add "X" to indicate deletion
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(midX - 3, (from.y + to.y) / 2 - 3);
+        ctx.lineTo(midX + 3, (from.y + to.y) / 2 + 3);
+        ctx.moveTo(midX + 3, (from.y + to.y) / 2 - 3);
+        ctx.lineTo(midX - 3, (from.y + to.y) / 2 + 3);
+        ctx.stroke();
+      }
     }
 
     // Draw connecting line
     if (this.connectingFrom) {
       const from = this.getOutputSocketPos(this.connectingFrom);
-      const fromType = this.connectingFrom.outputTypes && this.connectingFrom.outputTypes[0] ? this.connectingFrom.outputTypes[0] : 'any';
-      const typeColor = this.dataTypes[fromType]?.color || '#FFA726';
-      
-      ctx.strokeStyle = typeColor;
-      ctx.lineWidth = 2;
-      ctx.setLineDash([5, 5]);
+      ctx.strokeStyle = '#FFA726';
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
       ctx.lineTo(this.mousePos.x, this.mousePos.y);
       ctx.stroke();
-      ctx.setLineDash([]);
     }
 
     // Draw nodes
@@ -563,61 +457,33 @@ class NodeEditor {
     }
 
     // Input sockets
+    ctx.fillStyle = '#64B5F6';
     for (let i = 0; i < node.inputs.length; i++) {
       const pos = this.getInputSocketPos(node, i);
-      const inputType = node.inputTypes && node.inputTypes[i] ? node.inputTypes[i] : 'any';
-      const typeColor = this.dataTypes[inputType]?.color || '#64B5F6';
-      
-      ctx.fillStyle = typeColor;
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
       ctx.fill();
-      
-      // Socket border
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.lineWidth = 1;
-      ctx.stroke();
 
-      // Input label with type
+      // Input label
       ctx.fillStyle = '#b0b0b0';
       ctx.font = '11px Arial';
       ctx.textAlign = 'left';
-      const labelText = node.inputs[i];
-      ctx.fillText(labelText, pos.x + 10, pos.y + 4);
-      
-      // Type indicator (small dot)
-      ctx.fillStyle = typeColor;
-      ctx.font = '9px Arial';
-      ctx.fillText(`(${this.dataTypes[inputType]?.name || inputType})`, pos.x + 10, pos.y + 15);
+      ctx.fillText(node.inputs[i], pos.x + 10, pos.y + 4);
     }
 
-    // Output sockets
-    for (let i = 0; i < node.outputs.length; i++) {
-      const pos = this.getOutputSocketPos(node, i);
-      const outputType = node.outputTypes && node.outputTypes[i] ? node.outputTypes[i] : 'any';
-      const typeColor = this.dataTypes[outputType]?.color || '#4CAF50';
-      
-      ctx.fillStyle = typeColor;
+    // Output socket
+    if (node.outputs.length > 0) {
+      const pos = this.getOutputSocketPos(node);
+      ctx.fillStyle = '#4CAF50';
       ctx.beginPath();
       ctx.arc(pos.x, pos.y, 6, 0, Math.PI * 2);
       ctx.fill();
-      
-      // Socket border
-      ctx.strokeStyle = '#1a1a1a';
-      ctx.lineWidth = 1;
-      ctx.stroke();
 
-      // Output label with type
+      // Output label
       ctx.fillStyle = '#b0b0b0';
       ctx.font = '11px Arial';
       ctx.textAlign = 'right';
-      const labelText = node.outputs[i];
-      ctx.fillText(labelText, pos.x - 10, pos.y + 4);
-      
-      // Type indicator
-      ctx.fillStyle = typeColor;
-      ctx.font = '9px Arial';
-      ctx.fillText(`(${this.dataTypes[outputType]?.name || outputType})`, pos.x - 10, pos.y + 15);
+      ctx.fillText(node.outputs[0], pos.x - 10, pos.y + 4);
     }
 
     // Parameters with text wrapping
