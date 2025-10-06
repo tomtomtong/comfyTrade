@@ -12,12 +12,11 @@
     <div class="toolbar">
       <div class="toolbar-left">
         <h1>MT5 Strategy Builder</h1>
+        <button id="connectBtn" class="btn btn-primary">Connect MT5</button>
         <div id="connectionStatus" class="status disconnected">Disconnected</div>
-        <div id="strategyStatus" class="status strategy-idle">Idle</div>
         <button id="showLogBtn" class="btn btn-secondary">Show Log</button>
       </div>
       <div class="toolbar-right">
-        <button id="connectBtn" class="btn btn-primary">Connect MT5</button>
         <button id="tradeBtn" class="btn btn-success">New Trade</button>
         <button id="backtestBtn" class="btn btn-info">Backtest</button>
         <button id="overtradeConfigBtn" class="btn btn-warning">Overtrade Control</button>
@@ -76,7 +75,8 @@
           <div class="canvas-hint">
             Click nodes from the left panel to add them to the canvas<br>
             Connect trigger outputs to trigger inputs to create execution flows<br>
-            Click on connection lines to disconnect, select a node and press Delete key to remove it
+            Click on connection lines to disconnect, select a node and press Delete key to remove it<br>
+            <span id="undoHint" class="undo-hint" style="display: none;">Press Ctrl+Z to undo last deletion</span>
           </div>
         </div>
 

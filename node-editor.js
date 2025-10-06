@@ -13,6 +13,10 @@ class NodeEditor {
     this.mousePos = { x: 0, y: 0 };
     this.hoveredConnection = null;
     
+    // Undo system for node deletion
+    this.undoStack = [];
+    this.maxUndoSteps = 20;
+    
     this.setupCanvas();
     this.setupEventListeners();
     this.animate();
@@ -124,11 +128,17 @@ class NodeEditor {
         this.deleteSelectedNode();
       }
     }
+    
+    // Ctrl+Z for undo
+    if (e.ctrlKey && e.key === 'z') {
+      e.preventDefault();
+      this.undoLastDeletion();
+    }
   }
 
   deleteSelectedNode() {
     if (this.selectedNode) {
-      this.removeNode(this.selectedNode);
+      this.removeNodeWithUndo(this.selectedNode);
       this.selectedNode = null;
       // Trigger property panel update
       if (window.updatePropertiesPanel) {
@@ -301,6 +311,113 @@ class NodeEditor {
     this.connections = this.connections.filter(
       c => c.from !== node && c.to !== node
     );
+  }
+
+  removeNodeWithUndo(node) {
+    // Store the node and its connections for undo
+    const nodeConnections = this.connections.filter(
+      c => c.from === node || c.to === node
+    );
+    
+    const undoData = {
+      type: 'nodeDelete',
+      node: { ...node }, // Deep copy the node
+      connections: nodeConnections.map(c => ({ ...c })), // Deep copy connections
+      timestamp: Date.now()
+    };
+    
+    // Add to undo stack
+    this.undoStack.push(undoData);
+    
+    // Limit undo stack size
+    if (this.undoStack.length > this.maxUndoSteps) {
+      this.undoStack.shift();
+    }
+    
+    // Remove the node
+    this.removeNode(node);
+    
+    // Show undo hint
+    this.showUndoHint();
+    
+    console.log('Node deleted. Press Ctrl+Z to undo.');
+  }
+
+  undoLastDeletion() {
+    if (this.undoStack.length === 0) {
+      console.log('Nothing to undo');
+      return;
+    }
+    
+    const undoData = this.undoStack.pop();
+    
+    if (undoData.type === 'nodeDelete') {
+      // Restore the node
+      const restoredNode = this.restoreNode(undoData.node);
+      
+      // Restore connections
+      for (let connData of undoData.connections) {
+        // Find the actual node objects
+        const fromNode = connData.from.id === restoredNode.id ? restoredNode : 
+                         this.nodes.find(n => n.id === connData.from.id);
+        const toNode = connData.to.id === restoredNode.id ? restoredNode : 
+                       this.nodes.find(n => n.id === connData.to.id);
+        
+        if (fromNode && toNode) {
+          this.addConnection(fromNode, toNode, connData.toInput);
+        }
+      }
+      
+      // Select the restored node
+      this.selectedNode = restoredNode;
+      
+      // Update properties panel
+      if (window.updatePropertiesPanel) {
+        window.updatePropertiesPanel(restoredNode);
+      }
+      
+      // Hide undo hint if no more undos available
+      if (this.undoStack.length === 0) {
+        this.hideUndoHint();
+      }
+      
+      console.log('Node deletion undone');
+    }
+  }
+
+  restoreNode(nodeData) {
+    // Create a new node with the same properties
+    const node = {
+      id: nodeData.id,
+      type: nodeData.type,
+      x: nodeData.x,
+      y: nodeData.y,
+      width: nodeData.width,
+      height: nodeData.height,
+      title: nodeData.title,
+      inputs: [...nodeData.inputs],
+      outputs: [...nodeData.outputs],
+      params: { ...nodeData.params }
+    };
+    
+    this.nodes.push(node);
+    return node;
+  }
+
+  showUndoHint() {
+    const undoHint = document.getElementById('undoHint');
+    if (undoHint) {
+      const undoCount = this.undoStack.length;
+      undoHint.textContent = `Press Ctrl+Z to undo last deletion (${undoCount} undo${undoCount !== 1 ? 's' : ''} available)`;
+      undoHint.style.display = 'inline';
+    }
+  }
+
+  hideUndoHint() {
+    const undoHint = document.getElementById('undoHint');
+    if (undoHint) {
+      undoHint.style.display = 'none';
+    }
   }
 
   removeConnection(connection) {
@@ -625,6 +742,8 @@ class NodeEditor {
     this.nodes = [];
     this.connections = [];
     this.selectedNode = null;
+    this.undoStack = [];
+    this.hideUndoHint();
     this.stopAllPeriodTriggers();
   }
 
