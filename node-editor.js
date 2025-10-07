@@ -17,6 +17,9 @@ class NodeEditor {
     this.undoStack = [];
     this.maxUndoSteps = 20;
     
+    // Track execution state for logic gates
+    this.executionState = new Map(); // nodeId -> { inputResults: [], timestamp }
+    
     this.setupCanvas();
     this.setupEventListeners();
     this.animate();
@@ -579,11 +582,27 @@ class NodeEditor {
     const ctx = this.ctx;
     const isSelected = node === this.selectedNode;
     const isTrigger = node.type.startsWith('trigger-');
+    
+    // Check if node recently failed (within last 2 seconds)
+    const recentlyFailed = node.lastResult === false && 
+                          node.lastExecutionTime && 
+                          (Date.now() - node.lastExecutionTime) < 2000;
 
     // Node body
     ctx.fillStyle = isTrigger ? '#2d3d2d' : '#2d2d2d';
-    ctx.strokeStyle = isSelected ? '#4CAF50' : (isTrigger ? '#66BB6A' : '#444');
-    ctx.lineWidth = isSelected ? 3 : 2;
+    
+    // Change border color if recently failed
+    let borderColor = '#444';
+    if (isSelected) {
+      borderColor = '#4CAF50';
+    } else if (recentlyFailed) {
+      borderColor = '#FF5252'; // Red for failed
+    } else if (isTrigger) {
+      borderColor = '#66BB6A';
+    }
+    
+    ctx.strokeStyle = borderColor;
+    ctx.lineWidth = isSelected ? 3 : (recentlyFailed ? 3 : 2);
     ctx.beginPath();
     ctx.roundRect(node.x, node.y, node.width, node.height, 8);
     ctx.fill();
@@ -600,6 +619,43 @@ class NodeEditor {
     ctx.font = 'bold 12px Arial';
     ctx.textAlign = 'center';
     ctx.fillText(node.title, node.x + node.width / 2, node.y + 20);
+    
+    // Show status indicator for recently executed nodes
+    if (node.lastExecutionTime && (Date.now() - node.lastExecutionTime) < 2000) {
+      const statusX = node.x + node.width - 15;
+      const statusY = node.y + 15;
+      
+      if (node.lastResult === false) {
+        // Red X for failed
+        ctx.fillStyle = '#FF5252';
+        ctx.beginPath();
+        ctx.arc(statusX, statusY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(statusX - 4, statusY - 4);
+        ctx.lineTo(statusX + 4, statusY + 4);
+        ctx.moveTo(statusX + 4, statusY - 4);
+        ctx.lineTo(statusX - 4, statusY + 4);
+        ctx.stroke();
+      } else if (node.lastResult === true) {
+        // Green checkmark for passed
+        ctx.fillStyle = '#4CAF50';
+        ctx.beginPath();
+        ctx.arc(statusX, statusY, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(statusX - 4, statusY);
+        ctx.lineTo(statusX - 1, statusY + 3);
+        ctx.lineTo(statusX + 4, statusY - 3);
+        ctx.stroke();
+      }
+    }
     
     // Draw status indicator for trigger node
     if (node.type === 'trigger') {
@@ -775,85 +831,278 @@ class NodeEditor {
     }
   }
 
-  executeTrigger(node) {
+  async executeTrigger(node) {
     if (!node.params.enabled) return;
     
     // Visual feedback
     node.lastTriggerTime = Date.now();
     
+    console.log('=== Trigger started:', node.title, '===');
+    
+    // Clear execution state for new trigger cycle
+    this.executionState.clear();
+    
     // Find all connected nodes and execute the flow
     const connectedNodes = this.connections
       .filter(c => c.from === node)
-      .map(c => c.to);
+      .map(c => ({ node: c.to, inputIndex: c.toInput }));
     
-    // Execute the connected nodes in sequence
-    for (let connectedNode of connectedNodes) {
-      this.executeNode(connectedNode);
+    // Execute the connected nodes in sequence with async support
+    for (let { node: connectedNode, inputIndex } of connectedNodes) {
+      await this.executeNode(connectedNode, inputIndex, true);
     }
     
     if (window.onTriggerExecute) {
-      window.onTriggerExecute(node, connectedNodes);
+      window.onTriggerExecute(node, connectedNodes.map(c => c.node));
     }
     
-    console.log('Trigger executed:', node.title, 'Connected nodes:', connectedNodes.length);
+    console.log('=== Trigger completed:', node.title, '===');
   }
 
-  executeNode(node) {
+  async executeNode(node, inputIndex = 0, inputResult = true) {
     // Execute the node's specific logic based on its type
     console.log('Executing node:', node.title, 'Type:', node.type);
     
-    // Add specific execution logic for each node type here
-    // For now, just log the execution
-    switch (node.type) {
-      case 'indicator-ma':
-        console.log('Calculating Moving Average with period:', node.params.period);
-        break;
-      case 'indicator-rsi':
-        console.log('Calculating RSI with period:', node.params.period);
-        break;
-      case 'conditional-check':
-        if (node.params.usePercentageChange) {
-          console.log('Checking if', node.params.symbol, 'percentage change on', node.params.timeframe, 'is', node.params.operator, node.params.percentageChange + '%');
-        } else {
-          console.log('Checking if', node.params.symbol, 'price is', node.params.operator, node.params.price);
-        }
-        // TODO: Implement actual price/percentage comparison with MT5 data
-        break;
-      case 'logic-and':
-        console.log('Executing AND logic - requires both inputs to be triggered');
-        break;
-      case 'logic-or':
-        console.log('Executing OR logic - requires either input to be triggered');
-        break;
-      case 'trade-signal':
-        console.log('Executing trade:', node.params.action, node.params.symbol, node.params.volume);
-        break;
-      case 'close-position':
-        console.log('Closing position:', 'Ticket:', node.params.ticket, 'Type:', node.params.closeType);
-        break;
-      case 'modify-position':
-        console.log('Modifying position:', 'Ticket:', node.params.ticket, 'SL:', node.params.stopLoss, 'TP:', node.params.takeProfit);
-        break;
-      case 'close-all-positions':
-        console.log('Closing all positions:', 'Filter by symbol:', node.params.filterBySymbol, 'Filter by type:', node.params.filterByType);
-        break;
-      case 'signal-popup':
-        console.log('Showing popup signal:', node.params.title, node.params.message);
-        if (window.showSignalPopup) {
-          window.showSignalPopup(node.params);
-        }
-        break;
-
+    let result = true; // Default: continue flow
+    
+    // For logic gates, track inputs from multiple connections
+    if (node.type === 'logic-and' || node.type === 'logic-or') {
+      result = await this.evaluateLogicGate(node, inputIndex, inputResult);
+      
+      // If we haven't received all inputs yet, don't continue
+      if (result === null) {
+        console.log('Logic gate waiting for more inputs:', node.title);
+        return null;
+      }
+    } else {
+      // Execute node-specific logic and get boolean result
+      switch (node.type) {
+        case 'indicator-ma':
+          console.log('Calculating Moving Average with period:', node.params.period);
+          result = true; // Indicators always pass through
+          break;
+          
+        case 'indicator-rsi':
+          console.log('Calculating RSI with period:', node.params.period);
+          result = true; // Indicators always pass through
+          break;
+          
+        case 'conditional-check':
+          result = await this.evaluateConditional(node);
+          if (result) {
+            console.log('✓ Conditional check PASSED:', node.params.symbol);
+          } else {
+            console.log('✗ Conditional check FAILED:', node.params.symbol, '- Flow stopped');
+          }
+          break;
+          
+        case 'trade-signal':
+          console.log('Executing trade:', node.params.action, node.params.symbol, node.params.volume);
+          result = true; // Action nodes don't stop flow
+          break;
+          
+        case 'close-position':
+          console.log('Closing position:', 'Ticket:', node.params.ticket, 'Type:', node.params.closeType);
+          result = true; // Action nodes don't stop flow
+          break;
+          
+        case 'modify-position':
+          console.log('Modifying position:', 'Ticket:', node.params.ticket, 'SL:', node.params.stopLoss, 'TP:', node.params.takeProfit);
+          result = true; // Action nodes don't stop flow
+          break;
+          
+        case 'close-all-positions':
+          console.log('Closing all positions:', 'Filter by symbol:', node.params.filterBySymbol, 'Filter by type:', node.params.filterByType);
+          result = true; // Action nodes don't stop flow
+          break;
+          
+        case 'signal-popup':
+          console.log('Showing popup signal:', node.params.title, node.params.message);
+          if (window.showSignalPopup) {
+            window.showSignalPopup(node.params);
+          }
+          result = true; // Popup nodes don't stop flow
+          break;
+      }
+    }
+    
+    // Store result for this node
+    node.lastResult = result;
+    node.lastExecutionTime = Date.now();
+    
+    // Only continue if result is true
+    if (!result) {
+      console.log('Flow stopped at node:', node.title);
+      return result;
     }
     
     // Continue the trigger chain to connected nodes
     const connectedNodes = this.connections
       .filter(c => c.from === node)
-      .map(c => c.to);
+      .map(c => ({ node: c.to, inputIndex: c.toInput }));
     
-    for (let connectedNode of connectedNodes) {
-      this.executeNode(connectedNode);
+    for (let { node: connectedNode, inputIndex: targetInput } of connectedNodes) {
+      await this.executeNode(connectedNode, targetInput, result);
     }
+    
+    return result;
+  }
+  
+  async evaluateLogicGate(node, inputIndex, inputResult) {
+    const now = Date.now();
+    const timeout = 100; // ms - time window to collect inputs
+    
+    // Initialize or get execution state for this node
+    if (!this.executionState.has(node.id)) {
+      this.executionState.set(node.id, {
+        inputResults: new Array(node.inputs.length).fill(null),
+        timestamp: now
+      });
+    }
+    
+    const state = this.executionState.get(node.id);
+    
+    // Reset if too much time has passed (new execution cycle)
+    if (now - state.timestamp > timeout) {
+      state.inputResults = new Array(node.inputs.length).fill(null);
+      state.timestamp = now;
+    }
+    
+    // Store the input result
+    state.inputResults[inputIndex] = inputResult;
+    
+    // Check if we have all required inputs
+    const hasAllInputs = state.inputResults.every(r => r !== null);
+    
+    if (!hasAllInputs) {
+      // Wait for more inputs
+      return null;
+    }
+    
+    // Evaluate the logic gate
+    let result;
+    if (node.type === 'logic-and') {
+      result = state.inputResults.every(r => r === true);
+      console.log('AND Gate:', state.inputResults.join(' && '), '=', result);
+    } else if (node.type === 'logic-or') {
+      result = state.inputResults.some(r => r === true);
+      console.log('OR Gate:', state.inputResults.join(' || '), '=', result);
+    }
+    
+    if (!result) {
+      console.log('✗', node.type.toUpperCase(), 'gate FAILED - Flow stopped');
+    }
+    
+    // Clear the state for next execution
+    this.executionState.delete(node.id);
+    
+    return result;
+  }
+  
+  async evaluateConditional(node) {
+    // Get current price from MT5 bridge
+    const currentPrice = await this.getCurrentPrice(node.params.symbol);
+    
+    if (currentPrice === null) {
+      console.warn('Could not get price for', node.params.symbol);
+      return false;
+    }
+    
+    let conditionMet = false;
+    
+    if (node.params.usePercentageChange) {
+      // Check percentage change
+      const percentageChange = await this.getPercentageChange(
+        node.params.symbol, 
+        node.params.timeframe
+      );
+      
+      if (percentageChange === null) {
+        return false;
+      }
+      
+      const targetChange = node.params.percentageChange;
+      
+      switch (node.params.operator) {
+        case '>':
+          conditionMet = percentageChange > targetChange;
+          break;
+        case '<':
+          conditionMet = percentageChange < targetChange;
+          break;
+        case '>=':
+          conditionMet = percentageChange >= targetChange;
+          break;
+        case '<=':
+          conditionMet = percentageChange <= targetChange;
+          break;
+        case '==':
+          conditionMet = Math.abs(percentageChange - targetChange) < 0.0001;
+          break;
+      }
+      
+      console.log(`Checking: ${node.params.symbol} ${node.params.timeframe} change ${percentageChange.toFixed(2)}% ${node.params.operator} ${targetChange}% = ${conditionMet}`);
+    } else {
+      // Check absolute price
+      const targetPrice = node.params.price;
+      
+      switch (node.params.operator) {
+        case '>':
+          conditionMet = currentPrice > targetPrice;
+          break;
+        case '<':
+          conditionMet = currentPrice < targetPrice;
+          break;
+        case '>=':
+          conditionMet = currentPrice >= targetPrice;
+          break;
+        case '<=':
+          conditionMet = currentPrice <= targetPrice;
+          break;
+        case '==':
+          conditionMet = Math.abs(currentPrice - targetPrice) < 0.00001;
+          break;
+      }
+      
+      console.log(`Checking: ${node.params.symbol} price ${currentPrice} ${node.params.operator} ${targetPrice} = ${conditionMet}`);
+    }
+    
+    return conditionMet;
+  }
+  
+  async getCurrentPrice(symbol) {
+    // Try to get price from MT5 bridge
+    if (window.mt5Bridge && window.mt5Bridge.isConnected()) {
+      try {
+        const price = await window.mt5Bridge.getSymbolPrice(symbol);
+        return price;
+      } catch (error) {
+        console.error('Error getting price from MT5:', error);
+      }
+    }
+    
+    // Fallback: try to get from market data if available
+    if (window.marketData && window.marketData[symbol]) {
+      return window.marketData[symbol].bid;
+    }
+    
+    console.warn('No price data available for', symbol);
+    return null;
+  }
+  
+  async getPercentageChange(symbol, timeframe) {
+    // Try to get percentage change from MT5 bridge
+    if (window.mt5Bridge && window.mt5Bridge.isConnected()) {
+      try {
+        const change = await window.mt5Bridge.getPercentageChange(symbol, timeframe);
+        return change;
+      } catch (error) {
+        console.error('Error getting percentage change from MT5:', error);
+      }
+    }
+    
+    console.warn('No percentage change data available for', symbol, timeframe);
+    return null;
   }
 
   startPeriodTrigger(node) {
