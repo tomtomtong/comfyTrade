@@ -250,19 +250,12 @@ class NodeEditor {
         params: { 
           ticket: '',
           stopLoss: 0,
-          takeProfit: 0
+          takeProfit: 0,
+          stopLossPercent: 0,
+          takeProfitPercent: 0
         }
       },
-      'close-all-positions': {
-        title: 'Close All Positions',
-        inputs: ['trigger'],
-        outputs: [],
-        params: { 
-          confirmAction: true,
-          filterBySymbol: '',
-          filterByType: 'all'
-        }
-      },
+
       'signal-popup': {
         title: 'Popup Signal',
         inputs: ['trigger'],
@@ -908,14 +901,33 @@ class NodeEditor {
           
         case 'modify-position':
           console.log('Modifying position:', 'Ticket:', node.params.ticket, 'SL:', node.params.stopLoss, 'TP:', node.params.takeProfit);
+          
+          // Execute the actual modification
+          if (node.params.ticket && window.mt5API) {
+            try {
+              const modifyResult = await window.mt5API.modifyPosition(
+                node.params.ticket, 
+                node.params.stopLoss || 0, 
+                node.params.takeProfit || 0
+              );
+              
+              if (modifyResult.success && modifyResult.data.success) {
+                console.log('Position modified successfully via node');
+                if (window.handleRefreshPositions) {
+                  window.handleRefreshPositions();
+                }
+              } else {
+                console.error('Failed to modify position via node:', modifyResult.data?.error || modifyResult.error);
+              }
+            } catch (error) {
+              console.error('Error modifying position via node:', error);
+            }
+          }
+          
           result = true; // Action nodes don't stop flow
           break;
           
-        case 'close-all-positions':
-          console.log('Closing all positions:', 'Filter by symbol:', node.params.filterBySymbol, 'Filter by type:', node.params.filterByType);
-          result = true; // Action nodes don't stop flow
-          break;
-          
+
         case 'signal-popup':
           console.log('Showing popup signal:', node.params.title, node.params.message);
           if (window.showSignalPopup) {

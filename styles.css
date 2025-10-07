@@ -704,6 +704,64 @@ h4 {
   border-color: #64B5F6;
 }
 
+#modifyModal .input-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+#modifyModal .input-group input[type="number"] {
+  flex: 1;
+  min-width: 120px;
+}
+
+#modifyModal .input-separator {
+  color: #888;
+  font-size: 12px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+#modifyModal .percent-symbol {
+  color: #64B5F6;
+  font-weight: bold;
+  margin-left: -5px;
+}
+
+/* Node editor input groups */
+.node-input-group {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  flex-wrap: wrap;
+  margin-top: 5px;
+}
+
+.node-input-group input[type="number"] {
+  flex: 1;
+  min-width: 80px;
+  padding: 4px;
+  border: 1px solid #555;
+  background: #1e1e1e;
+  color: #fff;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.node-input-group .input-separator {
+  color: #888;
+  font-size: 10px;
+  font-weight: bold;
+  white-space: nowrap;
+}
+
+.node-input-group .percent-symbol {
+  color: #64B5F6;
+  font-weight: bold;
+  font-size: 12px;
+}
+
 #modifyModal .modal-actions {
   display: flex;
   gap: 10px;
@@ -2077,8 +2135,9 @@ l Popup Styles */
   background: linear-gradient(135deg, #FF5252, #FF7043);
   transform: translateY(-1px);
   box-shadow: 0 2px 8px rgba(255, 107, 107, 0.3);
-}/
-* Stop Strategy Modal */
+}
+
+/* Stop Strategy Modal */
 .stop-strategy-content {
   margin-bottom: 20px;
 }

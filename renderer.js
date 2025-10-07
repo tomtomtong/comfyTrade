@@ -524,9 +524,24 @@ function showModifyModal(ticket, currentSL, currentTP) {
     createModifyModal();
   }
   
+  // Find the position to get current price and entry price
+  const position = currentPositions.find(pos => pos.ticket == ticket);
+  
   document.getElementById('modifyTicket').value = ticket;
   document.getElementById('modifyStopLoss').value = currentSL > 0 ? currentSL : '';
   document.getElementById('modifyTakeProfit').value = currentTP > 0 ? currentTP : '';
+  
+  // Clear percentage inputs
+  document.getElementById('modifyStopLossPercent').value = '';
+  document.getElementById('modifyTakeProfitPercent').value = '';
+  
+  // Store position data for percentage calculations
+  if (position) {
+    document.getElementById('modifyModal').dataset.currentPrice = position.current_price;
+    document.getElementById('modifyModal').dataset.entryPrice = position.open_price;
+    document.getElementById('modifyModal').dataset.positionType = position.type;
+  }
+  
   document.getElementById('modifyModal').classList.add('show');
 }
 
@@ -564,14 +579,27 @@ function createModifyModal() {
       <div class="modal-content">
         <h2>Modify Position</h2>
         <input type="hidden" id="modifyTicket">
+        
         <div class="form-group">
           <label>Stop Loss:</label>
-          <input type="number" id="modifyStopLoss" step="0.00001" placeholder="0 for none">
+          <div class="input-group">
+            <input type="number" id="modifyStopLoss" step="0.00001" placeholder="Absolute price (0 for none)" oninput="updatePercentFromPrice('sl')">
+            <span class="input-separator">OR</span>
+            <input type="number" id="modifyStopLossPercent" step="0.1" placeholder="% from current" oninput="updatePriceFromPercent('sl')">
+            <span class="percent-symbol">%</span>
+          </div>
         </div>
+        
         <div class="form-group">
           <label>Take Profit:</label>
-          <input type="number" id="modifyTakeProfit" step="0.00001" placeholder="0 for none">
+          <div class="input-group">
+            <input type="number" id="modifyTakeProfit" step="0.00001" placeholder="Absolute price (0 for none)" oninput="updatePercentFromPrice('tp')">
+            <span class="input-separator">OR</span>
+            <input type="number" id="modifyTakeProfitPercent" step="0.1" placeholder="% from current" oninput="updatePriceFromPercent('tp')">
+            <span class="percent-symbol">%</span>
+          </div>
         </div>
+        
         <div class="modal-actions">
           <button id="confirmModifyBtn" class="btn btn-primary">Modify</button>
           <button id="cancelModifyBtn" class="btn btn-secondary">Cancel</button>
@@ -586,11 +614,136 @@ function createModifyModal() {
   document.getElementById('cancelModifyBtn').addEventListener('click', hideModifyModal);
 }
 
+// Percentage calculation functions for modify position
+function updatePriceFromPercent(type) {
+  const modal = document.getElementById('modifyModal');
+  const currentPrice = parseFloat(modal.dataset.currentPrice);
+  const positionType = modal.dataset.positionType;
+  
+  if (!currentPrice || !positionType) return;
+  
+  const percentInput = document.getElementById(type === 'sl' ? 'modifyStopLossPercent' : 'modifyTakeProfitPercent');
+  const priceInput = document.getElementById(type === 'sl' ? 'modifyStopLoss' : 'modifyTakeProfit');
+  
+  const percent = parseFloat(percentInput.value);
+  if (isNaN(percent) || percent === 0) {
+    priceInput.value = '';
+    return;
+  }
+  
+  let targetPrice;
+  
+  if (type === 'sl') {
+    // Stop Loss: negative percentage means loss protection
+    if (positionType === 'BUY') {
+      // For BUY positions, SL should be below current price (negative %)
+      targetPrice = currentPrice * (1 - Math.abs(percent) / 100);
+    } else {
+      // For SELL positions, SL should be above current price (positive %)
+      targetPrice = currentPrice * (1 + Math.abs(percent) / 100);
+    }
+  } else {
+    // Take Profit: positive percentage means profit target
+    if (positionType === 'BUY') {
+      // For BUY positions, TP should be above current price (positive %)
+      targetPrice = currentPrice * (1 + Math.abs(percent) / 100);
+    } else {
+      // For SELL positions, TP should be below current price (negative %)
+      targetPrice = currentPrice * (1 - Math.abs(percent) / 100);
+    }
+  }
+  
+  priceInput.value = targetPrice.toFixed(5);
+}
+
+function updatePercentFromPrice(type) {
+  const modal = document.getElementById('modifyModal');
+  const currentPrice = parseFloat(modal.dataset.currentPrice);
+  const positionType = modal.dataset.positionType;
+  
+  if (!currentPrice || !positionType) return;
+  
+  const priceInput = document.getElementById(type === 'sl' ? 'modifyStopLoss' : 'modifyTakeProfit');
+  const percentInput = document.getElementById(type === 'sl' ? 'modifyStopLossPercent' : 'modifyTakeProfitPercent');
+  
+  const price = parseFloat(priceInput.value);
+  if (isNaN(price) || price === 0) {
+    percentInput.value = '';
+    return;
+  }
+  
+  const percentChange = ((price - currentPrice) / currentPrice) * 100;
+  percentInput.value = percentChange.toFixed(2);
+}
+
 // Make functions globally available
 window.closePosition = closePosition;
 window.showModifyModal = showModifyModal;
 window.testVolumeLossFromNode = testVolumeLossFromNode;
 window.showSignalPopup = showSignalPopup;
+window.updatePriceFromPercent = updatePriceFromPercent;
+window.updatePercentFromPrice = updatePercentFromPrice;
+
+// Node editor percentage calculation functions
+function updateNodePriceFromPercent(priceKey, nodeId) {
+  const node = window.nodeEditor.nodes.find(n => n.id === nodeId);
+  if (!node || !node.params.ticket) return;
+  
+  const position = currentPositions.find(pos => pos.ticket == node.params.ticket);
+  if (!position) return;
+  
+  const percentKey = priceKey + 'Percent';
+  const percent = node.params[percentKey];
+  if (!percent) {
+    node.params[priceKey] = 0;
+    updatePropertiesPanel(node);
+    return;
+  }
+  
+  const currentPrice = position.current_price;
+  const positionType = position.type;
+  let targetPrice;
+  
+  if (priceKey === 'stopLoss') {
+    if (positionType === 'BUY') {
+      targetPrice = currentPrice * (1 - Math.abs(percent) / 100);
+    } else {
+      targetPrice = currentPrice * (1 + Math.abs(percent) / 100);
+    }
+  } else { // takeProfit
+    if (positionType === 'BUY') {
+      targetPrice = currentPrice * (1 + Math.abs(percent) / 100);
+    } else {
+      targetPrice = currentPrice * (1 - Math.abs(percent) / 100);
+    }
+  }
+  
+  node.params[priceKey] = parseFloat(targetPrice.toFixed(5));
+  updatePropertiesPanel(node);
+}
+
+function updateNodePercentFromPrice(priceKey, nodeId) {
+  const node = window.nodeEditor.nodes.find(n => n.id === nodeId);
+  if (!node || !node.params.ticket) return;
+  
+  const position = currentPositions.find(pos => pos.ticket == node.params.ticket);
+  if (!position) return;
+  
+  const price = node.params[priceKey];
+  if (!price) {
+    node.params[priceKey + 'Percent'] = 0;
+    updatePropertiesPanel(node);
+    return;
+  }
+  
+  const currentPrice = position.current_price;
+  const percentChange = ((price - currentPrice) / currentPrice) * 100;
+  node.params[priceKey + 'Percent'] = parseFloat(percentChange.toFixed(2));
+  updatePropertiesPanel(node);
+}
+
+window.updateNodePriceFromPercent = updateNodePriceFromPercent;
+window.updateNodePercentFromPrice = updateNodePercentFromPrice;
 
 // Show Run Strategy Modal
 function showRunStrategyModal() {
@@ -770,7 +923,10 @@ function updatePropertiesPanel(node) {
     return;
   }
   
-  const paramEntries = Object.entries(node.params);
+  // Filter out percentage parameters as they're handled within their main parameter UI
+  const paramEntries = Object.entries(node.params).filter(([key]) => 
+    !key.endsWith('Percent')
+  );
   
   if (paramEntries.length === 0) {
     panel.innerHTML = `
@@ -961,49 +1117,30 @@ function updatePropertiesPanel(node) {
           </div>
         `;
       } else if ((key === 'stopLoss' || key === 'takeProfit') && node.type === 'modify-position') {
+        const percentKey = key + 'Percent';
+        const percentValue = node.params[percentKey] || '';
         return `
           <div class="property-item">
             <label>${key}:</label>
-            <input type="number" 
-                   value="${value}" 
-                   step="0.00001"
-                   placeholder="0 for none"
-                   data-param="${key}"
-                   onchange="updateNodeParam('${key}', parseFloat(this.value) || 0)">
+            <div class="node-input-group">
+              <input type="number" 
+                     value="${value}" 
+                     step="0.00001"
+                     placeholder="Absolute price"
+                     data-param="${key}"
+                     onchange="updateNodeParam('${key}', parseFloat(this.value) || 0); updateNodePercentFromPrice('${key}', '${node.id}')">
+              <span class="input-separator">OR</span>
+              <input type="number" 
+                     value="${percentValue}" 
+                     step="0.1"
+                     placeholder="% from current"
+                     data-param="${percentKey}"
+                     onchange="updateNodeParam('${percentKey}', parseFloat(this.value) || 0); updateNodePriceFromPercent('${key}', '${node.id}')">
+              <span class="percent-symbol">%</span>
+            </div>
           </div>
         `;
-      } else if (key === 'confirmAction' && node.type === 'close-all-positions') {
-        return `
-          <div class="property-item">
-            <label>Require Confirmation:</label>
-            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value === 'true')">
-              <option value="true" ${value ? 'selected' : ''}>Yes</option>
-              <option value="false" ${!value ? 'selected' : ''}>No</option>
-            </select>
-          </div>
-        `;
-      } else if (key === 'filterBySymbol' && node.type === 'close-all-positions') {
-        return `
-          <div class="property-item">
-            <label>Filter by Symbol:</label>
-            <input type="text" 
-                   value="${value}" 
-                   placeholder="Leave empty for all symbols"
-                   data-param="${key}"
-                   onchange="updateNodeParam('${key}', this.value)">
-          </div>
-        `;
-      } else if (key === 'filterByType' && node.type === 'close-all-positions') {
-        return `
-          <div class="property-item">
-            <label>Filter by Type:</label>
-            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
-              <option value="all" ${value === 'all' ? 'selected' : ''}>All Positions</option>
-              <option value="BUY" ${value === 'BUY' ? 'selected' : ''}>Buy Only</option>
-              <option value="SELL" ${value === 'SELL' ? 'selected' : ''}>Sell Only</option>
-            </select>
-          </div>
-        `;
+
       } else {
         return `
           <div class="property-item">
@@ -1058,14 +1195,7 @@ function updatePropertiesPanel(node) {
     `;
   }
   
-  // Add test button for close-all-positions node
-  if (node.type === 'close-all-positions') {
-    actionButtons += `
-      <button class="btn btn-warning btn-small" onclick="testCloseAllPositions('${node.id}')">
-        Test Close All
-      </button>
-    `;
-  }
+
   
   // Add delete button for all nodes
   actionButtons += `
@@ -1259,65 +1389,9 @@ window.refreshPositionsForNode = async function(nodeId) {
   }
 };
 
-window.previewCloseAllPositions = async function(nodeId) {
-  if (!isConnected) {
-    showMessage('Please connect to MT5 first', 'error');
-    return;
-  }
-  
-  const node = nodeEditor.nodes.find(n => n.id === nodeId);
-  if (!node) return;
-  
-  try {
-    await handleRefreshPositions();
-    
-    // Filter positions based on node parameters
-    let filteredPositions = currentPositions;
-    
-    if (node.params.filterBySymbol && node.params.filterBySymbol.trim()) {
-      filteredPositions = filteredPositions.filter(pos => 
-        pos.symbol.toUpperCase() === node.params.filterBySymbol.toUpperCase()
-      );
-    }
-    
-    if (node.params.filterByType && node.params.filterByType !== 'all') {
-      filteredPositions = filteredPositions.filter(pos => 
-        pos.type === node.params.filterByType
-      );
-    }
-    
-    if (filteredPositions.length === 0) {
-      showMessage('No positions match the current filters', 'info');
-    } else {
-      const positionList = filteredPositions.map(pos => 
-        `${pos.ticket} - ${pos.symbol} ${pos.type} (${pos.volume})`
-      ).join('\n');
-      
-      showMessage(`Found ${filteredPositions.length} positions to close:\n${positionList}`, 'info');
-    }
-  } catch (error) {
-    showMessage('Error previewing positions: ' + error.message, 'error');
-  }
-};
 
-window.testCloseAllPositions = async function(nodeId) {
-  const node = nodeEditor.nodes.find(n => n.id === nodeId);
-  if (!node) return;
-  
-  if (node.params.confirmAction) {
-    if (!confirm('This will close ALL matching positions. Are you sure you want to continue?')) {
-      showMessage('Close all positions cancelled', 'info');
-      return;
-    }
-  }
-  
-  showMessage('Test: Close All Positions would execute here', 'warning');
-  console.log('Close All Positions Test:', {
-    filterBySymbol: node.params.filterBySymbol,
-    filterByType: node.params.filterByType,
-    confirmAction: node.params.confirmAction
-  });
-};
+
+
 
 window.loadCurrentPositionValues = async function(nodeId) {
   const node = nodeEditor.nodes.find(n => n.id === nodeId);
