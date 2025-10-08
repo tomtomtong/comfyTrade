@@ -19,7 +19,7 @@
       <div class="toolbar-right">
         <button id="tradeBtn" class="btn btn-success">New Trade</button>
         <button id="backtestBtn" class="btn btn-info">Backtest</button>
-        <button id="overtradeConfigBtn" class="btn btn-warning">Overtrade Control</button>
+        <button id="settingsBtn" class="btn btn-secondary">⚙ Settings</button>
         <button id="runStrategyBtn" class="btn btn-success">▶ Run Strategy</button>
         <button id="stopStrategyBtn" class="btn btn-danger" style="display: none;">⏹ Stop Strategy</button>
         <button id="saveGraphBtn" class="btn btn-secondary">Save</button>
@@ -178,13 +178,7 @@
         <div class="form-group">
           <label>Symbol:</label>
           <div id="symbolInputContainer"></div>
-          <div class="quick-symbols">
-            <button class="quick-symbol-btn" data-symbol="EURUSD">EURUSD</button>
-            <button class="quick-symbol-btn" data-symbol="GBPUSD">GBPUSD</button>
-            <button class="quick-symbol-btn" data-symbol="USDJPY">USDJPY</button>
-            <button class="quick-symbol-btn" data-symbol="AUDUSD">AUDUSD</button>
-            <button class="quick-symbol-btn" data-symbol="USDCAD">USDCAD</button>
-          </div>
+          <div id="tradeQuickSymbolsContainer"></div>
         </div>
         <div class="form-group" id="currentPriceGroup" style="display: none;">
           <label>Current Price:</label>
@@ -334,76 +328,7 @@
       </div>
     </div>
 
-    <!-- Overtrade Control Modal -->
-    <div id="overtradeModal" class="modal">
-      <div class="modal-content">
-        <h2>Overtrade Reminder Settings</h2>
-        <div class="form-group">
-          <label>Enable Overtrade Reminders:</label>
-          <select id="overtradeEnabled">
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Warning Threshold (trades per period):</label>
-          <input type="number" id="maxTrades" min="1" value="5" placeholder="e.g., 5">
-          <small>Show warning when this many trades are executed</small>
-        </div>
-        <div class="form-group">
-          <label>Time Period:</label>
-          <select id="timePeriod">
-            <option value="minute">Per Minute</option>
-            <option value="hour" selected>Per Hour</option>
-            <option value="day">Per Day</option>
-            <option value="week">Per Week</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Reminder Frequency:</label>
-          <select id="reminderFrequency">
-            <option value="every">Every trade after threshold</option>
-            <option value="first" selected>Only first time threshold is reached</option>
-            <option value="periodic">Every 3 trades after threshold</option>
-          </select>
-        </div>
-        <div class="form-group">
-          <label>Apply reminders to:</label>
-          <div class="checkbox-group">
-            <label><input type="checkbox" id="applyToManual" checked> Manual Trades</label>
-            <label><input type="checkbox" id="applyToStrategy" checked> Strategy Trades</label>
-            <label><input type="checkbox" id="applyToNodes" checked> Node-based Trades</label>
-          </div>
-        </div>
-        <div class="overtrade-status">
-          <h3>Current Status</h3>
-          <div class="status-grid">
-            <div class="status-item">
-              <span class="label">Trades in Current Period:</span>
-              <span id="currentTradeCount">0</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Until Warning Threshold:</span>
-              <span id="remainingTrades">5</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Period Resets:</span>
-              <span id="nextReset">-</span>
-            </div>
-            <div class="status-item">
-              <span class="label">Last Warning:</span>
-              <span id="lastWarning">Never</span>
-            </div>
-          </div>
-        </div>
-        <div class="modal-buttons">
-          <button id="saveOvertradeBtn" class="btn btn-primary">Save Settings</button>
-          <button id="resetTradeCountBtn" class="btn btn-warning">Reset Count</button>
-          <button id="testOvertradeBtn" class="btn btn-info">Test (Add 5 Trades)</button>
-          <button id="cancelOvertradeBtn" class="btn btn-secondary">Cancel</button>
-        </div>
-      </div>
-    </div>
+
 
     <!-- Overtrade Warning Modal -->
     <div id="overtradeWarningModal" class="modal">
@@ -573,6 +498,108 @@
     </div>
   </div>
 
+  <!-- Settings Modal -->
+  <div id="settingsModal" class="modal">
+    <div class="modal-content settings-modal">
+      <h2>Settings</h2>
+      
+      <!-- Settings Tabs -->
+      <div class="settings-tabs">
+        <button class="settings-tab-btn active" data-tab="quickSymbols">Quick Symbols</button>
+        <button class="settings-tab-btn" data-tab="overtradeControl">Overtrade Control</button>
+      </div>
+      
+      <!-- Quick Symbols Tab -->
+      <div id="quickSymbolsTab" class="settings-tab active">
+        <div class="form-group">
+          <label>Quick Symbol Buttons:</label>
+          <p style="font-size: 12px; color: #888; margin: 5px 0;">Configure the quick access symbols shown in trade dialogs and node properties.</p>
+          
+          <div id="quickSymbolsList" class="quick-symbols-list"></div>
+          
+          <div style="display: flex; gap: 10px; margin-top: 10px;">
+            <input type="text" id="newSymbolInput" placeholder="Add symbol (e.g., XAUUSD)" style="flex: 1;" maxlength="10">
+            <button id="addSymbolBtn" class="btn btn-primary">Add</button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Overtrade Control Tab -->
+      <div id="overtradeControlTab" class="settings-tab">
+        <div class="form-group">
+          <label>Enable Overtrade Reminders:</label>
+          <select id="settingsOvertradeEnabled">
+            <option value="true">Enabled</option>
+            <option value="false">Disabled</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Warning Threshold (trades per period):</label>
+          <input type="number" id="settingsMaxTrades" min="1" value="5" placeholder="e.g., 5">
+          <small>Show warning when this many trades are executed</small>
+        </div>
+        <div class="form-group">
+          <label>Time Period:</label>
+          <select id="settingsTimePeriod">
+            <option value="minute">Per Minute</option>
+            <option value="hour" selected>Per Hour</option>
+            <option value="day">Per Day</option>
+            <option value="week">Per Week</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Reminder Frequency:</label>
+          <select id="settingsReminderFrequency">
+            <option value="every">Every trade after threshold</option>
+            <option value="first" selected>Only first time threshold is reached</option>
+            <option value="periodic">Every 3 trades after threshold</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Apply reminders to:</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" id="settingsApplyToManual" checked> Manual Trades</label>
+            <label><input type="checkbox" id="settingsApplyToStrategy" checked> Strategy Trades</label>
+            <label><input type="checkbox" id="settingsApplyToNodes" checked> Node-based Trades</label>
+          </div>
+        </div>
+        <div class="overtrade-status">
+          <h3>Current Status</h3>
+          <div class="status-grid">
+            <div class="status-item">
+              <span class="label">Trades in Current Period:</span>
+              <span id="settingsCurrentTradeCount">0</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Until Warning Threshold:</span>
+              <span id="settingsRemainingTrades">5</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Period Resets:</span>
+              <span id="settingsNextReset">-</span>
+            </div>
+            <div class="status-item">
+              <span class="label">Last Warning:</span>
+              <span id="settingsLastWarning">Never</span>
+            </div>
+          </div>
+        </div>
+        <div class="overtrade-actions">
+          <button id="settingsResetTradeCountBtn" class="btn btn-warning">Reset Count</button>
+          <button id="settingsTestOvertradeBtn" class="btn btn-info">Test (Add 5 Trades)</button>
+        </div>
+      </div>
+      
+      <div class="modal-buttons">
+        <button id="closeSettingsBtn" class="btn btn-secondary">Close</button>
+        <button id="resetSymbolsBtn" class="btn btn-danger">Reset Symbols</button>
+        <button id="saveSettingsBtn" class="btn btn-primary">Save Settings</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="config.js"></script>
+  <script src="quick-symbols.js"></script>
   <script src="symbol-input.js"></script>
   <script src="node-editor.js"></script>
   <script src="history-import.js"></script>

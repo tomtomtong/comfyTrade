@@ -72,19 +72,10 @@ class OvertradeControl {
   }
 
   setupEventListeners() {
-    // Modal controls
-    document.getElementById('overtradeConfigBtn').addEventListener('click', () => this.showConfigModal());
-    document.getElementById('saveOvertradeBtn').addEventListener('click', () => this.saveConfig());
-    document.getElementById('resetTradeCountBtn').addEventListener('click', () => this.resetTradeCount());
-    document.getElementById('testOvertradeBtn').addEventListener('click', () => this.simulateTradesForTesting());
-    document.getElementById('cancelOvertradeBtn').addEventListener('click', () => this.hideConfigModal());
-    
     // Warning modal controls
     document.getElementById('proceedTradeBtn').addEventListener('click', () => this.proceedWithTrade());
     document.getElementById('cancelTradeFromWarningBtn').addEventListener('click', () => this.cancelTradeFromWarning());
     document.getElementById('disableRemindersBtn').addEventListener('click', () => this.disableReminders());
-    
-    // No popup controls needed - using persistent panel
   }
 
   getTimePeriodMs() {
@@ -207,21 +198,21 @@ class OvertradeControl {
   }
 
   showConfigModal() {
-    // Populate form with current settings
-    document.getElementById('overtradeEnabled').value = this.settings.enabled.toString();
-    document.getElementById('maxTrades').value = this.settings.maxTrades;
-    document.getElementById('timePeriod').value = this.settings.timePeriod;
-    document.getElementById('reminderFrequency').value = this.settings.reminderFrequency;
-    document.getElementById('applyToManual').checked = this.settings.applyToManual;
-    document.getElementById('applyToStrategy').checked = this.settings.applyToStrategy;
-    document.getElementById('applyToNodes').checked = this.settings.applyToNodes;
-    
-    this.updateStatusDisplay();
-    document.getElementById('overtradeModal').classList.add('show');
+    // Redirect to settings modal with overtrade control tab
+    if (typeof showSettingsModal === 'function') {
+      showSettingsModal();
+      // Switch to overtrade control tab after a short delay
+      setTimeout(() => {
+        if (typeof switchSettingsTab === 'function') {
+          switchSettingsTab('overtradeControl');
+        }
+      }, 100);
+    }
   }
 
   hideConfigModal() {
-    document.getElementById('overtradeModal').classList.remove('show');
+    // This method is kept for compatibility but no longer needed
+    console.log('hideConfigModal called - now handled by settings modal');
   }
 
   showWarningModal() {
@@ -311,18 +302,8 @@ class OvertradeControl {
   }
 
   saveConfig() {
-    // Get values from form
-    this.settings.enabled = document.getElementById('overtradeEnabled').value === 'true';
-    this.settings.maxTrades = parseInt(document.getElementById('maxTrades').value);
-    this.settings.timePeriod = document.getElementById('timePeriod').value;
-    this.settings.reminderFrequency = document.getElementById('reminderFrequency').value;
-    this.settings.applyToManual = document.getElementById('applyToManual').checked;
-    this.settings.applyToStrategy = document.getElementById('applyToStrategy').checked;
-    this.settings.applyToNodes = document.getElementById('applyToNodes').checked;
-    
-    this.saveSettings();
-    this.hideConfigModal();
-    showMessage('Overtrade reminder settings saved', 'success');
+    // This method is now handled by the settings modal
+    console.log('saveConfig called - now handled by settings modal');
   }
 
   resetTradeCount() {
@@ -340,16 +321,16 @@ class OvertradeControl {
     const nextReset = new Date(Date.now() + this.getTimePeriodMs()).toLocaleString();
     const lastWarning = this.lastWarningTime ? new Date(this.lastWarningTime).toLocaleString() : 'Never';
     
-    // Update modal display if elements exist
-    const currentTradeCountEl = document.getElementById('currentTradeCount');
-    const remainingTradesEl = document.getElementById('remainingTrades');
-    const nextResetEl = document.getElementById('nextReset');
-    const lastWarningEl = document.getElementById('lastWarning');
+    // Update settings modal display if elements exist
+    const settingsCurrentTradeCountEl = document.getElementById('settingsCurrentTradeCount');
+    const settingsRemainingTradesEl = document.getElementById('settingsRemainingTrades');
+    const settingsNextResetEl = document.getElementById('settingsNextReset');
+    const settingsLastWarningEl = document.getElementById('settingsLastWarning');
     
-    if (currentTradeCountEl) currentTradeCountEl.textContent = currentTrades;
-    if (remainingTradesEl) remainingTradesEl.textContent = remaining;
-    if (nextResetEl) nextResetEl.textContent = nextReset;
-    if (lastWarningEl) lastWarningEl.textContent = lastWarning;
+    if (settingsCurrentTradeCountEl) settingsCurrentTradeCountEl.textContent = currentTrades;
+    if (settingsRemainingTradesEl) settingsRemainingTradesEl.textContent = remaining;
+    if (settingsNextResetEl) settingsNextResetEl.textContent = nextReset;
+    if (settingsLastWarningEl) settingsLastWarningEl.textContent = lastWarning;
     
     // Update persistent panel
     this.updatePersistentPanel(currentTrades);

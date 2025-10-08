@@ -939,6 +939,98 @@ h4 {
   color: white;
 }
 
+/* Settings Modal Tabs */
+.settings-modal .modal-content {
+  max-width: 600px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.settings-tabs {
+  display: flex;
+  border-bottom: 2px solid #333;
+  margin-bottom: 20px;
+}
+
+.settings-tab-btn {
+  background: none;
+  border: none;
+  padding: 12px 20px;
+  color: #ccc;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  transition: all 0.3s ease;
+}
+
+.settings-tab-btn:hover {
+  color: #fff;
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.settings-tab-btn.active {
+  color: #4CAF50;
+  border-bottom-color: #4CAF50;
+  background: rgba(76, 175, 80, 0.1);
+}
+
+.settings-tab {
+  display: none;
+}
+
+.settings-tab.active {
+  display: block;
+}
+
+.overtrade-actions {
+  margin-top: 15px;
+  display: flex;
+  gap: 10px;
+}
+
+.overtrade-actions .btn {
+  flex: 1;
+}
+
+/* Quick Symbols List in Settings */
+.quick-symbols-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 10px;
+  background: #2a2a2a;
+  border-radius: 4px;
+  min-height: 60px;
+}
+
+.quick-symbol-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: #444;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #ccc;
+  font-size: 12px;
+}
+
+.quick-symbol-item .remove-btn {
+  background: #d32f2f;
+  border: none;
+  color: white;
+  border-radius: 3px;
+  padding: 2px 6px;
+  cursor: pointer;
+  font-size: 10px;
+  transition: background 0.2s;
+}
+
+.quick-symbol-item .remove-btn:hover {
+  background: #f44336;
+}
+
 /* Node Properties Symbol Input */
 .node-symbol-input .symbol-input-wrapper {
   width: 100%;

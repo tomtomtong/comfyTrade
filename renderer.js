@@ -98,6 +98,7 @@ function setupEventListeners() {
   document.getElementById('connectBtn').addEventListener('click', showConnectionModal);
   document.getElementById('tradeBtn').addEventListener('click', showTradeModal);
   document.getElementById('backtestBtn').addEventListener('click', () => window.historyImport.showBacktestModal());
+  document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
   document.getElementById('showLogBtn').addEventListener('click', showLogModal);
   document.getElementById('runStrategyBtn').addEventListener('click', showRunStrategyModal);
   document.getElementById('stopStrategyBtn').addEventListener('click', stopNodeStrategy);
@@ -226,16 +227,19 @@ function initializeSymbolInput() {
     }
   });
   
-  // Quick symbol buttons
-  document.querySelectorAll('.quick-symbol-btn').forEach(btn => {
-    btn.addEventListener('click', () => {
-      const symbol = btn.dataset.symbol;
+  // Store globally for settings updates
+  window.tradeSymbolInput = symbolInput;
+  
+  // Quick symbol buttons - dynamically created from config
+  const quickSymbolsContainer = document.getElementById('tradeQuickSymbolsContainer');
+  if (quickSymbolsContainer) {
+    QuickSymbols.create(quickSymbolsContainer, (symbol) => {
       symbolInput.setValue(symbol);
       updateCurrentPrice(symbol);
       // Note: Removed automatic volume loss calculation to prevent immediate popup
       // Users can still calculate volume loss by changing volume or symbol values
     });
-  });
+  }
   
   // Refresh price button
   document.getElementById('refreshPriceBtn').addEventListener('click', () => {
@@ -955,6 +959,7 @@ function updatePropertiesPanel(node) {
           <div class="property-item">
             <label>${key}:</label>
             <div id="nodeSymbolInput-${node.id}" class="node-symbol-input"></div>
+            <div id="nodeQuickSymbols-${node.id}"></div>
           </div>
         `;
       } else if (key === 'action' && node.type === 'trade-signal') {
@@ -1216,6 +1221,8 @@ function updatePropertiesPanel(node) {
   paramEntries.forEach(([key, value]) => {
     if (key === 'symbol') {
       const container = document.getElementById(`nodeSymbolInput-${node.id}`);
+      const quickSymbolsContainer = document.getElementById(`nodeQuickSymbols-${node.id}`);
+      
       if (container && isConnected) {
         const nodeSymbolInput = new SymbolInput(container, {
           placeholder: 'Enter symbol (e.g., EURUSD)',
@@ -1227,6 +1234,14 @@ function updatePropertiesPanel(node) {
           }
         });
         nodeSymbolInput.setValue(value);
+        
+        // Add quick symbols for node properties
+        if (quickSymbolsContainer) {
+          QuickSymbols.create(quickSymbolsContainer, (symbol) => {
+            nodeSymbolInput.setValue(symbol);
+            updateNodeParam('symbol', symbol);
+          });
+        }
       } else if (container) {
         // Fallback to regular input if not connected
         container.innerHTML = `
@@ -1236,6 +1251,17 @@ function updatePropertiesPanel(node) {
                  placeholder="Enter symbol (e.g., EURUSD)"
                  onchange="updateNodeParam('symbol', this.value)">
         `;
+        
+        // Add quick symbols even when not connected
+        if (quickSymbolsContainer) {
+          QuickSymbols.create(quickSymbolsContainer, (symbol) => {
+            const input = container.querySelector('input');
+            if (input) {
+              input.value = symbol;
+              updateNodeParam('symbol', symbol);
+            }
+          });
+        }
       }
     }
   });
@@ -2042,4 +2068,210 @@ function createSignalPopup() {
   
   // Add event listener for close button
   document.getElementById('signalPopupClose').addEventListener('click', hideSignalPopup);
+}
+
+
+// Settings Modal Functions
+function showSettingsModal() {
+  document.getElementById('settingsModal').classList.add('show');
+  renderQuickSymbolsList();
+  loadOvertradeSettings();
+  
+  // Setup tab switching
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.onclick = (e) => switchSettingsTab(e.target.dataset.tab);
+  });
+  
+  // Setup event listeners
+  document.getElementById('closeSettingsBtn').onclick = closeSettingsModal;
+  document.getElementById('saveSettingsBtn').onclick = saveAllSettings;
+  document.getElementById('addSymbolBtn').onclick = addQuickSymbol;
+  document.getElementById('resetSymbolsBtn').onclick = resetQuickSymbols;
+  document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
+  document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
+  
+  // Allow Enter key to add symbol
+  document.getElementById('newSymbolInput').onkeypress = (e) => {
+    if (e.key === 'Enter') {
+      addQuickSymbol();
+    }
+  };
+}
+
+function closeSettingsModal() {
+  document.getElementById('settingsModal').classList.remove('show');
+}
+
+function switchSettingsTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.settings-tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+  
+  // Update tab content
+  document.querySelectorAll('.settings-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  document.getElementById(`${tabName}Tab`).classList.add('active');
+}
+
+// Make switchSettingsTab available globally
+window.switchSettingsTab = switchSettingsTab;
+
+function loadOvertradeSettings() {
+  if (!window.overtradeControl) return;
+  
+  const settings = window.overtradeControl.settings;
+  
+  // Populate form with current settings
+  document.getElementById('settingsOvertradeEnabled').value = settings.enabled.toString();
+  document.getElementById('settingsMaxTrades').value = settings.maxTrades;
+  document.getElementById('settingsTimePeriod').value = settings.timePeriod;
+  document.getElementById('settingsReminderFrequency').value = settings.reminderFrequency;
+  document.getElementById('settingsApplyToManual').checked = settings.applyToManual;
+  document.getElementById('settingsApplyToStrategy').checked = settings.applyToStrategy;
+  document.getElementById('settingsApplyToNodes').checked = settings.applyToNodes;
+  
+  updateOvertradeStatusInSettings();
+}
+
+function updateOvertradeStatusInSettings() {
+  if (!window.overtradeControl) return;
+  
+  const currentTrades = window.overtradeControl.getCurrentPeriodTrades();
+  const remaining = Math.max(0, window.overtradeControl.settings.maxTrades - currentTrades);
+  const nextReset = new Date(Date.now() + window.overtradeControl.getTimePeriodMs()).toLocaleString();
+  const lastWarning = window.overtradeControl.lastWarningTime ? 
+    new Date(window.overtradeControl.lastWarningTime).toLocaleString() : 'Never';
+  
+  document.getElementById('settingsCurrentTradeCount').textContent = currentTrades;
+  document.getElementById('settingsRemainingTrades').textContent = remaining;
+  document.getElementById('settingsNextReset').textContent = nextReset;
+  document.getElementById('settingsLastWarning').textContent = lastWarning;
+}
+
+function saveAllSettings() {
+  // Save overtrade settings
+  if (window.overtradeControl) {
+    window.overtradeControl.settings.enabled = document.getElementById('settingsOvertradeEnabled').value === 'true';
+    window.overtradeControl.settings.maxTrades = parseInt(document.getElementById('settingsMaxTrades').value);
+    window.overtradeControl.settings.timePeriod = document.getElementById('settingsTimePeriod').value;
+    window.overtradeControl.settings.reminderFrequency = document.getElementById('settingsReminderFrequency').value;
+    window.overtradeControl.settings.applyToManual = document.getElementById('settingsApplyToManual').checked;
+    window.overtradeControl.settings.applyToStrategy = document.getElementById('settingsApplyToStrategy').checked;
+    window.overtradeControl.settings.applyToNodes = document.getElementById('settingsApplyToNodes').checked;
+    
+    window.overtradeControl.saveSettings();
+    window.overtradeControl.updateStatusDisplay();
+  }
+  
+  showMessage('Settings saved successfully', 'success');
+}
+
+function resetTradeCountFromSettings() {
+  if (window.overtradeControl) {
+    window.overtradeControl.resetTradeCount();
+    updateOvertradeStatusInSettings();
+  }
+}
+
+function testOvertradeFromSettings() {
+  if (window.overtradeControl) {
+    window.overtradeControl.simulateTradesForTesting();
+    updateOvertradeStatusInSettings();
+  }
+}
+
+function renderQuickSymbolsList() {
+  const container = document.getElementById('quickSymbolsList');
+  container.innerHTML = '';
+  
+  const symbols = AppConfig.getQuickSymbols();
+  
+  if (symbols.length === 0) {
+    container.innerHTML = '<p style="color: #888; margin: 10px;">No quick symbols configured. Add some below.</p>';
+    return;
+  }
+  
+  symbols.forEach(symbol => {
+    const item = document.createElement('div');
+    item.className = 'quick-symbol-item';
+    
+    const symbolText = document.createElement('span');
+    symbolText.textContent = symbol;
+    
+    const removeBtn = document.createElement('button');
+    removeBtn.className = 'remove-btn';
+    removeBtn.textContent = '×';
+    removeBtn.onclick = () => removeQuickSymbol(symbol);
+    
+    item.appendChild(symbolText);
+    item.appendChild(removeBtn);
+    container.appendChild(item);
+  });
+}
+
+function addQuickSymbol() {
+  const input = document.getElementById('newSymbolInput');
+  const symbol = input.value.trim();
+  
+  if (!symbol) {
+    showMessage('Please enter a symbol', 'error');
+    return;
+  }
+  
+  if (symbol.length < 3) {
+    showMessage('Symbol must be at least 3 characters', 'error');
+    return;
+  }
+  
+  const symbols = AppConfig.getQuickSymbols();
+  if (symbols.includes(symbol)) {
+    showMessage('Symbol already exists', 'warning');
+    return;
+  }
+  
+  AppConfig.addQuickSymbol(symbol);
+  input.value = '';
+  renderQuickSymbolsList();
+  updateAllQuickSymbols();
+  showMessage(`Added ${symbol} to quick symbols`, 'success');
+}
+
+function removeQuickSymbol(symbol) {
+  if (confirm(`Remove ${symbol} from quick symbols?`)) {
+    AppConfig.removeQuickSymbol(symbol);
+    renderQuickSymbolsList();
+    updateAllQuickSymbols();
+    showMessage(`Removed ${symbol} from quick symbols`, 'success');
+  }
+}
+
+function resetQuickSymbols() {
+  if (confirm('Reset quick symbols to defaults? This will remove all custom symbols.')) {
+    AppConfig.quickSymbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+    AppConfig.saveToLocalStorage();
+    renderQuickSymbolsList();
+    updateAllQuickSymbols();
+    showMessage('Quick symbols reset to defaults', 'success');
+  }
+}
+
+function updateAllQuickSymbols() {
+  // Update trade dialog quick symbols
+  const tradeContainer = document.getElementById('tradeQuickSymbolsContainer');
+  if (tradeContainer) {
+    tradeContainer.innerHTML = '';
+    const symbolInput = window.tradeSymbolInput;
+    if (symbolInput) {
+      QuickSymbols.create(tradeContainer, (symbol) => {
+        symbolInput.setValue(symbol);
+        updateCurrentPrice(symbol);
+      });
+    }
+  }
+  
+  // Update any other quick symbol instances
+  // Add more updates here as needed for node properties, etc.
 }
