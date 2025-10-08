@@ -553,19 +553,34 @@ class OvertradeControl {
 
   // Clear all data (for testing or reset)
   clearAllData() {
-    if (confirm('Are you sure you want to clear all overtrade data? This cannot be undone.')) {
-      localStorage.removeItem('overtradeSettings');
-      localStorage.removeItem('overtradeHistory');
-      localStorage.removeItem('overtradeLastWarning');
-      localStorage.removeItem('overtradeWarningCount');
-      
-      this.tradeHistory = [];
-      this.lastWarningTime = null;
-      this.warningCount = 0;
-      
-      this.updateStatusDisplay();
-      showMessage('All overtrade data cleared', 'info');
+    // Use global confirmation function if available, otherwise fallback to confirm
+    if (typeof showConfirmation === 'function') {
+      showConfirmation(
+        'Clear Overtrade Data',
+        'Are you sure you want to clear all overtrade data? This cannot be undone.',
+        () => {
+          this.executeClearAllData();
+        }
+      );
+    } else {
+      if (confirm('Are you sure you want to clear all overtrade data? This cannot be undone.')) {
+        this.executeClearAllData();
+      }
     }
+  }
+  
+  executeClearAllData() {
+    localStorage.removeItem('overtradeSettings');
+    localStorage.removeItem('overtradeHistory');
+    localStorage.removeItem('overtradeLastWarning');
+    localStorage.removeItem('overtradeWarningCount');
+    
+    this.tradeHistory = [];
+    this.lastWarningTime = null;
+    this.warningCount = 0;
+    
+    this.updateStatusDisplay();
+    showMessage('All overtrade data cleared', 'info');
   }
 
   // Get detailed status for debugging

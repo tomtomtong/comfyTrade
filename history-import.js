@@ -248,18 +248,33 @@ function enableBacktestMode() {
 }
 
 function clearHistoricalData() {
-  if (confirm('Exit backtest mode and clear historical data?')) {
-    localStorage.removeItem('historicalData');
-    importedHistoryData = null;
-    
-    const indicator = document.getElementById('backtestIndicator');
-    if (indicator) indicator.remove();
-    
-    const clearBtn = document.getElementById('clearHistoryBtn');
-    if (clearBtn) clearBtn.remove();
-    
-    showMessage('Backtest mode exited', 'info');
+  // Use global confirmation function if available, otherwise fallback to confirm
+  if (typeof showConfirmation === 'function') {
+    showConfirmation(
+      'Exit Backtest Mode',
+      'Exit backtest mode and clear historical data?',
+      () => {
+        executeClearHistoricalData();
+      }
+    );
+  } else {
+    if (confirm('Exit backtest mode and clear historical data?')) {
+      executeClearHistoricalData();
+    }
   }
+}
+
+function executeClearHistoricalData() {
+  localStorage.removeItem('historicalData');
+  importedHistoryData = null;
+  
+  const indicator = document.getElementById('backtestIndicator');
+  if (indicator) indicator.remove();
+  
+  const clearBtn = document.getElementById('clearHistoryBtn');
+  if (clearBtn) clearBtn.remove();
+  
+  showMessage('Backtest mode exited', 'info');
 }
 
 function getHistoricalData() {

@@ -146,6 +146,10 @@ function setupEventListeners() {
   document.getElementById('confirmStopBtn').addEventListener('click', handleStopStrategy);
   document.getElementById('cancelStopBtn').addEventListener('click', hideStopStrategyModal);
   
+  // Confirmation modal
+  document.getElementById('confirmYesBtn').addEventListener('click', handleConfirmationYes);
+  document.getElementById('confirmNoBtn').addEventListener('click', handleConfirmationNo);
+  
   // Node palette buttons
   document.querySelectorAll('.node-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -502,9 +506,16 @@ async function handleRefreshPositions() {
 }
 
 async function closePosition(ticket) {
-  if (!confirm('Are you sure you want to close this position?')) {
-    return;
-  }
+  showConfirmation(
+    'Close Position',
+    'Are you sure you want to close this position?',
+    async () => {
+      await executeClosePosition(ticket);
+    }
+  );
+}
+
+async function executeClosePosition(ticket) {
 
   // Record position management action (doesn't count for overtrade)
   window.overtradeControl.recordPositionManagement('closePosition', { ticket });
@@ -1496,12 +1507,16 @@ function loadGraph() {
 }
 
 function clearGraph() {
-  if (confirm('Clear all nodes? This cannot be undone.')) {
-    nodeEditor.clear();
-    document.getElementById('nodeProperties').innerHTML = 
-      '<p class="no-selection">Select a node to edit properties</p>';
-    showMessage('Canvas cleared', 'info');
-  }
+  showConfirmation(
+    'Clear Graph',
+    'Clear all nodes? This cannot be undone.',
+    () => {
+      nodeEditor.clear();
+      document.getElementById('nodeProperties').innerHTML = 
+        '<p class="no-selection">Select a node to edit properties</p>';
+      showMessage('Canvas cleared', 'info');
+    }
+  );
 }
 
 // Auto-refresh
@@ -1527,6 +1542,35 @@ function showMessage(text, type) {
   setTimeout(() => {
     messageBox.className = 'message-box';
   }, 3000);
+}
+
+// Confirmation Modal System
+let confirmationCallback = null;
+
+function showConfirmation(title, message, onConfirm, onCancel = null) {
+  document.getElementById('confirmationTitle').textContent = title;
+  document.getElementById('confirmationMessage').textContent = message;
+  confirmationCallback = { onConfirm, onCancel };
+  document.getElementById('confirmationModal').classList.add('show');
+}
+
+function hideConfirmation() {
+  document.getElementById('confirmationModal').classList.remove('show');
+  confirmationCallback = null;
+}
+
+function handleConfirmationYes() {
+  if (confirmationCallback && confirmationCallback.onConfirm) {
+    confirmationCallback.onConfirm();
+  }
+  hideConfirmation();
+}
+
+function handleConfirmationNo() {
+  if (confirmationCallback && confirmationCallback.onCancel) {
+    confirmationCallback.onCancel();
+  }
+  hideConfirmation();
 }
 
 // Volume Loss Calculation
@@ -2240,35 +2284,56 @@ function addQuickSymbol() {
 }
 
 function removeQuickSymbol(symbol) {
-  if (confirm(`Remove ${symbol} from quick symbols?`)) {
-    AppConfig.removeQuickSymbol(symbol);
-    renderQuickSymbolsList();
-    updateAllQuickSymbols();
-    showMessage(`Removed ${symbol} from quick symbols`, 'success');
-  }
+  AppConfig.removeQuickSymbol(symbol);
+  renderQuickSymbolsList();
+  updateAllQuickSymbols();
+  showMessage(`Removed ${symbol} from quick symbols`, 'success');
 }
 
 function resetQuickSymbols() {
-  if (confirm('Reset quick symbols to defaults? This will remove all custom symbols.')) {
-    AppConfig.quickSymbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-    AppConfig.saveToLocalStorage();
-    renderQuickSymbolsList();
-    updateAllQuickSymbols();
-    showMessage('Quick symbols reset to defaults', 'success');
-  }
+  showConfirmation(
+    'Reset Symbols',
+    'Reset quick symbols to defaults? This will remove all custom symbols.',
+    () => {
+      AppConfig.quickSymbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
+      AppConfig.saveToLocalStorage();
+      renderQuickSymbolsList();
+      updateAllQuickSymbols();
+      showMessage('Quick symbols reset to defaults', 'success');
+    }
+  );
 }
 
 function updateAllQuickSymbols() {
   // Update trade dialog quick symbols
   const tradeContainer = document.getElementById('tradeQuickSymbolsContainer');
   if (tradeContainer) {
-    tradeContainer.innerHTML = '';
-    const symbolInput = window.tradeSymbolInput;
-    if (symbolInput) {
-      QuickSymbols.create(tradeContainer, (symbol) => {
-        symbolInput.setValue(symbol);
-        updateCurrentPrice(symbol);
-      });
+    // Use QuickSymbols.update instead of clearing and recreating
+    const existingWrapper = tradeContainer.querySelector('.quick-symbols');
+    if (existingWrapper) {
+      // Update existing quick symbols
+      QuickSymbols.update(tradeContainer);
+    } else {
+      // Create new quick symbols if none exist
+      const symbolInput = window.tradeSymbolInput;
+      if (symbolInput) {
+        QuickSymbols.create(tradeContainer, (symbol) => {
+          symbolInput.setValue(symbol);
+          updateCurrentPrice(symbol);
+        });
+      }
+    }
+  }
+  
+  // Ensure symbol input is still functional after DOM updates
+  if (window.tradeSymbolInput) {
+    // Re-focus the input if it was focused before
+    const symbolInputElement = window.tradeSymbolInput.input;
+    if (symbolInputElement && document.activeElement === symbolInputElement) {
+      // Small delay to ensure DOM updates are complete
+      setTimeout(() => {
+        symbolInputElement.focus();
+      }, 10);
     }
   }
   

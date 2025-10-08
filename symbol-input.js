@@ -282,7 +282,89 @@ class SymbolInput {
         this.input.disabled = false;
         this.dropdownBtn.disabled = false;
     }
+    
+    // Debug method to check if input is functional
+    isInputFunctional() {
+        return this.input && 
+               !this.input.disabled && 
+               this.input.parentNode && 
+               this.input.offsetParent !== null;
+    }
+    
+    // Method to refresh event listeners if needed
+    refreshEventListeners() {
+        // This can be called if DOM manipulation affects event listeners
+        // Currently not needed as we use proper event delegation
+        console.log('SymbolInput event listeners are attached to elements, should be working');
+    }
 }
 
 // Make it globally available
 window.SymbolInput = SymbolInput;
+
+// Global diagnostic function
+window.debugSymbolInput = function() {
+    if (window.tradeSymbolInput) {
+        const input = window.tradeSymbolInput;
+        console.log('Symbol Input Debug Info:');
+        console.log('- Input element exists:', !!input.input);
+        console.log('- Input is functional:', input.isInputFunctional());
+        console.log('- Input is disabled:', input.input ? input.input.disabled : 'N/A');
+        console.log('- Input has focus:', input.input === document.activeElement);
+        console.log('- Current value:', input.getValue());
+        console.log('- Container in DOM:', !!input.container.parentNode);
+        
+        // Test typing
+        if (input.input) {
+            console.log('Testing input functionality...');
+            const testValue = 'TEST' + Math.random().toString(36).substr(2, 3);
+            input.setValue(testValue);
+            console.log('Set test value:', testValue);
+            console.log('Retrieved value:', input.getValue());
+            input.clear();
+            console.log('Cleared input, current value:', input.getValue());
+        }
+    } else {
+        console.log('No tradeSymbolInput found in window object');
+    }
+};
+
+// Global fix function for symbol input issues
+window.fixSymbolInput = function() {
+    console.log('Attempting to fix symbol input...');
+    
+    if (window.tradeSymbolInput && window.tradeSymbolInput.input) {
+        const input = window.tradeSymbolInput.input;
+        
+        // Re-enable input if disabled
+        if (input.disabled) {
+            input.disabled = false;
+            console.log('Re-enabled input');
+        }
+        
+        // Ensure input is visible and in DOM
+        if (input.offsetParent === null) {
+            console.log('Input appears to be hidden or removed from DOM');
+            // Try to reinitialize if needed
+            if (typeof initializeSymbolInput === 'function') {
+                console.log('Reinitializing symbol input...');
+                initializeSymbolInput();
+            }
+        }
+        
+        // Focus the input
+        input.focus();
+        console.log('Focused input');
+        
+        // Test functionality
+        window.debugSymbolInput();
+    } else {
+        console.log('Symbol input not found, trying to reinitialize...');
+        if (typeof initializeSymbolInput === 'function') {
+            initializeSymbolInput();
+            console.log('Reinitialized symbol input');
+        } else {
+            console.log('Cannot reinitialize - initializeSymbolInput function not available');
+        }
+    }
+};

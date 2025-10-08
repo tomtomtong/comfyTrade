@@ -52,27 +52,22 @@ class QuickSymbols {
   /**
    * Update existing quick symbol buttons with new symbols
    * @param {HTMLElement} container - Container with quick-symbols div
+   * @param {Function} onSymbolClick - Optional click handler, will try to preserve existing if not provided
    */
-  static update(container) {
+  static update(container, onSymbolClick = null) {
     const wrapper = container.querySelector('.quick-symbols');
     if (wrapper) {
-      // Store the click handler from first button if exists
-      const firstBtn = wrapper.querySelector('.quick-symbol-btn');
-      let clickHandler = null;
+      let clickHandler = onSymbolClick;
       
-      if (firstBtn) {
-        // Get the onclick behavior by checking dataset
-        const symbolInput = container.querySelector('.symbol-input-wrapper');
-        if (symbolInput) {
-          clickHandler = (symbol) => {
-            // Try to find and trigger the symbol input
-            const input = symbolInput.querySelector('input');
-            if (input) {
-              input.value = symbol;
-              input.dispatchEvent(new Event('input', { bubbles: true }));
-            }
-          };
-        }
+      // If no click handler provided, try to use the global symbol input
+      if (!clickHandler && window.tradeSymbolInput) {
+        clickHandler = (symbol) => {
+          window.tradeSymbolInput.setValue(symbol);
+          // Also trigger price update if the function exists
+          if (typeof updateCurrentPrice === 'function') {
+            updateCurrentPrice(symbol);
+          }
+        };
       }
       
       // Clear and rebuild
