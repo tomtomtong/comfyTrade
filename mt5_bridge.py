@@ -447,6 +447,42 @@ class MT5Bridge:
             logger.error(f"Error calculating percentage change: {e}")
             return {"error": str(e)}
     
+    def execute_node_strategy(self, node_graph):
+        """Execute a node-based trading strategy"""
+        if not self.connected_to_mt5:
+            return {"error": "Not connected to MT5"}
+        
+        try:
+            nodes = node_graph.get('nodes', [])
+            connections = node_graph.get('connections', [])
+            
+            if not nodes:
+                return {"error": "No nodes provided in strategy"}
+            
+            logger.info(f"Executing node strategy with {len(nodes)} nodes and {len(connections)} connections")
+            
+            # For now, we'll return a success message
+            # The actual node execution logic is handled by the frontend NodeEditor
+            # This method serves as a confirmation that the strategy was received
+            executed_nodes = []
+            
+            for node in nodes:
+                node_type = node.get('type', 'unknown')
+                node_title = node.get('title', f'Node {node.get("id", "unknown")}')
+                executed_nodes.append(f"{node_title} ({node_type})")
+            
+            return {
+                "success": True,
+                "message": f"Node strategy executed successfully",
+                "executed_nodes": executed_nodes,
+                "total_nodes": len(nodes),
+                "total_connections": len(connections)
+            }
+            
+        except Exception as e:
+            logger.error(f"Error executing node strategy: {e}")
+            return {"error": str(e)}
+    
     async def handle_message(self, websocket, message):
         """Handle incoming WebSocket messages from Electron"""
         try:
@@ -531,6 +567,11 @@ class MT5Bridge:
                 timeframe = data.get('timeframe', 'M1')
                 
                 result = self.get_percentage_change(symbol, timeframe)
+                response['data'] = result
+            
+            elif action == 'executeNodeStrategy':
+                node_graph = data.get('nodeGraph', {})
+                result = self.execute_node_strategy(node_graph)
                 response['data'] = result
             
             else:

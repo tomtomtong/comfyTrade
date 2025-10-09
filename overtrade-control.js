@@ -14,6 +14,7 @@ class OvertradeControl {
     this.tradeHistory = [];
     this.lastWarningTime = null;
     this.warningCount = 0;
+    this.cachedOpenPositionsCount = 0;
     
     this.loadSettings();
     this.setupEventListeners();
@@ -94,11 +95,31 @@ class OvertradeControl {
   }
 
   getCurrentPeriodTrades() {
-    this.cleanupOldTrades();
-    return this.tradeHistory.length;
+    // For open positions mode, we need to get current open positions from MT5
+    // This method will be called synchronously, so we'll use cached data
+    return this.cachedOpenPositionsCount || 0;
   }
 
-  shouldShowReminder(tradeType) {
+  async getCurrentOpenPositions() {
+    // Get current open positions from MT5
+    try {
+      if (window.mt5Bridge && window.mt5Bridge.isConnected()) {
+        const positions = await window.mt5Bridge.getPositions();
+        this.cachedOpenPositionsCount = positions ? positions.length : 0;
+        return this.cachedOpenPositionsCount;
+      } else {
+        // If not connected to MT5, fall back to 0
+        this.cachedOpenPositionsCount = 0;
+        return 0;
+      }
+    } catch (error) {
+      console.error('Error getting open positions:', error);
+      this.cachedOpenPositionsCount = 0;
+      return 0;
+    }
+  }
+
+  async shouldShowReminder(tradeType) {
     if (!this.settings.enabled) return false;
     
     // Check if this trade type should trigger reminders
@@ -110,10 +131,11 @@ class OvertradeControl {
     
     if (!typeMap[tradeType]) return false;
     
-    const currentTrades = this.getCurrentPeriodTrades();
+    // Get current open positions count
+    const currentOpenPositions = await this.getCurrentOpenPositions();
     
     // Check if we've reached the threshold
-    if (currentTrades < this.settings.maxTrades) return false;
+    if (currentOpenPositions < this.settings.maxTrades) return false;
     
     // Check reminder frequency
     switch (this.settings.reminderFrequency) {
@@ -122,7 +144,7 @@ class OvertradeControl {
       case 'first':
         return !this.lastWarningTime || (Date.now() - this.lastWarningTime) > this.getTimePeriodMs();
       case 'periodic':
-        return (currentTrades - this.settings.maxTrades) % 3 === 0;
+        return (currentOpenPositions - this.settings.maxTrades) % 3 === 0;
       default:
         return true;
     }
@@ -183,9 +205,10 @@ class OvertradeControl {
     return true;
   }
 
-  checkAndShowReminder(tradeType, tradeData = {}) {
-    return new Promise((resolve) => {
-      if (this.shouldShowReminder(tradeType)) {
+  async checkAndShowReminder(tradeType, tradeData = {}) {
+    return new Promise(async (resolve) => {
+      const shouldShow = await this.shouldShowReminder(tradeType);
+      if (shouldShow) {
         this.pendingTradeResolve = resolve;
         this.pendingTradeData = { type: tradeType, data: tradeData };
         this.showWarningModal();
@@ -215,45 +238,42 @@ class OvertradeControl {
     console.log('hideConfigModal called - now handled by settings modal');
   }
 
-  showWarningModal() {
-    const currentTrades = this.getCurrentPeriodTrades();
-    const periodStart = new Date(Date.now() - this.getTimePeriodMs()).toLocaleTimeString();
-    const nextReset = new Date(Date.now() + this.getTimePeriodMs()).toLocaleTimeString();
+  async showWarningModal() {
+    const currentOpenPositions = await this.getCurrentOpenPositions();
     
     // Show immediate popup notification
-    this.showOvertradePopup(currentTrades);
+    this.showOvertradePopup(currentOpenPositions);
     
-    document.getElementById('warningTradeCount').textContent = currentTrades;
-    document.getElementById('warningTimePeriod').textContent = this.settings.timePeriod;
-    document.getElementById('warningFrequency').textContent = `${currentTrades} trades/${this.settings.timePeriod}`;
-    document.getElementById('warningPeriodStart').textContent = periodStart;
-    document.getElementById('warningNextReset').textContent = nextReset;
+    document.getElementById('warningTradeCount').textContent = currentOpenPositions;
+    document.getElementById('warningTimePeriod').textContent = 'open positions';
+    document.getElementById('warningFrequency').textContent = `${currentOpenPositions} open positions`;
+    document.getElementById('warningPeriodStart').textContent = 'Current';
+    document.getElementById('warningNextReset').textContent = 'When positions close';
     
     document.getElementById('overtradeWarningModal').classList.add('show');
   }
 
-  showOvertradePopup(currentTrades) {
+  showOvertradePopup(currentOpenPositions) {
     // Update the persistent panel instead of showing popup
-    this.updatePersistentPanel(currentTrades);
+    this.updatePersistentPanel(currentOpenPositions);
     
     // Show message notification for immediate feedback
-    const alertMessage = `⚠️ New Position Alert: ${currentTrades} new positions in the last ${this.settings.timePeriod}!`;
+    const alertMessage = `⚠️ Open Position Alert: ${currentOpenPositions} open positions!`;
     
     if (typeof showMessage === 'function') {
       showMessage(alertMessage, 'error');
       
       // Show additional popup after a short delay for emphasis
       setTimeout(() => {
-        showMessage(`New position frequency: ${currentTrades}/${this.settings.maxTrades} per ${this.settings.timePeriod}`, 'warning');
+        showMessage(`Open positions: ${currentOpenPositions}/${this.settings.maxTrades} limit`, 'warning');
       }, 3500);
     }
     
     // Also log to console for debugging
-    console.warn('New position limit exceeded:', {
-      currentNewPositions: currentTrades,
+    console.warn('Open position limit exceeded:', {
+      currentOpenPositions: currentOpenPositions,
       threshold: this.settings.maxTrades,
-      timePeriod: this.settings.timePeriod,
-      frequency: `${currentTrades} new positions/${this.settings.timePeriod}`
+      message: `${currentOpenPositions} open positions exceed limit of ${this.settings.maxTrades}`
     });
   }
 
@@ -306,19 +326,19 @@ class OvertradeControl {
     console.log('saveConfig called - now handled by settings modal');
   }
 
-  resetTradeCount() {
+  async resetTradeCount() {
     this.tradeHistory = [];
     this.lastWarningTime = null;
     this.warningCount = 0;
+    this.cachedOpenPositionsCount = 0;
     this.saveSettings();
-    this.updateStatusDisplay();
+    await this.updateStatusDisplay();
     showMessage('Trade count reset', 'info');
   }
 
-  updateStatusDisplay() {
-    const currentTrades = this.getCurrentPeriodTrades();
-    const remaining = Math.max(0, this.settings.maxTrades - currentTrades);
-    const nextReset = new Date(Date.now() + this.getTimePeriodMs()).toLocaleString();
+  async updateStatusDisplay() {
+    const currentOpenPositions = await this.getCurrentOpenPositions();
+    const remaining = Math.max(0, this.settings.maxTrades - currentOpenPositions);
     const lastWarning = this.lastWarningTime ? new Date(this.lastWarningTime).toLocaleString() : 'Never';
     
     // Update settings modal display if elements exist
@@ -327,19 +347,19 @@ class OvertradeControl {
     const settingsNextResetEl = document.getElementById('settingsNextReset');
     const settingsLastWarningEl = document.getElementById('settingsLastWarning');
     
-    if (settingsCurrentTradeCountEl) settingsCurrentTradeCountEl.textContent = currentTrades;
+    if (settingsCurrentTradeCountEl) settingsCurrentTradeCountEl.textContent = currentOpenPositions;
     if (settingsRemainingTradesEl) settingsRemainingTradesEl.textContent = remaining;
-    if (settingsNextResetEl) settingsNextResetEl.textContent = nextReset;
+    if (settingsNextResetEl) settingsNextResetEl.textContent = 'When positions close';
     if (settingsLastWarningEl) settingsLastWarningEl.textContent = lastWarning;
     
     // Update persistent panel
-    this.updatePersistentPanel(currentTrades);
+    this.updatePersistentPanel(currentOpenPositions);
     
     // Update toolbar status
-    this.updateToolbarStatus(currentTrades);
+    this.updateToolbarStatus(currentOpenPositions);
   }
 
-  updatePersistentPanel(currentTrades) {
+  updatePersistentPanel(currentOpenPositions) {
     if (!this.settings.enabled) {
       // Hide the panel if overtrade control is disabled
       const panel = document.getElementById('overtradeReminderPanel');
@@ -363,17 +383,16 @@ class OvertradeControl {
     panel.style.display = 'block';
 
     // Update basic info
-    if (countEl) countEl.textContent = currentTrades;
+    if (countEl) countEl.textContent = currentOpenPositions;
     if (limitEl) limitEl.textContent = this.settings.maxTrades;
-    if (periodEl) periodEl.textContent = this.settings.timePeriod;
+    if (periodEl) periodEl.textContent = 'open positions';
     if (resetEl) {
-      const nextReset = new Date(Date.now() + this.getTimePeriodMs());
-      resetEl.textContent = nextReset.toLocaleTimeString();
+      resetEl.textContent = 'When positions close';
     }
 
     // Determine status level
-    const isOverLimit = currentTrades >= this.settings.maxTrades;
-    const isNearLimit = currentTrades >= this.settings.maxTrades * 0.8;
+    const isOverLimit = currentOpenPositions >= this.settings.maxTrades;
+    const isNearLimit = currentOpenPositions >= this.settings.maxTrades * 0.8;
 
     // Reset all classes
     panel.classList.remove('warning', 'danger');
@@ -391,7 +410,7 @@ class OvertradeControl {
       if (countEl) countEl.classList.add('danger');
       
       if (icon) icon.textContent = '🚨';
-      if (text) text.textContent = 'NEW POSITION LIMIT EXCEEDED!';
+      if (text) text.textContent = 'OPEN POSITION LIMIT EXCEEDED!';
       if (messageEl) messageEl.style.display = 'flex';
     } else if (isNearLimit) {
       // Warning state - near limit
@@ -402,17 +421,17 @@ class OvertradeControl {
       if (countEl) countEl.classList.add('warning');
       
       if (icon) icon.textContent = '⚠️';
-      if (text) text.textContent = 'Approaching New Position Limit';
+      if (text) text.textContent = 'Approaching Open Position Limit';
       if (messageEl) messageEl.style.display = 'none';
     } else {
       // Safe state
       if (icon) icon.textContent = '✅';
-      if (text) text.textContent = 'Safe - New Positions';
+      if (text) text.textContent = 'Safe - Open Positions';
       if (messageEl) messageEl.style.display = 'none';
     }
   }
 
-  updateToolbarStatus(currentTrades) {
+  updateToolbarStatus(currentOpenPositions) {
     const statusEl = document.getElementById('overtradeStatus');
     const displayEl = document.getElementById('tradeCountDisplay');
     
@@ -424,20 +443,26 @@ class OvertradeControl {
     }
     
     statusEl.style.display = 'block';
-    displayEl.textContent = `${currentTrades}/${this.settings.maxTrades} ${this.settings.timePeriod}`;
+    displayEl.textContent = `${currentOpenPositions}/${this.settings.maxTrades} open`;
     
-    // Update status color based on trade count
+    // Update status color based on open position count
     statusEl.classList.remove('warning', 'danger');
     
-    if (currentTrades >= this.settings.maxTrades) {
+    if (currentOpenPositions >= this.settings.maxTrades) {
       statusEl.classList.add('danger');
-    } else if (currentTrades >= this.settings.maxTrades * 0.8) {
+    } else if (currentOpenPositions >= this.settings.maxTrades * 0.8) {
       statusEl.classList.add('warning');
     }
   }
 
   startPeriodicCleanup() {
-    // Clean up old trades every minute
+    // Update open positions count every 30 seconds
+    setInterval(async () => {
+      await this.getCurrentOpenPositions();
+      await this.updateStatusDisplay();
+    }, 30000);
+    
+    // Clean up old trades every minute (still needed for historical data)
     setInterval(() => {
       const beforeCount = this.tradeHistory.length;
       this.cleanupOldTrades();
@@ -447,8 +472,6 @@ class OvertradeControl {
         console.log(`Cleaned up ${beforeCount - afterCount} old trades`);
         this.saveSettings();
       }
-      
-      this.updateStatusDisplay();
     }, 60000);
     
     // Save data every 5 minutes as backup
@@ -464,7 +487,9 @@ class OvertradeControl {
     });
     
     // Initial status update
-    setTimeout(() => this.updateStatusDisplay(), 100);
+    setTimeout(async () => {
+      await this.updateStatusDisplay();
+    }, 100);
   }
 
   // Public method to check before executing trades
@@ -485,27 +510,27 @@ class OvertradeControl {
   }
 
   // Get current status for display
-  getStatus() {
-    const currentTrades = this.getCurrentPeriodTrades();
+  async getStatus() {
+    const currentOpenPositions = await this.getCurrentOpenPositions();
     return {
       enabled: this.settings.enabled,
-      currentTrades,
+      currentOpenPositions,
       threshold: this.settings.maxTrades,
-      timePeriod: this.settings.timePeriod,
-      isOverThreshold: currentTrades >= this.settings.maxTrades
+      mode: 'open_positions',
+      isOverThreshold: currentOpenPositions >= this.settings.maxTrades
     };
   }
 
-  // Test method to simulate trades for testing
-  simulateTradesForTesting(count = 5) {
-    for (let i = 0; i < count; i++) {
-      this.recordTrade('manual', { test: true, index: i });
-    }
+  // Test method to simulate open positions for testing
+  async simulateOpenPositionsForTesting(count = 5) {
+    // Simulate open positions by setting the cached count
+    this.cachedOpenPositionsCount = count;
     
     // Update the persistent panel
-    this.updateStatusDisplay();
+    await this.updateStatusDisplay();
     
-    showMessage(`Simulated ${count} trades for testing`, 'info');
+    showMessage(`Simulated ${count} open positions for testing`, 'info');
+    console.log(`Simulated ${count} open positions. Use resetTradeCount() to clear.`);
   }
 
   // Export data for backup
@@ -584,18 +609,21 @@ class OvertradeControl {
   }
 
   // Get detailed status for debugging
-  getDetailedStatus() {
+  async getDetailedStatus() {
+    const currentOpenPositions = await this.getCurrentOpenPositions();
     return {
       enabled: this.settings.enabled,
       settings: this.settings,
+      mode: 'open_positions_only',
+      currentOpenPositions: currentOpenPositions,
+      threshold: this.settings.maxTrades,
       totalNewPositionsRecorded: this.tradeHistory.length,
-      currentPeriodNewPositions: this.getCurrentPeriodTrades(),
       oldestNewPosition: this.tradeHistory.length > 0 ? new Date(this.tradeHistory[0].timestamp).toLocaleString() : 'None',
       newestNewPosition: this.tradeHistory.length > 0 ? new Date(this.tradeHistory[this.tradeHistory.length - 1].timestamp).toLocaleString() : 'None',
       lastWarning: this.lastWarningTime ? new Date(this.lastWarningTime).toLocaleString() : 'Never',
       warningCount: this.warningCount,
-      nextReset: new Date(Date.now() + this.getTimePeriodMs()).toLocaleString(),
-      note: 'Only new position openings are counted. Position closures and modifications are not counted.'
+      mt5Connected: window.mt5Bridge ? window.mt5Bridge.isConnected() : false,
+      note: 'Now counting only currently open positions from MT5, not historical trades.'
     };
   }
 }
@@ -604,4 +632,4 @@ class OvertradeControl {
 window.overtradeControl = new OvertradeControl();
 
 // Add console helper for debugging
-console.log('Overtrade Control initialized. Only new position openings are counted - closures and modifications are ignored. Use window.overtradeControl.getDetailedStatus() to check status.');
+console.log('Overtrade Control initialized. Now counting only currently open positions from MT5. Use window.overtradeControl.getDetailedStatus() to check status.');

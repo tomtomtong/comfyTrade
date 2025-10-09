@@ -323,6 +323,10 @@ class MT5Bridge {
     return response.data;
   }
 
+  isConnected() {
+    return this.connected;
+  }
+
   shutdown() {
     if (this.ws) {
       this.ws.close();

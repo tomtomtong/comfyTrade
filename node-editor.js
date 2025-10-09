@@ -1041,8 +1041,18 @@ class NodeEditor {
   }
   
   async evaluateConditional(node) {
+    console.log('Evaluating conditional node:', node.params);
+    
+    // Check if symbol is set
+    if (!node.params.symbol) {
+      console.warn('No symbol set for conditional node');
+      return false;
+    }
+    
     // Get current price from MT5 bridge
     const currentPrice = await this.getCurrentPrice(node.params.symbol);
+    
+    console.log('Current price for', node.params.symbol, ':', currentPrice);
     
     if (currentPrice === null) {
       console.warn('Could not get price for', node.params.symbol);
@@ -1112,18 +1122,32 @@ class NodeEditor {
   }
   
   async getCurrentPrice(symbol) {
-    // Try to get price from MT5 bridge
-    if (window.mt5Bridge && window.mt5Bridge.isConnected()) {
+    console.log('Getting current price for symbol:', symbol);
+    
+    // Try to get price from MT5 API
+    if (window.mt5API && window.mt5API.getMarketData) {
       try {
-        const price = await window.mt5Bridge.getSymbolPrice(symbol);
-        return price;
+        console.log('Calling MT5 API getMarketData for', symbol);
+        const result = await window.mt5API.getMarketData(symbol);
+        console.log('MT5 API result:', result);
+        
+        if (result.success && result.data) {
+          console.log('Returning bid price:', result.data.bid);
+          // Return bid price for current price checks
+          return result.data.bid;
+        } else {
+          console.warn('MT5 API call failed:', result.error);
+        }
       } catch (error) {
         console.error('Error getting price from MT5:', error);
       }
+    } else {
+      console.warn('MT5 API not available');
     }
     
     // Fallback: try to get from market data if available
     if (window.marketData && window.marketData[symbol]) {
+      console.log('Using fallback market data for', symbol);
       return window.marketData[symbol].bid;
     }
     
@@ -1132,11 +1156,13 @@ class NodeEditor {
   }
   
   async getPercentageChange(symbol, timeframe) {
-    // Try to get percentage change from MT5 bridge
-    if (window.mt5Bridge && window.mt5Bridge.isConnected()) {
+    // Try to get percentage change from MT5 API
+    if (window.mt5API && window.mt5API.getPercentageChange) {
       try {
-        const change = await window.mt5Bridge.getPercentageChange(symbol, timeframe);
-        return change;
+        const result = await window.mt5API.getPercentageChange(symbol, timeframe);
+        if (result.success && result.data) {
+          return result.data.percentage_change;
+        }
       } catch (error) {
         console.error('Error getting percentage change from MT5:', error);
       }

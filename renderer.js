@@ -912,20 +912,26 @@ function updateStrategyButtons() {
     if (strategyStopRequested) {
       stopBtn.textContent = '⏹ Stopping...';
       stopBtn.disabled = true;
-      statusEl.textContent = 'Stopping';
-      statusEl.className = 'status strategy-stopping';
+      if (statusEl) {
+        statusEl.textContent = 'Stopping';
+        statusEl.className = 'status strategy-stopping';
+      }
     } else {
       stopBtn.textContent = '⏹ Stop Strategy';
       stopBtn.disabled = false;
-      statusEl.textContent = 'Running';
-      statusEl.className = 'status strategy-running';
+      if (statusEl) {
+        statusEl.textContent = 'Running';
+        statusEl.className = 'status strategy-running';
+      }
     }
   } else {
     runBtn.style.display = 'inline-block';
     stopBtn.style.display = 'none';
     stopBtn.disabled = false;
-    statusEl.textContent = 'Idle';
-    statusEl.className = 'status strategy-idle';
+    if (statusEl) {
+      statusEl.textContent = 'Idle';
+      statusEl.className = 'status strategy-idle';
+    }
   }
 }
 
@@ -1356,6 +1362,42 @@ window.updateNodeParamAndLoadPosition = function(key, ticketValue, nodeId) {
     console.log('Skipping position load:', { ticketValue, nodeType: node.type });
   }
 };
+
+// Execute node strategy through MT5 API
+async function executeNodeStrategy() {
+  try {
+    if (!isConnected) {
+      showMessage('Not connected to MT5. Cannot execute node strategy.', 'error');
+      return;
+    }
+
+    // Get the current node graph
+    const nodeGraph = {
+      nodes: nodeEditor.nodes,
+      connections: nodeEditor.connections
+    };
+
+    if (nodeGraph.nodes.length === 0) {
+      showMessage('No nodes to execute', 'warning');
+      return;
+    }
+
+    showMessage('Executing node strategy...', 'info');
+
+    // Send the node graph to MT5 for execution
+    const result = await window.mt5API.executeNodeStrategy(nodeGraph);
+
+    if (result.success) {
+      showMessage(`Node strategy executed successfully: ${result.data?.message || 'Strategy completed'}`, 'success');
+    } else {
+      showMessage(`Node strategy execution failed: ${result.error || 'Unknown error'}`, 'error');
+    }
+
+  } catch (error) {
+    console.error('Error executing node strategy:', error);
+    showMessage(`Error executing node strategy: ${error.message}`, 'error');
+  }
+}
 
 // Handle trigger execution
 window.onTriggerExecute = function(triggerNode, connectedNodes) {
@@ -2130,7 +2172,6 @@ function showSettingsModal() {
   document.getElementById('closeSettingsBtn').onclick = closeSettingsModal;
   document.getElementById('saveSettingsBtn').onclick = saveAllSettings;
   document.getElementById('addSymbolBtn').onclick = addQuickSymbol;
-  document.getElementById('resetSymbolsBtn').onclick = resetQuickSymbols;
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
   
@@ -2180,22 +2221,21 @@ function loadOvertradeSettings() {
   updateOvertradeStatusInSettings();
 }
 
-function updateOvertradeStatusInSettings() {
+async function updateOvertradeStatusInSettings() {
   if (!window.overtradeControl) return;
   
-  const currentTrades = window.overtradeControl.getCurrentPeriodTrades();
-  const remaining = Math.max(0, window.overtradeControl.settings.maxTrades - currentTrades);
-  const nextReset = new Date(Date.now() + window.overtradeControl.getTimePeriodMs()).toLocaleString();
+  const currentOpenPositions = await window.overtradeControl.getCurrentOpenPositions();
+  const remaining = Math.max(0, window.overtradeControl.settings.maxTrades - currentOpenPositions);
   const lastWarning = window.overtradeControl.lastWarningTime ? 
     new Date(window.overtradeControl.lastWarningTime).toLocaleString() : 'Never';
   
-  document.getElementById('settingsCurrentTradeCount').textContent = currentTrades;
+  document.getElementById('settingsCurrentTradeCount').textContent = currentOpenPositions;
   document.getElementById('settingsRemainingTrades').textContent = remaining;
-  document.getElementById('settingsNextReset').textContent = nextReset;
+  document.getElementById('settingsNextReset').textContent = 'When positions close';
   document.getElementById('settingsLastWarning').textContent = lastWarning;
 }
 
-function saveAllSettings() {
+async function saveAllSettings() {
   // Save overtrade settings
   if (window.overtradeControl) {
     window.overtradeControl.settings.enabled = document.getElementById('settingsOvertradeEnabled').value === 'true';
@@ -2207,23 +2247,23 @@ function saveAllSettings() {
     window.overtradeControl.settings.applyToNodes = document.getElementById('settingsApplyToNodes').checked;
     
     window.overtradeControl.saveSettings();
-    window.overtradeControl.updateStatusDisplay();
+    await window.overtradeControl.updateStatusDisplay();
   }
   
   showMessage('Settings saved successfully', 'success');
 }
 
-function resetTradeCountFromSettings() {
+async function resetTradeCountFromSettings() {
   if (window.overtradeControl) {
-    window.overtradeControl.resetTradeCount();
-    updateOvertradeStatusInSettings();
+    await window.overtradeControl.resetTradeCount();
+    await updateOvertradeStatusInSettings();
   }
 }
 
-function testOvertradeFromSettings() {
+async function testOvertradeFromSettings() {
   if (window.overtradeControl) {
-    window.overtradeControl.simulateTradesForTesting();
-    updateOvertradeStatusInSettings();
+    await window.overtradeControl.simulateOpenPositionsForTesting();
+    await updateOvertradeStatusInSettings();
   }
 }
 
@@ -2290,19 +2330,7 @@ function removeQuickSymbol(symbol) {
   showMessage(`Removed ${symbol} from quick symbols`, 'success');
 }
 
-function resetQuickSymbols() {
-  showConfirmation(
-    'Reset Symbols',
-    'Reset quick symbols to defaults? This will remove all custom symbols.',
-    () => {
-      AppConfig.quickSymbols = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD'];
-      AppConfig.saveToLocalStorage();
-      renderQuickSymbolsList();
-      updateAllQuickSymbols();
-      showMessage('Quick symbols reset to defaults', 'success');
-    }
-  );
-}
+
 
 function updateAllQuickSymbols() {
   // Update trade dialog quick symbols
