@@ -243,7 +243,7 @@ class NodeEditor {
       'trade-signal': {
         title: 'Open Position',
         inputs: ['trigger'],
-        outputs: [],
+        outputs: ['trigger'],
         params: { 
           action: 'BUY', 
           symbol: 'EURUSD',
@@ -253,7 +253,7 @@ class NodeEditor {
       'close-position': {
         title: 'Close Position',
         inputs: ['trigger'],
-        outputs: [],
+        outputs: ['trigger'],
         params: { 
           ticket: '',
           closeType: 'all'
@@ -262,7 +262,7 @@ class NodeEditor {
       'modify-position': {
         title: 'Modify Position',
         inputs: ['trigger'],
-        outputs: [],
+        outputs: ['trigger'],
         params: { 
           ticket: '',
           stopLoss: 0,
@@ -282,6 +282,16 @@ class NodeEditor {
           type: 'info',
           autoClose: true,
           duration: 5000
+        }
+      },
+
+      'end-strategy': {
+        title: 'End Strategy',
+        inputs: ['trigger'],
+        outputs: [],
+        params: { 
+          stopAllTriggers: true,
+          message: 'Strategy execution completed'
         }
       },
 
@@ -963,6 +973,28 @@ class NodeEditor {
             window.showSignalPopup(node.params);
           }
           result = true; // Popup nodes don't stop flow
+          break;
+          
+        case 'end-strategy':
+          console.log('End Strategy node reached:', node.params.message);
+          
+          // Stop all triggers if configured to do so
+          if (node.params.stopAllTriggers) {
+            console.log('Stopping all strategy triggers...');
+            this.stopAllTriggers();
+            
+            // Update strategy status in UI
+            if (window.updateStrategyStatus) {
+              window.updateStrategyStatus('stopped');
+            }
+          }
+          
+          // Show completion message
+          if (window.showMessage) {
+            window.showMessage(node.params.message, 'success');
+          }
+          
+          result = false; // End strategy nodes stop the flow
           break;
       }
     }

@@ -698,6 +698,7 @@ window.testVolumeLossFromNode = testVolumeLossFromNode;
 window.showSignalPopup = showSignalPopup;
 window.updatePriceFromPercent = updatePriceFromPercent;
 window.updatePercentFromPrice = updatePercentFromPrice;
+window.updateStrategyStatus = updateStrategyStatus;
 
 // Node editor percentage calculation functions
 function updateNodePriceFromPercent(priceKey, nodeId) {
@@ -935,6 +936,30 @@ function updateStrategyButtons() {
   }
 }
 
+// Update strategy status (called by end-strategy node)
+function updateStrategyStatus(status) {
+  const statusEl = document.getElementById('strategyStatus');
+  
+  if (status === 'stopped') {
+    isStrategyRunning = false;
+    strategyStopRequested = false;
+    updateStrategyButtons();
+    
+    if (statusEl) {
+      statusEl.textContent = 'Completed';
+      statusEl.className = 'status strategy-completed';
+      
+      // Reset to idle after 3 seconds
+      setTimeout(() => {
+        if (statusEl.textContent === 'Completed') {
+          statusEl.textContent = 'Idle';
+          statusEl.className = 'status strategy-idle';
+        }
+      }, 3000);
+    }
+  }
+}
+
 // Properties Panel
 function updatePropertiesPanel(node) {
   const panel = document.getElementById('nodeProperties');
@@ -1090,6 +1115,16 @@ function updatePropertiesPanel(node) {
             </select>
           </div>
         `;
+      } else if (key === 'stopAllTriggers' && node.type === 'end-strategy') {
+        return `
+          <div class="property-item">
+            <label>Stop All Triggers:</label>
+            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value === 'true')">
+              <option value="true" ${value ? 'selected' : ''}>Yes - Stop all triggers</option>
+              <option value="false" ${!value ? 'selected' : ''}>No - Keep triggers running</option>
+            </select>
+          </div>
+        `;
       } else if (key === 'duration' && node.type === 'signal-popup') {
         return `
           <div class="property-item">
@@ -1204,6 +1239,15 @@ function updatePropertiesPanel(node) {
     actionButtons += `
       <button class="btn btn-info btn-small" onclick="testSignalPopup('${node.id}')">
         Test Popup
+      </button>
+    `;
+  }
+  
+  // Add test end strategy button for end-strategy nodes
+  if (node.type === 'end-strategy') {
+    actionButtons += `
+      <button class="btn btn-warning btn-small" onclick="testEndStrategy('${node.id}')">
+        Test End Strategy
       </button>
     `;
   }
@@ -2029,8 +2073,28 @@ function testSignalPopup(nodeId) {
   showMessage('Testing signal popup with current parameters', 'info');
 }
 
-// Make function globally available
+// Test end strategy function
+function testEndStrategy(nodeId) {
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  if (!node || node.type !== 'end-strategy') {
+    showMessage('Please select an end strategy node first', 'error');
+    return;
+  }
+  
+  // Simulate the end strategy execution
+  console.log('Testing End Strategy node:', node.params.message);
+  
+  if (node.params.stopAllTriggers) {
+    console.log('Would stop all strategy triggers...');
+    showMessage('Test: All triggers would be stopped', 'info');
+  }
+  
+  showMessage(`Test End Strategy: ${node.params.message}`, 'success');
+}
+
+// Make functions globally available
 window.testSignalPopup = testSignalPopup;
+window.testEndStrategy = testEndStrategy;
 
 // Log Modal Functions
 function showLogModal() {

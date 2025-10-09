@@ -137,6 +137,20 @@ h4 {
   box-shadow: 0 4px 12px rgba(76, 175, 80, 0.4);
 }
 
+/* Control node buttons */
+.node-btn.control-btn {
+  background: linear-gradient(135deg, #FF7043 0%, #FF5722 100%);
+  border: 2px solid #FF8A65;
+  color: white;
+  font-weight: bold;
+}
+
+.node-btn.control-btn:hover {
+  background: linear-gradient(135deg, #FF8A65 0%, #FF7043 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(255, 87, 34, 0.4);
+}
+
 .right-sidebar {
   width: 300px;
   border-left: 1px solid #444;
@@ -2359,6 +2373,11 @@ y Status */
 
 .status.strategy-stopping {
   background: #FF9800;
+  color: white;
+}
+
+.status.strategy-completed {
+  background: #2196F3;
   color: white;
 }
 
