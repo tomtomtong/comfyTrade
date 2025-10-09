@@ -201,7 +201,7 @@ class NodeEditor {
         title: 'Trigger',
         inputs: [],
         outputs: ['trigger'],
-        params: {}
+        params: { enabled: true }
       },
       'indicator-ma': {
         title: 'Moving Average',
@@ -247,7 +247,9 @@ class NodeEditor {
         params: { 
           action: 'BUY', 
           symbol: 'EURUSD',
-          volume: 0.1
+          volume: 0.1,
+          stopLoss: 0,
+          takeProfit: 0
         }
       },
       'close-position': {
@@ -864,12 +866,18 @@ class NodeEditor {
   }
 
   async executeTrigger(node) {
-    if (!node.params.enabled) return;
+    // Only check enabled for periodic triggers, not manual triggers
+    if (node.params.enabled === false) {
+      console.log('Trigger disabled, skipping execution');
+      return;
+    }
     
     // Visual feedback
     node.lastTriggerTime = Date.now();
     
     console.log('=== Trigger started:', node.title, '===');
+    console.log('Trigger node:', node);
+    console.log('Trigger params:', node.params);
     
     // Clear execution state for new trigger cycle
     this.executionState.clear();
@@ -879,8 +887,18 @@ class NodeEditor {
       .filter(c => c.from === node)
       .map(c => ({ node: c.to, inputIndex: c.toInput }));
     
+    console.log('Connected nodes from trigger:', connectedNodes.length);
+    connectedNodes.forEach((cn, idx) => {
+      console.log(`  ${idx + 1}. ${cn.node.title} (${cn.node.type})`);
+    });
+    
+    if (connectedNodes.length === 0) {
+      console.warn('⚠️ No nodes connected to trigger! Connect the trigger output to other nodes.');
+    }
+    
     // Execute the connected nodes in sequence with async support
     for (let { node: connectedNode, inputIndex } of connectedNodes) {
+      console.log(`Executing connected node: ${connectedNode.title}`);
       await this.executeNode(connectedNode, inputIndex, true);
     }
     
@@ -893,7 +911,9 @@ class NodeEditor {
 
   async executeNode(node, inputIndex = 0, inputResult = true) {
     // Execute the node's specific logic based on its type
-    console.log('Executing node:', node.title, 'Type:', node.type);
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('▶ Executing node:', node.title, 'Type:', node.type);
+    console.log('  Input index:', inputIndex, 'Input result:', inputResult);
     
     let result = true; // Default: continue flow
     
@@ -929,13 +949,137 @@ class NodeEditor {
           break;
           
         case 'trade-signal':
-          console.log('Executing trade:', node.params.action, node.params.symbol, node.params.volume);
-          result = true; // Action nodes don't stop flow
+          console.log('=== TRADE-SIGNAL NODE EXECUTION START ===');
+          console.log('Node params:', node.params);
+          console.log('MT5 API available:', !!window.mt5API);
+          console.log('Overtrade control available:', !!window.overtradeControl);
+          
+          // Execute the actual trade
+          if (window.mt5API) {
+            console.log('MT5 API found, preparing order...');
+            try {
+              const orderData = {
+                symbol: node.params.symbol,
+                type: node.params.action,
+                volume: node.params.volume,
+                stopLoss: node.params.stopLoss || 0,
+                takeProfit: node.params.takeProfit || 0
+              };
+              
+              // Check overtrade control before executing
+              console.log('Checking overtrade control...');
+              const shouldProceed = await window.overtradeControl.checkBeforeTrade('node', orderData);
+              console.log('Overtrade control result:', shouldProceed);
+              
+              if (shouldProceed) {
+                console.log('Sending order to MT5...');
+                const tradeResult = await window.mt5API.executeOrder(orderData);
+                
+                if (tradeResult.success && tradeResult.data.success) {
+                  console.log('✓ Trade executed successfully via node:', tradeResult.data);
+                  if (window.handleRefreshPositions) {
+                    window.handleRefreshPositions();
+                  }
+                  if (window.showMessage) {
+                    window.showMessage(`Trade executed: ${node.params.action} ${node.params.volume} ${node.params.symbol}`, 'success');
+                  }
+                } else {
+                  console.error('✗ Trade execution failed via node:', tradeResult.data?.error || tradeResult.error);
+                  if (window.showMessage) {
+                    window.showMessage(`Trade failed: ${tradeResult.data?.error || tradeResult.error}`, 'error');
+                  }
+                  result = false; // Mark as failed
+                }
+              } else {
+                console.log('Trade blocked by overtrade control');
+                if (window.showMessage) {
+                  window.showMessage('Trade blocked by overtrade control', 'warning');
+                }
+                result = false; // Mark as failed
+              }
+            } catch (error) {
+              console.error('Error executing trade via node:', error);
+              if (window.showMessage) {
+                window.showMessage(`Trade error: ${error.message}`, 'error');
+              }
+              result = false; // Mark as failed
+            }
+          } else {
+            console.error('=== MT5 API NOT AVAILABLE ===');
+            console.error('window.mt5API:', window.mt5API);
+            console.error('Check if MT5 is connected in the UI');
+            if (window.showMessage) {
+              window.showMessage('MT5 API not available - check connection', 'error');
+            }
+            result = false; // Mark as failed
+          }
+          console.log('=== TRADE-SIGNAL NODE EXECUTION END ===');
           break;
           
         case 'close-position':
           console.log('Closing position:', 'Ticket:', node.params.ticket, 'Type:', node.params.closeType);
-          result = true; // Action nodes don't stop flow
+          
+          // Execute the actual position closure
+          if (node.params.ticket && window.mt5API) {
+            try {
+              if (node.params.closeType === 'all') {
+                // Close all positions
+                const positions = await window.mt5API.getPositions();
+                if (positions.success && positions.data && positions.data.length > 0) {
+                  let closedCount = 0;
+                  for (const position of positions.data) {
+                    const closeResult = await window.mt5API.closePosition(position.ticket);
+                    if (closeResult.success && closeResult.data.success) {
+                      closedCount++;
+                    }
+                  }
+                  console.log(`✓ Closed ${closedCount} positions via node`);
+                  if (window.handleRefreshPositions) {
+                    window.handleRefreshPositions();
+                  }
+                  if (window.showMessage) {
+                    window.showMessage(`Closed ${closedCount} positions`, 'success');
+                  }
+                } else {
+                  console.log('No positions to close');
+                  if (window.showMessage) {
+                    window.showMessage('No positions to close', 'info');
+                  }
+                }
+              } else {
+                // Close specific position by ticket
+                const closeResult = await window.mt5API.closePosition(node.params.ticket);
+                
+                if (closeResult.success && closeResult.data.success) {
+                  console.log('✓ Position closed successfully via node:', closeResult.data);
+                  if (window.handleRefreshPositions) {
+                    window.handleRefreshPositions();
+                  }
+                  if (window.showMessage) {
+                    window.showMessage(`Position ${node.params.ticket} closed`, 'success');
+                  }
+                } else {
+                  console.error('✗ Position closure failed via node:', closeResult.data?.error || closeResult.error);
+                  if (window.showMessage) {
+                    window.showMessage(`Close failed: ${closeResult.data?.error || closeResult.error}`, 'error');
+                  }
+                  result = false; // Mark as failed
+                }
+              }
+            } catch (error) {
+              console.error('Error closing position via node:', error);
+              if (window.showMessage) {
+                window.showMessage(`Close error: ${error.message}`, 'error');
+              }
+              result = false; // Mark as failed
+            }
+          } else {
+            console.error('Missing ticket or MT5 API not available');
+            if (window.showMessage) {
+              window.showMessage('Missing ticket or MT5 API not available', 'error');
+            }
+            result = false; // Mark as failed
+          }
           break;
           
         case 'modify-position':

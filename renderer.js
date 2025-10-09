@@ -1219,17 +1219,20 @@ function updatePropertiesPanel(node) {
   // Add get current price button for conditional check nodes
   if (node.type === 'conditional-check') {
     actionButtons += `
+      <button class="btn btn-success btn-small" onclick="testConditionalCheck('${node.id}')">
+        🧪 Test Condition
+      </button>
       <button class="btn btn-info btn-small" onclick="getCurrentPriceForNode('${node.id}')">
         Get Current Price
       </button>
     `;
   }
   
-  // Add test loss button for trade nodes
+  // Add test buttons for trade nodes
   if (node.type === 'trade-signal') {
     actionButtons += `
       <button class="btn btn-secondary btn-small" onclick="testVolumeLossFromNode('${node.id}')">
-        Test Loss
+        Calculate Loss
       </button>
     `;
   }
@@ -1243,6 +1246,15 @@ function updatePropertiesPanel(node) {
     `;
   }
   
+  // Add test buttons for logic gates
+  if (node.type === 'logic-and' || node.type === 'logic-or') {
+    actionButtons += `
+      <button class="btn btn-info btn-small" onclick="testLogicGate('${node.id}')">
+        🧪 Test Logic
+      </button>
+    `;
+  }
+  
   // Add test end strategy button for end-strategy nodes
   if (node.type === 'end-strategy') {
     actionButtons += `
@@ -1252,11 +1264,23 @@ function updatePropertiesPanel(node) {
     `;
   }
   
+  // Add test button for close-position node
+  if (node.type === 'close-position') {
+    actionButtons += `
+      <button class="btn btn-warning btn-small" onclick="testClosePosition('${node.id}')">
+        🧪 Test Close
+      </button>
+    `;
+  }
+  
   // Add load current values button for modify-position node
   if (node.type === 'modify-position' && node.params.ticket) {
     actionButtons += `
-      <button class="btn btn-secondary btn-small" onclick="loadCurrentPositionValues('${node.id}')">
+      <button class="btn btn-info btn-small" onclick="loadCurrentPositionValues('${node.id}')">
         Load Current Values
+      </button>
+      <button class="btn btn-warning btn-small" onclick="testModifyPosition('${node.id}')">
+        🧪 Test Modify
       </button>
     `;
   }
@@ -2432,3 +2456,556 @@ function updateAllQuickSymbols() {
   // Update any other quick symbol instances
   // Add more updates here as needed for node properties, etc.
 }
+
+// Show test result modal with detailed information
+function showTestResultModal(title, message, isSuccess) {
+  // Create modal if it doesn't exist
+  let modal = document.getElementById('testResultModal');
+  
+  if (!modal) {
+    modal = document.createElement('div');
+    modal.id = 'testResultModal';
+    modal.className = 'modal';
+    modal.innerHTML = `
+      <div class="modal-content" style="max-width: 500px;">
+        <h2 id="testResultTitle"></h2>
+        <div id="testResultMessage" style="white-space: pre-wrap; font-family: monospace; background: #1e1e1e; padding: 15px; border-radius: 4px; margin: 15px 0; max-height: 400px; overflow-y: auto;"></div>
+        <div class="modal-buttons">
+          <button id="closeTestResultBtn" class="btn btn-primary">OK</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(modal);
+    
+    document.getElementById('closeTestResultBtn').addEventListener('click', () => {
+      modal.classList.remove('show');
+    });
+  }
+  
+  // Update content
+  const titleEl = document.getElementById('testResultTitle');
+  const messageEl = document.getElementById('testResultMessage');
+  
+  titleEl.textContent = title;
+  titleEl.style.color = isSuccess ? '#4CAF50' : '#FF5252';
+  messageEl.textContent = message;
+  messageEl.style.color = isSuccess ? '#4CAF50' : '#FF9800';
+  
+  // Show modal
+  modal.classList.add('show');
+}
+
+// Test conditional check evaluation
+window.testConditionalCheck = async function(nodeId) {
+  console.log('=== TEST CONDITIONAL CHECK ===');
+  
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  
+  if (!node || node.type !== 'conditional-check') {
+    showMessage('❌ Invalid node - not a Conditional Check node', 'error');
+    return;
+  }
+  
+  showMessage('🔄 Testing conditional check...', 'info');
+  
+  try {
+    // Check MT5 connection
+    if (!isConnected || !window.mt5API) {
+      showMessage('MT5 not connected - Please connect first', 'error');
+      showTestResultModal('MT5 Connection Error', '❌ MT5 Not Connected!\n\nConditional checks require MT5 connection to get current prices.\n\nPlease connect to MT5 first.', false);
+      return;
+    }
+    
+    // Validate parameters
+    if (!node.params.symbol) {
+      showMessage('No symbol specified', 'error');
+      showTestResultModal('Configuration Error', '❌ No Symbol Specified!\n\nPlease enter a symbol (e.g., EURUSD) in the node properties.', false);
+      return;
+    }
+    
+    // Get current price first
+    let currentPrice = null;
+    let percentageChange = null;
+    
+    try {
+      const marketData = await window.mt5API.getMarketData(node.params.symbol);
+      if (marketData.success && marketData.data) {
+        currentPrice = marketData.data.bid;
+      }
+    } catch (error) {
+      console.error('Error getting market data:', error);
+    }
+    
+    if (!currentPrice) {
+      showMessage('Could not get current price', 'error');
+      showTestResultModal('Price Error', `❌ Could Not Get Current Price!\n\nSymbol: ${node.params.symbol}\n\nPossible causes:\n- Symbol not found in Market Watch\n- Symbol name incorrect\n- Market closed`, false);
+      return;
+    }
+    
+    // Get percentage change if needed
+    if (node.params.usePercentageChange) {
+      try {
+        const changeData = await window.mt5API.getPercentageChange(node.params.symbol, node.params.timeframe || 'M1');
+        if (changeData.success && changeData.data) {
+          percentageChange = changeData.data.percentage_change;
+        }
+      } catch (error) {
+        console.error('Error getting percentage change:', error);
+      }
+      
+      if (percentageChange === null) {
+        showMessage('Could not get percentage change', 'error');
+        showTestResultModal('Data Error', `❌ Could Not Get Percentage Change!\n\nSymbol: ${node.params.symbol}\nTimeframe: ${node.params.timeframe}\n\nPossible causes:\n- Insufficient historical data\n- Invalid timeframe`, false);
+        return;
+      }
+    }
+    
+    // Evaluate the condition
+    console.log('Evaluating condition...');
+    const result = await nodeEditor.evaluateConditional(node);
+    
+    // Build detailed result message
+    let message = '';
+    
+    if (node.params.usePercentageChange) {
+      message = `📊 Percentage Change Check\n\n`;
+      message += `Symbol: ${node.params.symbol}\n`;
+      message += `Timeframe: ${node.params.timeframe}\n`;
+      message += `Current Price: ${currentPrice.toFixed(5)}\n`;
+      message += `Percentage Change: ${percentageChange.toFixed(4)}%\n\n`;
+      message += `Condition: ${percentageChange.toFixed(4)}% ${node.params.operator} ${node.params.percentageChange}%\n\n`;
+    } else {
+      message = `💰 Price Check\n\n`;
+      message += `Symbol: ${node.params.symbol}\n`;
+      message += `Current Price: ${currentPrice.toFixed(5)}\n`;
+      message += `Target Price: ${node.params.price}\n\n`;
+      message += `Condition: ${currentPrice.toFixed(5)} ${node.params.operator} ${node.params.price}\n\n`;
+    }
+    
+    if (result) {
+      message += `✅ CONDITION PASSED!\n\n`;
+      message += `The trigger will continue to the next node.\n`;
+      message += `Connected nodes will be executed.`;
+      
+      showMessage('✅ Condition passed!', 'success');
+      showTestResultModal('Condition Passed ✅', message, true);
+    } else {
+      message += `❌ CONDITION FAILED!\n\n`;
+      message += `The trigger will STOP here.\n`;
+      message += `Connected nodes will NOT be executed.`;
+      
+      showMessage('❌ Condition failed', 'error');
+      showTestResultModal('Condition Failed ❌', message, false);
+    }
+    
+  } catch (error) {
+    console.error('Test conditional error:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+    showTestResultModal('Execution Error', `❌ Unexpected Error!\n\n${error.message}\n\nStack trace:\n${error.stack}`, false);
+  }
+};
+
+// Test logic gate evaluation
+window.testLogicGate = async function(nodeId) {
+  console.log('=== TEST LOGIC GATE ===');
+  
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  
+  if (!node || (node.type !== 'logic-and' && node.type !== 'logic-or')) {
+    showMessage('❌ Invalid node - not a Logic Gate node', 'error');
+    return;
+  }
+  
+  const gateType = node.type === 'logic-and' ? 'AND' : 'OR';
+  showMessage(`🔄 Testing ${gateType} gate...`, 'info');
+  
+  try {
+    // Find incoming connections
+    const incomingConnections = nodeEditor.connections.filter(c => c.to === node);
+    
+    if (incomingConnections.length === 0) {
+      showMessage('No inputs connected', 'warning');
+      showTestResultModal('No Inputs', `⚠️ ${gateType} Gate Has No Inputs!\n\nConnect trigger outputs from other nodes to the two inputs of this ${gateType} gate.\n\nThe ${gateType} gate needs at least 2 inputs to function.`, false);
+      return;
+    }
+    
+    if (incomingConnections.length < 2) {
+      showMessage('Only one input connected', 'warning');
+      showTestResultModal('Incomplete Setup', `⚠️ ${gateType} Gate Has Only 1 Input!\n\nCurrent connections: ${incomingConnections.length}\nRequired: 2\n\nConnect another trigger output to the second input of this ${gateType} gate.`, false);
+      return;
+    }
+    
+    // Show connection info
+    let message = `🔌 ${gateType} Gate Configuration\n\n`;
+    message += `Connected Inputs: ${incomingConnections.length}\n\n`;
+    
+    incomingConnections.forEach((conn, idx) => {
+      message += `Input ${conn.toInput + 1}: ${conn.from.title} (${conn.from.type})\n`;
+    });
+    
+    message += `\n📋 How ${gateType} Gate Works:\n\n`;
+    
+    if (node.type === 'logic-and') {
+      message += `AND Gate: ALL inputs must be TRUE\n`;
+      message += `• If Input1 = TRUE and Input2 = TRUE → Output = TRUE ✅\n`;
+      message += `• If Input1 = TRUE and Input2 = FALSE → Output = FALSE ❌\n`;
+      message += `• If Input1 = FALSE and Input2 = TRUE → Output = FALSE ❌\n`;
+      message += `• If Input1 = FALSE and Input2 = FALSE → Output = FALSE ❌\n\n`;
+      message += `Use Case: Execute trade only if BOTH conditions are met\n`;
+      message += `Example: Price > 1.08 AND RSI < 30`;
+    } else {
+      message += `OR Gate: ANY input can be TRUE\n`;
+      message += `• If Input1 = TRUE and Input2 = TRUE → Output = TRUE ✅\n`;
+      message += `• If Input1 = TRUE and Input2 = FALSE → Output = TRUE ✅\n`;
+      message += `• If Input1 = FALSE and Input2 = TRUE → Output = TRUE ✅\n`;
+      message += `• If Input1 = FALSE and Input2 = FALSE → Output = FALSE ❌\n\n`;
+      message += `Use Case: Execute trade if EITHER condition is met\n`;
+      message += `Example: Price > 1.08 OR Price < 1.06`;
+    }
+    
+    message += `\n\n💡 To test the actual logic:\n`;
+    message += `1. Run your strategy with "Execute Once"\n`;
+    message += `2. Watch the console for logic gate evaluation\n`;
+    message += `3. Check if connected nodes execute based on the result`;
+    
+    showMessage(`${gateType} gate configured with ${incomingConnections.length} inputs`, 'info');
+    showTestResultModal(`${gateType} Gate Info`, message, true);
+    
+  } catch (error) {
+    console.error('Test logic gate error:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+    showTestResultModal('Execution Error', `❌ Unexpected Error!\n\n${error.message}`, false);
+  }
+};
+
+// Test close position execution
+window.testClosePosition = async function(nodeId) {
+  console.log('=== TEST CLOSE POSITION ===');
+  
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  
+  if (!node || node.type !== 'close-position') {
+    showMessage('❌ Invalid node - not a Close Position node', 'error');
+    return;
+  }
+  
+  showMessage('🔄 Testing position closure...', 'info');
+  
+  try {
+    // Check MT5 connection
+    if (!isConnected || !window.mt5API) {
+      showMessage('MT5 not connected - Please connect first', 'error');
+      showTestResultModal('MT5 Connection Error', '❌ MT5 Not Connected!\n\nPlease connect to MT5 first.', false);
+      return;
+    }
+    
+    // Check close type
+    if (node.params.closeType === 'all') {
+      // Close all positions
+      const positions = await window.mt5API.getPositions();
+      
+      if (!positions.success || !positions.data || positions.data.length === 0) {
+        showMessage('No positions to close', 'info');
+        showTestResultModal('No Positions', 'ℹ️ No open positions found to close.', false);
+        return;
+      }
+      
+      let successCount = 0;
+      let failCount = 0;
+      const results = [];
+      
+      for (const position of positions.data) {
+        const result = await window.mt5API.closePosition(position.ticket);
+        if (result.success && result.data.success) {
+          successCount++;
+          results.push(`✅ Closed ticket ${position.ticket}`);
+        } else {
+          failCount++;
+          results.push(`❌ Failed ticket ${position.ticket}: ${result.data?.error || result.error}`);
+        }
+      }
+      
+      const message = `Close All Results:\n\n${results.join('\n')}\n\nSuccess: ${successCount}\nFailed: ${failCount}`;
+      showMessage(`Closed ${successCount}/${positions.data.length} positions`, successCount > 0 ? 'success' : 'error');
+      showTestResultModal('Close All Positions', message, successCount > 0);
+      
+      if (successCount > 0 && window.handleRefreshPositions) {
+        setTimeout(() => window.handleRefreshPositions(), 500);
+      }
+      
+    } else {
+      // Close specific position
+      if (!node.params.ticket) {
+        showMessage('No ticket specified', 'error');
+        showTestResultModal('Configuration Error', '❌ No Ticket Specified!\n\nPlease select a position ticket from the dropdown.', false);
+        return;
+      }
+      
+      const result = await window.mt5API.closePosition(node.params.ticket);
+      
+      if (result.success && result.data.success) {
+        const message = `✅ Position Closed Successfully!\n\nTicket: ${node.params.ticket}`;
+        showMessage(`Position ${node.params.ticket} closed`, 'success');
+        showTestResultModal('Position Closed', message, true);
+        
+        if (window.handleRefreshPositions) {
+          setTimeout(() => window.handleRefreshPositions(), 500);
+        }
+      } else {
+        const message = `❌ Failed to Close Position!\n\nTicket: ${node.params.ticket}\nError: ${result.data?.error || result.error}\n\nPossible causes:\n- Position already closed\n- Invalid ticket number\n- Market closed`;
+        showMessage(`Close failed: ${result.data?.error || result.error}`, 'error');
+        showTestResultModal('Close Failed', message, false);
+      }
+    }
+    
+  } catch (error) {
+    console.error('Test close error:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+    showTestResultModal('Execution Error', `❌ Unexpected Error!\n\n${error.message}`, false);
+  }
+};
+
+// Test modify position execution
+window.testModifyPosition = async function(nodeId) {
+  console.log('=== TEST MODIFY POSITION ===');
+  
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  
+  if (!node || node.type !== 'modify-position') {
+    showMessage('❌ Invalid node - not a Modify Position node', 'error');
+    return;
+  }
+  
+  showMessage('🔄 Testing position modification...', 'info');
+  
+  try {
+    // Check MT5 connection
+    if (!isConnected || !window.mt5API) {
+      showMessage('MT5 not connected - Please connect first', 'error');
+      showTestResultModal('MT5 Connection Error', '❌ MT5 Not Connected!\n\nPlease connect to MT5 first.', false);
+      return;
+    }
+    
+    // Validate ticket
+    if (!node.params.ticket) {
+      showMessage('No ticket specified', 'error');
+      showTestResultModal('Configuration Error', '❌ No Ticket Specified!\n\nPlease select a position ticket from the dropdown.', false);
+      return;
+    }
+    
+    // Execute modification
+    const result = await window.mt5API.modifyPosition(
+      node.params.ticket,
+      node.params.stopLoss || 0,
+      node.params.takeProfit || 0
+    );
+    
+    if (result.success && result.data.success) {
+      const message = `✅ Position Modified Successfully!\n\nTicket: ${node.params.ticket}\nStop Loss: ${node.params.stopLoss || 'None'}\nTake Profit: ${node.params.takeProfit || 'None'}`;
+      showMessage(`Position ${node.params.ticket} modified`, 'success');
+      showTestResultModal('Position Modified', message, true);
+      
+      if (window.handleRefreshPositions) {
+        setTimeout(() => window.handleRefreshPositions(), 500);
+      }
+    } else {
+      const message = `❌ Failed to Modify Position!\n\nTicket: ${node.params.ticket}\nError: ${result.data?.error || result.error}\n\nPossible causes:\n- Invalid SL/TP values\n- Position already closed\n- SL/TP too close to current price`;
+      showMessage(`Modify failed: ${result.data?.error || result.error}`, 'error');
+      showTestResultModal('Modify Failed', message, false);
+    }
+    
+  } catch (error) {
+    console.error('Test modify error:', error);
+    showMessage(`Error: ${error.message}`, 'error');
+    showTestResultModal('Execution Error', `❌ Unexpected Error!\n\n${error.message}`, false);
+  }
+};
+
+// Debug function to test Open Position node execution
+window.testOpenPositionNode = async function() {
+  console.log('=== TESTING OPEN POSITION NODE ===');
+  
+  // Check prerequisites
+  console.log('1. Checking MT5 connection...');
+  console.log('   - isConnected:', isConnected);
+  console.log('   - window.mt5API:', !!window.mt5API);
+  
+  if (!isConnected || !window.mt5API) {
+    console.error('❌ MT5 is not connected! Please connect to MT5 first.');
+    showMessage('Please connect to MT5 first', 'error');
+    return;
+  }
+  
+  console.log('✓ MT5 is connected');
+  
+  // Check for trade-signal nodes
+  console.log('2. Checking for Open Position nodes...');
+  const tradeNodes = nodeEditor.nodes.filter(n => n.type === 'trade-signal');
+  console.log('   - Found', tradeNodes.length, 'Open Position node(s)');
+  
+  if (tradeNodes.length === 0) {
+    console.error('❌ No Open Position nodes found! Please add one to the canvas.');
+    showMessage('No Open Position nodes found', 'error');
+    return;
+  }
+  
+  const testNode = tradeNodes[0];
+  console.log('✓ Using first Open Position node:', testNode);
+  console.log('   - Symbol:', testNode.params.symbol);
+  console.log('   - Action:', testNode.params.action);
+  console.log('   - Volume:', testNode.params.volume);
+  
+  // Test overtrade control
+  console.log('3. Testing overtrade control...');
+  const orderData = {
+    symbol: testNode.params.symbol,
+    type: testNode.params.action,
+    volume: testNode.params.volume,
+    stopLoss: testNode.params.stopLoss || 0,
+    takeProfit: testNode.params.takeProfit || 0
+  };
+  
+  try {
+    const shouldProceed = await window.overtradeControl.checkBeforeTrade('test', orderData);
+    console.log('   - Overtrade control result:', shouldProceed);
+    
+    if (!shouldProceed) {
+      console.warn('⚠️ Trade blocked by overtrade control');
+      showMessage('Trade blocked by overtrade control', 'warning');
+      return;
+    }
+    
+    console.log('✓ Overtrade control passed');
+    
+    // Test actual trade execution
+    console.log('4. Executing test trade...');
+    const result = await window.mt5API.executeOrder(orderData);
+    console.log('   - Trade result:', result);
+    
+    if (result.success && result.data.success) {
+      console.log('✅ TEST PASSED! Trade executed successfully');
+      console.log('   - Ticket:', result.data.ticket);
+      console.log('   - Price:', result.data.price);
+      showMessage(`Test trade executed! Ticket: ${result.data.ticket}`, 'success');
+      
+      // Refresh positions
+      if (window.handleRefreshPositions) {
+        await window.handleRefreshPositions();
+      }
+    } else {
+      console.error('❌ TEST FAILED! Trade execution failed');
+      console.error('   - Error:', result.data?.error || result.error);
+      showMessage(`Test trade failed: ${result.data?.error || result.error}`, 'error');
+    }
+  } catch (error) {
+    console.error('❌ TEST ERROR:', error);
+    showMessage(`Test error: ${error.message}`, 'error');
+  }
+  
+  console.log('=== TEST COMPLETE ===');
+};
+
+console.log('Debug function loaded. Run window.testOpenPositionNode() to test Open Position node execution.');
+
+
+// Debug function to check strategy setup
+window.debugStrategy = function() {
+  console.log('=== STRATEGY DEBUG INFO ===');
+  
+  // Check nodes
+  console.log('\n1. NODES:');
+  console.log('Total nodes:', nodeEditor.nodes.length);
+  
+  const triggers = nodeEditor.nodes.filter(n => n.type === 'trigger');
+  const tradeNodes = nodeEditor.nodes.filter(n => n.type === 'trade-signal');
+  
+  console.log('Trigger nodes:', triggers.length);
+  triggers.forEach((t, idx) => {
+    console.log(`  ${idx + 1}. ${t.title} - Enabled: ${t.params.enabled !== false}`);
+  });
+  
+  console.log('Open Position nodes:', tradeNodes.length);
+  tradeNodes.forEach((t, idx) => {
+    console.log(`  ${idx + 1}. ${t.title} - Symbol: ${t.params.symbol}, Action: ${t.params.action}, Volume: ${t.params.volume}`);
+  });
+  
+  // Check connections
+  console.log('\n2. CONNECTIONS:');
+  console.log('Total connections:', nodeEditor.connections.length);
+  
+  nodeEditor.connections.forEach((conn, idx) => {
+    console.log(`  ${idx + 1}. ${conn.from.title} → ${conn.to.title}`);
+  });
+  
+  // Check if triggers are connected to trade nodes
+  console.log('\n3. TRIGGER → TRADE CONNECTIONS:');
+  let foundConnection = false;
+  
+  triggers.forEach(trigger => {
+    const connectedTrades = nodeEditor.connections
+      .filter(c => c.from === trigger && c.to.type === 'trade-signal')
+      .map(c => c.to);
+    
+    if (connectedTrades.length > 0) {
+      console.log(`✓ ${trigger.title} → ${connectedTrades.map(t => t.title).join(', ')}`);
+      foundConnection = true;
+    } else {
+      console.warn(`⚠️ ${trigger.title} is NOT connected to any Open Position nodes!`);
+    }
+  });
+  
+  if (!foundConnection && triggers.length > 0 && tradeNodes.length > 0) {
+    console.error('❌ NO CONNECTIONS between Trigger and Open Position nodes!');
+    console.log('\n💡 FIX: Drag from the Trigger output (green circle on right) to the Open Position input (blue circle on left)');
+  }
+  
+  // Check MT5 connection
+  console.log('\n4. MT5 CONNECTION:');
+  console.log('Connected:', isConnected);
+  console.log('MT5 API available:', !!window.mt5API);
+  
+  // Summary
+  console.log('\n5. SUMMARY:');
+  if (triggers.length === 0) {
+    console.error('❌ No Trigger nodes found - Add a Trigger node');
+  } else {
+    console.log('✓ Trigger nodes present');
+  }
+  
+  if (tradeNodes.length === 0) {
+    console.error('❌ No Open Position nodes found - Add an Open Position node');
+  } else {
+    console.log('✓ Open Position nodes present');
+  }
+  
+  if (!foundConnection && triggers.length > 0 && tradeNodes.length > 0) {
+    console.error('❌ Nodes not connected - Connect Trigger to Open Position');
+  } else if (foundConnection) {
+    console.log('✓ Nodes are connected');
+  }
+  
+  if (!isConnected) {
+    console.error('❌ MT5 not connected - Click "Connect to MT5"');
+  } else {
+    console.log('✓ MT5 connected');
+  }
+  
+  console.log('\n=== END DEBUG INFO ===');
+  
+  // Return summary object
+  return {
+    nodes: {
+      total: nodeEditor.nodes.length,
+      triggers: triggers.length,
+      trades: tradeNodes.length
+    },
+    connections: {
+      total: nodeEditor.connections.length,
+      triggerToTrade: foundConnection
+    },
+    mt5Connected: isConnected,
+    ready: triggers.length > 0 && tradeNodes.length > 0 && foundConnection && isConnected
+  };
+};
+
+console.log('Debug helper loaded. Run window.debugStrategy() to check your strategy setup.');
