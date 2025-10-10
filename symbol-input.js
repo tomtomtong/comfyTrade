@@ -169,16 +169,16 @@ class SymbolInput {
     }
     
     handleKeyNavigation(e) {
-        if (!this.isDropdownOpen) return;
-        
         switch (e.key) {
             case 'ArrowDown':
+                if (!this.isDropdownOpen) return;
                 e.preventDefault();
                 this.selectedIndex = Math.min(this.selectedIndex + 1, this.filteredSymbols.length - 1);
                 this.updateSelection();
                 break;
                 
             case 'ArrowUp':
+                if (!this.isDropdownOpen) return;
                 e.preventDefault();
                 this.selectedIndex = Math.max(this.selectedIndex - 1, -1);
                 this.updateSelection();
@@ -186,8 +186,14 @@ class SymbolInput {
                 
             case 'Enter':
                 e.preventDefault();
-                if (this.selectedIndex >= 0 && this.filteredSymbols[this.selectedIndex]) {
+                if (this.isDropdownOpen && this.selectedIndex >= 0 && this.filteredSymbols[this.selectedIndex]) {
                     this.selectSymbol(this.filteredSymbols[this.selectedIndex].name);
+                } else {
+                    // Handle Enter key when dropdown is not open or no selection
+                    const currentValue = this.input.value.trim();
+                    if (currentValue && this.options.onEnterKey) {
+                        this.options.onEnterKey(currentValue);
+                    }
                 }
                 break;
                 

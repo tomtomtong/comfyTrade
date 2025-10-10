@@ -1,1 +1,0 @@
-always merge all readme technical guide into one document

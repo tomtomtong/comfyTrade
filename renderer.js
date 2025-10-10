@@ -441,6 +441,13 @@ async function handleConnect() {
     handleRefreshAccount();
     handleRefreshPositions();
     
+    // Reinitialize settings symbol input if settings modal is open
+    if (document.getElementById('settingsModal').classList.contains('show')) {
+      // Clear existing input and reinitialize with full functionality
+      window.settingsSymbolInput = null;
+      initializeSettingsSymbolInput();
+    }
+    
     // Start auto-refresh
     startAutoRefresh();
   } else {
@@ -2300,10 +2307,23 @@ function createSignalPopup() {
 
 
 // Settings Modal Functions
+let settingsHasUnsavedChanges = false;
+let originalSettingsState = {};
+
 function showSettingsModal() {
   document.getElementById('settingsModal').classList.add('show');
   renderQuickSymbolsList();
   loadOvertradeSettings();
+  
+  // Initialize symbol input for settings if not already done
+  initializeSettingsSymbolInput();
+  
+  // Store original settings state for comparison
+  storeOriginalSettingsState();
+  
+  // Reset unsaved changes flag
+  settingsHasUnsavedChanges = false;
+  updateSettingsVisualIndicator();
   
   // Setup tab switching
   document.querySelectorAll('.settings-tab-btn').forEach(btn => {
@@ -2311,22 +2331,195 @@ function showSettingsModal() {
   });
   
   // Setup event listeners
-  document.getElementById('closeSettingsBtn').onclick = closeSettingsModal;
-  document.getElementById('saveSettingsBtn').onclick = saveAllSettings;
+  document.getElementById('closeSettingsBtn').onclick = handleCloseSettings;
+  document.getElementById('saveSettingsBtn').onclick = handleSaveSettings;
   document.getElementById('addSymbolBtn').onclick = addQuickSymbol;
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
   
-  // Allow Enter key to add symbol
-  document.getElementById('newSymbolInput').onkeypress = (e) => {
-    if (e.key === 'Enter') {
-      addQuickSymbol();
-    }
-  };
+  // Track changes in settings form
+  setupSettingsChangeTracking();
+  
+  // Handle modal close events (clicking outside or pressing Escape)
+  setupModalCloseHandlers();
 }
 
 function closeSettingsModal() {
   document.getElementById('settingsModal').classList.remove('show');
+}
+
+function handleCloseSettings() {
+  if (settingsHasUnsavedChanges) {
+    showUnsavedSettingsDialog();
+  } else {
+    closeSettingsModal();
+  }
+}
+
+function showUnsavedSettingsDialog() {
+  // Create a custom dialog for better UX
+  const dialog = document.createElement('div');
+  dialog.className = 'unsaved-changes-dialog';
+  dialog.innerHTML = `
+    <div class="dialog-overlay">
+      <div class="dialog-content">
+        <h3>Unsaved Changes</h3>
+        <p>You have unsaved changes in your settings. What would you like to do?</p>
+        <div class="dialog-buttons">
+          <button id="saveAndCloseBtn" class="btn btn-primary">Save & Close</button>
+          <button id="discardChangesBtn" class="btn btn-secondary">Discard Changes</button>
+          <button id="continueEditingBtn" class="btn btn-tertiary">Continue Editing</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.appendChild(dialog);
+  
+  // Handle button clicks
+  document.getElementById('saveAndCloseBtn').onclick = () => {
+    document.body.removeChild(dialog);
+    handleSaveSettings().then(() => {
+      closeSettingsModal();
+    });
+  };
+  
+  document.getElementById('discardChangesBtn').onclick = () => {
+    document.body.removeChild(dialog);
+    closeSettingsModal();
+  };
+  
+  document.getElementById('continueEditingBtn').onclick = () => {
+    document.body.removeChild(dialog);
+  };
+  
+  // Close on overlay click
+  dialog.querySelector('.dialog-overlay').onclick = (e) => {
+    if (e.target === e.currentTarget) {
+      document.body.removeChild(dialog);
+    }
+  };
+}
+
+async function handleSaveSettings() {
+  await saveAllSettings();
+  settingsHasUnsavedChanges = false;
+  updateSettingsVisualIndicator();
+}
+
+function storeOriginalSettingsState() {
+  originalSettingsState = {
+    quickSymbols: [...AppConfig.getQuickSymbols()],
+    overtradeSettings: window.overtradeControl ? { ...window.overtradeControl.settings } : null
+  };
+}
+
+function setupSettingsChangeTracking() {
+  // Track changes in overtrade settings
+  const overtradeInputs = [
+    'settingsOvertradeEnabled',
+    'settingsMaxTrades', 
+    'settingsTimePeriod',
+    'settingsReminderFrequency',
+    'settingsApplyToManual',
+    'settingsApplyToStrategy',
+    'settingsApplyToNodes'
+  ];
+  
+  overtradeInputs.forEach(inputId => {
+    const element = document.getElementById(inputId);
+    if (element) {
+      element.addEventListener('change', markSettingsAsChanged);
+      element.addEventListener('input', markSettingsAsChanged);
+    }
+  });
+  
+  // Track changes in quick symbols (will be handled by add/remove functions)
+  // The addQuickSymbol and removeQuickSymbol functions should call markSettingsAsChanged
+}
+
+function markSettingsAsChanged() {
+  settingsHasUnsavedChanges = true;
+  updateSettingsVisualIndicator();
+}
+
+function updateSettingsVisualIndicator() {
+  const modal = document.getElementById('settingsModal');
+  if (settingsHasUnsavedChanges) {
+    modal.classList.add('has-unsaved-changes');
+  } else {
+    modal.classList.remove('has-unsaved-changes');
+  }
+}
+
+function setupModalCloseHandlers() {
+  const modal = document.getElementById('settingsModal');
+  
+  // Handle clicking outside the modal
+  modal.onclick = (e) => {
+    if (e.target === modal) {
+      handleCloseSettings();
+    }
+  };
+  
+  // Handle Escape key
+  const handleEscape = (e) => {
+    if (e.key === 'Escape' && modal.classList.contains('show')) {
+      handleCloseSettings();
+    }
+  };
+  
+  // Remove any existing escape handler to avoid duplicates
+  document.removeEventListener('keydown', handleEscape);
+  document.addEventListener('keydown', handleEscape);
+}
+
+function initializeSettingsSymbolInput() {
+  const container = document.getElementById('settingsSymbolInputContainer');
+  
+  // Only initialize if container exists and not already initialized
+  if (container && !window.settingsSymbolInput) {
+    if (isConnected) {
+      window.settingsSymbolInput = new SymbolInput(container, {
+        placeholder: 'Search and add symbol (e.g., EURUSD, XAUUSD)',
+        onSymbolSelect: (symbol, symbolData) => {
+          // Auto-add symbol when selected from dropdown
+          if (symbol && symbol.length >= 3) {
+            addQuickSymbolFromInput(symbol);
+          }
+        },
+        onEnterKey: (symbol) => {
+          // Add symbol when Enter is pressed
+          if (symbol && symbol.length >= 3) {
+            addQuickSymbolFromInput(symbol);
+          }
+        }
+      });
+    } else {
+      // Show a message that connection is required for symbol search
+      container.innerHTML = `
+        <div class="symbol-input-placeholder">
+          <input type="text" 
+                 class="symbol-input" 
+                 placeholder="Connect to MT5 for symbol search, or type manually"
+                 id="manualSymbolInput">
+        </div>
+      `;
+      
+      // Add manual input handling for when not connected
+      const manualInput = container.querySelector('#manualSymbolInput');
+      if (manualInput) {
+        manualInput.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            const symbol = e.target.value.trim();
+            if (symbol && symbol.length >= 3) {
+              addQuickSymbolFromInput(symbol);
+            }
+          }
+        });
+      }
+    }
+  }
 }
 
 function switchSettingsTab(tabName) {
@@ -2392,6 +2585,10 @@ async function saveAllSettings() {
     await window.overtradeControl.updateStatusDisplay();
   }
   
+  // Reset unsaved changes flag
+  settingsHasUnsavedChanges = false;
+  updateSettingsVisualIndicator();
+  
   showMessage('Settings saved successfully', 'success');
 }
 
@@ -2439,9 +2636,15 @@ function renderQuickSymbolsList() {
 }
 
 function addQuickSymbol() {
-  const input = document.getElementById('newSymbolInput');
-  const symbol = input.value.trim();
-  
+  if (window.settingsSymbolInput) {
+    const symbol = window.settingsSymbolInput.getValue().trim();
+    addQuickSymbolFromInput(symbol);
+  } else {
+    showMessage('Symbol input not initialized', 'error');
+  }
+}
+
+function addQuickSymbolFromInput(symbol) {
   if (!symbol) {
     showMessage('Please enter a symbol', 'error');
     return;
@@ -2453,22 +2656,30 @@ function addQuickSymbol() {
   }
   
   const symbols = AppConfig.getQuickSymbols();
-  if (symbols.includes(symbol)) {
+  if (symbols.includes(symbol.toUpperCase())) {
     showMessage('Symbol already exists', 'warning');
     return;
   }
   
-  AppConfig.addQuickSymbol(symbol);
-  input.value = '';
+  // Add symbol in uppercase for consistency
+  AppConfig.addQuickSymbol(symbol.toUpperCase());
+  
+  // Clear the input
+  if (window.settingsSymbolInput) {
+    window.settingsSymbolInput.setValue('');
+  }
+  
   renderQuickSymbolsList();
   updateAllQuickSymbols();
-  showMessage(`Added ${symbol} to quick symbols`, 'success');
+  markSettingsAsChanged();
+  showMessage(`Added ${symbol.toUpperCase()} to quick symbols`, 'success');
 }
 
 function removeQuickSymbol(symbol) {
   AppConfig.removeQuickSymbol(symbol);
   renderQuickSymbolsList();
   updateAllQuickSymbols();
+  markSettingsAsChanged();
   showMessage(`Removed ${symbol} from quick symbols`, 'success');
 }
 
