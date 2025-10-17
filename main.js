@@ -197,6 +197,15 @@ ipcMain.handle('mt5:updateTwilioConfig', async (event, configData) => {
     }
 });
 
+ipcMain.handle('mt5:getClosedPositions', async (event, daysBack) => {
+    try {
+        const result = await mt5Bridge.getClosedPositions(daysBack);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
 // Handler for opening external URLs
 ipcMain.handle('electron:openExternal', async (event, url) => {
     try {

@@ -129,6 +129,18 @@ function setupEventListeners() {
   // Account refresh
   document.getElementById('refreshAccountBtn').addEventListener('click', handleRefreshAccount);
   
+  // Position tabs
+  document.querySelectorAll('.positions-tab-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const tabName = e.target.dataset.tab;
+      switchPositionsTab(tabName);
+    });
+  });
+  
+  // Closed positions controls
+  document.getElementById('refreshClosedPositionsBtn').addEventListener('click', handleRefreshClosedPositions);
+  document.getElementById('closedPositionsDays').addEventListener('change', handleRefreshClosedPositions);
+  
   // Volume loss calculation
   document.getElementById('tradeVolume').addEventListener('input', calculateVolumeLoss);
   document.getElementById('tradeType').addEventListener('change', calculateVolumeLoss);
@@ -565,6 +577,125 @@ function openTradingViewForSymbol(symbol) {
   } catch (error) {
     console.error('Error opening TradingView:', error);
     showMessage('Could not open TradingView', 'error');
+  }
+}
+
+// Position Tabs Management
+function switchPositionsTab(tabName) {
+  // Update tab buttons
+  document.querySelectorAll('.positions-tab-btn').forEach(btn => {
+    btn.classList.remove('active');
+  });
+  document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+  
+  // Update tab content
+  document.querySelectorAll('.positions-tab').forEach(tab => {
+    tab.classList.remove('active');
+  });
+  document.getElementById(`${tabName}PositionsTab`).classList.add('active');
+  
+  // Load closed positions if switching to closed tab
+  if (tabName === 'closed') {
+    handleRefreshClosedPositions();
+  }
+}
+
+// Closed Positions Management
+async function handleRefreshClosedPositions() {
+  if (!isConnected) {
+    document.getElementById('closedPositionsList').innerHTML = '<p class="no-data">Please connect to MT5 first</p>';
+    return;
+  }
+
+  const daysBack = parseInt(document.getElementById('closedPositionsDays').value);
+  const container = document.getElementById('closedPositionsList');
+  
+  try {
+    container.innerHTML = '<p class="no-data">Loading closed positions...</p>';
+    
+    const result = await window.mt5API.getClosedPositions(daysBack);
+    
+    if (result.success) {
+      const closedPositions = result.data;
+      
+      if (!closedPositions || closedPositions.length === 0) {
+        container.innerHTML = `<p class="no-data">No closed positions found in the last ${daysBack} day${daysBack > 1 ? 's' : ''}</p>`;
+        return;
+      }
+      
+      // Calculate summary statistics
+      const totalProfit = closedPositions.reduce((sum, pos) => sum + pos.profit, 0);
+      const profitableCount = closedPositions.filter(pos => pos.profit > 0).length;
+      const winRate = ((profitableCount / closedPositions.length) * 100).toFixed(1);
+      
+      // Create summary header
+      const summaryHtml = `
+        <div class="closed-positions-summary">
+          <div class="summary-item">
+            <span class="summary-label">Total P&L:</span>
+            <span class="summary-value ${totalProfit >= 0 ? 'positive' : 'negative'}">$${totalProfit.toFixed(2)}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Trades:</span>
+            <span class="summary-value">${closedPositions.length}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Win Rate:</span>
+            <span class="summary-value">${winRate}%</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Winners:</span>
+            <span class="summary-value positive">${profitableCount}</span>
+          </div>
+          <div class="summary-item">
+            <span class="summary-label">Losers:</span>
+            <span class="summary-value negative">${closedPositions.length - profitableCount}</span>
+          </div>
+        </div>
+      `;
+      
+      // Create position items
+      const positionsHtml = closedPositions.map(pos => {
+        const profitClass = pos.profit >= 0 ? 'profit' : 'loss';
+        const profitSign = pos.profit >= 0 ? '+' : '';
+        const openTime = new Date(pos.open_time).toLocaleString();
+        const closeTime = new Date(pos.close_time).toLocaleString();
+        
+        return `
+          <div class="closed-position-item ${profitClass}">
+            <div class="closed-position-header">
+              <div class="closed-position-symbol">${pos.symbol} ${pos.type}</div>
+              <div class="closed-position-profit ${pos.profit >= 0 ? 'positive' : 'negative'}">
+                ${profitSign}$${pos.profit.toFixed(2)}
+              </div>
+            </div>
+            <div class="closed-position-details">
+              <div>Ticket: ${pos.ticket}</div>
+              <div>Volume: ${pos.volume}</div>
+              <div>Duration: ${pos.duration_minutes}m</div>
+              <div>Open: ${pos.open_price.toFixed(5)}</div>
+              <div>Close: ${pos.close_price.toFixed(5)}</div>
+              <div>Swap: $${pos.swap.toFixed(2)}</div>
+              <div>Commission: $${pos.commission.toFixed(2)}</div>
+            </div>
+            <div class="closed-position-timing">
+              <div>Opened: ${openTime}</div>
+              <div>Closed: ${closeTime}</div>
+              ${pos.comment ? `<div>Comment: ${pos.comment}</div>` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+      
+      container.innerHTML = summaryHtml + '<div class="positions-list">' + positionsHtml + '</div>';
+      
+    } else {
+      container.innerHTML = `<p class="no-data">Error loading closed positions: ${result.error}</p>`;
+    }
+    
+  } catch (error) {
+    console.error('Error loading closed positions:', error);
+    container.innerHTML = `<p class="no-data">Error loading closed positions: ${error.message}</p>`;
   }
 }
 

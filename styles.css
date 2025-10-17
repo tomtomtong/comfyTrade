@@ -339,6 +339,86 @@ h4 {
   margin-bottom: 10px;
 }
 
+/* Position Tabs */
+.positions-tabs {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 15px;
+  border-bottom: 1px solid #444;
+}
+
+.positions-tab-btn {
+  padding: 8px 16px;
+  background: #1e1e1e;
+  border: none;
+  color: #888;
+  cursor: pointer;
+  border-radius: 4px 4px 0 0;
+  font-size: 13px;
+  transition: all 0.2s;
+}
+
+.positions-tab-btn:hover {
+  background: #333;
+  color: #e0e0e0;
+}
+
+.positions-tab-btn.active {
+  background: #64B5F6;
+  color: white;
+}
+
+.positions-tab {
+  display: none;
+  flex: 1;
+  overflow: hidden;
+  flex-direction: column;
+}
+
+.positions-tab.active {
+  display: flex;
+}
+
+/* Closed Positions Filter Panel (Right Sidebar) */
+.closed-positions-filter-panel {
+  background: #2d2d2d;
+  border-radius: 4px;
+  padding: 12px;
+  margin-bottom: 15px;
+}
+
+.closed-positions-filter-panel h3 {
+  margin: 0 0 10px 0;
+  font-size: 14px;
+  color: #e0e0e0;
+}
+
+.filter-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.filter-controls .form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.filter-controls label {
+  font-size: 12px;
+  color: #888;
+}
+
+.filter-controls select {
+  background: #1e1e1e;
+  border: 1px solid #444;
+  color: #e0e0e0;
+  padding: 6px 8px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
 .positions-list {
   flex: 1;
   overflow-y: auto;
@@ -376,6 +456,111 @@ h4 {
 .position-details {
   color: #888;
   font-size: 11px;
+}
+
+/* Closed Position Styles */
+.closed-position-item {
+  background: #1e1e1e;
+  padding: 12px;
+  border-radius: 4px;
+  border-left: 3px solid #666;
+  font-size: 12px;
+  min-width: 320px;
+  flex-shrink: 0;
+}
+
+.closed-position-item.profit {
+  border-left-color: #4CAF50;
+}
+
+.closed-position-item.loss {
+  border-left-color: #f44336;
+}
+
+.closed-position-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.closed-position-symbol {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.closed-position-profit {
+  font-weight: bold;
+  font-size: 13px;
+}
+
+.closed-position-profit.positive {
+  color: #4CAF50;
+}
+
+.closed-position-profit.negative {
+  color: #f44336;
+}
+
+.closed-position-details {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  color: #888;
+  font-size: 11px;
+  margin-bottom: 6px;
+}
+
+.closed-position-details > div:first-child {
+  grid-column: 1 / -1;
+  font-weight: bold;
+  color: #aaa;
+}
+
+.closed-position-timing {
+  color: #666;
+  font-size: 10px;
+  text-align: center;
+  padding-top: 6px;
+  border-top: 1px solid #333;
+}
+
+/* Closed Positions Summary */
+.closed-positions-summary {
+  background: #333;
+  padding: 12px;
+  border-radius: 4px;
+  margin-bottom: 15px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 15px;
+}
+
+.summary-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.summary-label {
+  font-size: 11px;
+  color: #888;
+  margin-bottom: 4px;
+}
+
+.summary-value {
+  font-size: 14px;
+  font-weight: bold;
+  color: #e0e0e0;
+}
+
+.summary-value.positive {
+  color: #4CAF50;
+}
+
+.summary-value.negative {
+  color: #f44336;
 }
 
 .no-data {

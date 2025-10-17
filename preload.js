@@ -17,7 +17,8 @@ contextBridge.exposeInMainWorld('mt5API', {
   getPercentageChange: (symbol, timeframe) => ipcRenderer.invoke('mt5:getPercentageChange', { symbol, timeframe }),
   sendTwilioAlert: (alertData) => ipcRenderer.invoke('mt5:sendTwilioAlert', alertData),
   getTwilioConfig: () => ipcRenderer.invoke('mt5:getTwilioConfig'),
-  updateTwilioConfig: (configData) => ipcRenderer.invoke('mt5:updateTwilioConfig', configData)
+  updateTwilioConfig: (configData) => ipcRenderer.invoke('mt5:updateTwilioConfig', configData),
+  getClosedPositions: (daysBack) => ipcRenderer.invoke('mt5:getClosedPositions', daysBack)
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -401,6 +401,16 @@ class MT5Bridge {
     return response.data;
   }
 
+  async getClosedPositions(daysBack = 7) {
+    if (!this.connected) {
+      throw new Error('Not connected to MT5');
+    }
+
+    console.log(`Getting closed positions for last ${daysBack} days...`);
+    const response = await this.sendMessage('getClosedPositions', { daysBack });
+    return response.data;
+  }
+
   isConnected() {
     return this.connected;
   }

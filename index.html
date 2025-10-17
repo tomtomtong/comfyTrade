@@ -148,15 +148,44 @@
             </div>
             <button id="refreshAccountBtn" class="btn btn-secondary btn-small">Refresh</button>
           </div>
+
+          <div class="closed-positions-filter-panel">
+            <h3>Closed Positions Filter</h3>
+            <div class="filter-controls">
+              <div class="form-group">
+                <label>Show last:</label>
+                <select id="closedPositionsDays">
+                  <option value="1">1 day</option>
+                  <option value="3">3 days</option>
+                  <option value="7" selected>7 days</option>
+                  <option value="14">14 days</option>
+                  <option value="30">30 days</option>
+                </select>
+              </div>
+              <button id="refreshClosedPositionsBtn" class="btn btn-secondary btn-small">Refresh</button>
+            </div>
+          </div>
         </div>
       </div>
 
-      <!-- Bottom Panel - Open Positions -->
+      <!-- Bottom Panel - Positions -->
       <div class="bottom-panel">
         <div class="positions-panel">
-          <h3>Open Positions</h3>
-          <div id="positionsList" class="positions-list">
-            <p class="no-data">No open positions</p>
+          <div class="positions-tabs">
+            <button class="positions-tab-btn active" data-tab="open">Open Positions</button>
+            <button class="positions-tab-btn" data-tab="closed">Closed Positions</button>
+          </div>
+          
+          <div id="openPositionsTab" class="positions-tab active">
+            <div id="positionsList" class="positions-list">
+              <p class="no-data">No open positions</p>
+            </div>
+          </div>
+          
+          <div id="closedPositionsTab" class="positions-tab">
+            <div id="closedPositionsList" class="positions-list">
+              <p class="no-data">No closed positions</p>
+            </div>
           </div>
         </div>
       </div>

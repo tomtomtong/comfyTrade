@@ -584,6 +584,87 @@ class MT5Bridge:
             logger.error(f"Error calculating percentage change: {e}")
             return {"error": str(e)}
     
+    def get_closed_positions(self, days_back=7):
+        """Get closed positions (deal history) for the specified number of days"""
+        if not self.connected_to_mt5:
+            return {"error": "Not connected to MT5"}
+        
+        try:
+            from datetime import datetime, timedelta
+            
+            # Calculate date range
+            end_date = datetime.now()
+            start_date = end_date - timedelta(days=days_back)
+            
+            # Get deal history
+            deals = mt5.history_deals_get(start_date, end_date)
+            
+            if deals is None:
+                return {"error": "Failed to get deal history"}
+            
+            if len(deals) == 0:
+                return []
+            
+            # Group deals by position ticket to calculate P&L
+            position_deals = {}
+            
+            for deal in deals:
+                # Only process position deals (not balance operations)
+                if deal.type in [mt5.DEAL_TYPE_BUY, mt5.DEAL_TYPE_SELL]:
+                    position_ticket = deal.position_id
+                    
+                    if position_ticket not in position_deals:
+                        position_deals[position_ticket] = []
+                    
+                    position_deals[position_ticket].append(deal)
+            
+            # Process closed positions
+            closed_positions = []
+            
+            for position_ticket, deals_list in position_deals.items():
+                if len(deals_list) < 2:  # Need at least open and close deals
+                    continue
+                
+                # Sort deals by time
+                deals_list.sort(key=lambda x: x.time)
+                
+                open_deal = deals_list[0]  # First deal (position open)
+                close_deal = deals_list[-1]  # Last deal (position close)
+                
+                # Calculate total profit/loss for this position
+                total_profit = sum(deal.profit for deal in deals_list)
+                total_volume = sum(deal.volume for deal in deals_list if deal.entry == mt5.DEAL_ENTRY_IN)
+                
+                # Determine position type
+                position_type = "BUY" if open_deal.type == mt5.DEAL_TYPE_BUY else "SELL"
+                
+                closed_position = {
+                    "ticket": position_ticket,
+                    "symbol": open_deal.symbol,
+                    "type": position_type,
+                    "volume": total_volume,
+                    "open_price": open_deal.price,
+                    "close_price": close_deal.price,
+                    "open_time": datetime.fromtimestamp(open_deal.time).isoformat(),
+                    "close_time": datetime.fromtimestamp(close_deal.time).isoformat(),
+                    "profit": round(total_profit, 2),
+                    "swap": sum(deal.swap for deal in deals_list),
+                    "commission": sum(deal.commission for deal in deals_list),
+                    "comment": close_deal.comment or "",
+                    "duration_minutes": round((close_deal.time - open_deal.time) / 60, 1)
+                }
+                
+                closed_positions.append(closed_position)
+            
+            # Sort by close time (most recent first)
+            closed_positions.sort(key=lambda x: x['close_time'], reverse=True)
+            
+            return closed_positions
+            
+        except Exception as e:
+            logger.error(f"Error getting closed positions: {e}")
+            return {"error": str(e)}
+    
     def execute_node_strategy(self, node_graph):
         """Execute a node-based trading strategy"""
         if not self.connected_to_mt5:
@@ -709,6 +790,11 @@ class MT5Bridge:
             elif action == 'executeNodeStrategy':
                 node_graph = data.get('nodeGraph', {})
                 result = self.execute_node_strategy(node_graph)
+                response['data'] = result
+            
+            elif action == 'getClosedPositions':
+                days_back = data.get('daysBack', 7)
+                result = self.get_closed_positions(days_back)
                 response['data'] = result
             
             elif action == 'sendTwilioAlert':
