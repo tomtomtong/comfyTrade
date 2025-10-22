@@ -6,10 +6,10 @@
       "type": "BUY",
       "volume": 0.01,
       "open_price": 25931.27,
-      "current_price": 25923.03,
+      "current_price": 25803.13,
       "sl": 0,
       "tp": 0,
-      "profit": -0.082400000000016,
+      "profit": -1.281399999999994,
       "open_time": "2025-10-22T10:58:23.780802",
       "comment": "SIMULATOR"
     }
@@ -17,5 +17,5 @@
   "closed_positions": [],
   "next_ticket": 1000001,
   "initial_balance": 10000.0,
-  "last_updated": "2025-10-22T10:58:36.756623"
+  "last_updated": "2025-10-22T11:15:20.256279"
 }

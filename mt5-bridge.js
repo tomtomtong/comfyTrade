@@ -406,7 +406,8 @@ class MT5Bridge {
       throw new Error('Not connected to MT5');
     }
 
-    console.log(`Getting closed positions for last ${daysBack} days...`);
+    const timeLabel = daysBack < 1 ? `${Math.round(daysBack * 24)} hour${Math.round(daysBack * 24) > 1 ? 's' : ''}` : `${daysBack} day${daysBack > 1 ? 's' : ''}`;
+    console.log(`Getting closed positions for last ${timeLabel}...`);
     const response = await this.sendMessage('getClosedPositions', { daysBack });
     return response.data;
   }

@@ -600,6 +600,16 @@ function switchPositionsTab(tabName) {
   }
 }
 
+// Helper function to format time labels
+function getTimeLabel(daysBack) {
+  if (daysBack < 1) {
+    const hours = Math.round(daysBack * 24);
+    return `${hours} hour${hours > 1 ? 's' : ''}`;
+  } else {
+    return `${daysBack} day${daysBack > 1 ? 's' : ''}`;
+  }
+}
+
 // Closed Positions Management
 async function handleRefreshClosedPositions() {
   if (!isConnected) {
@@ -607,7 +617,7 @@ async function handleRefreshClosedPositions() {
     return;
   }
 
-  const daysBack = parseInt(document.getElementById('closedPositionsDays').value);
+  const daysBack = parseFloat(document.getElementById('closedPositionsDays').value);
   const container = document.getElementById('closedPositionsList');
   
   try {
@@ -619,7 +629,8 @@ async function handleRefreshClosedPositions() {
       const closedPositions = result.data;
       
       if (!closedPositions || closedPositions.length === 0) {
-        container.innerHTML = `<p class="no-data">No closed positions found in the last ${daysBack} day${daysBack > 1 ? 's' : ''}</p>`;
+        const timeLabel = getTimeLabel(daysBack);
+        container.innerHTML = `<p class="no-data">No closed positions found in the last ${timeLabel}</p>`;
         return;
       }
       
