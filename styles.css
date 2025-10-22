@@ -1169,29 +1169,7 @@ body.resizing * {
   font-size: 14px;
 }
 
-.quick-symbols {
-  display: flex;
-  gap: 8px;
-  margin-top: 8px;
-  flex-wrap: wrap;
-}
 
-.quick-symbol-btn {
-  padding: 4px 8px;
-  background: #444;
-  border: 1px solid #555;
-  border-radius: 3px;
-  color: #ccc;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-symbol-btn:hover {
-  background: #4CAF50;
-  border-color: #4CAF50;
-  color: white;
-}
 
 /* Settings Modal Tabs */
 .settings-modal .modal-content {
@@ -1381,43 +1359,7 @@ body.resizing * {
   flex: 1;
 }
 
-/* Quick Symbols List in Settings */
-.quick-symbols-list {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  padding: 10px;
-  background: #2a2a2a;
-  border-radius: 4px;
-  min-height: 60px;
-}
 
-.quick-symbol-item {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 10px;
-  background: #444;
-  border: 1px solid #555;
-  border-radius: 3px;
-  color: #ccc;
-  font-size: 12px;
-}
-
-.quick-symbol-item .remove-btn {
-  background: #d32f2f;
-  border: none;
-  color: white;
-  border-radius: 3px;
-  padding: 2px 6px;
-  cursor: pointer;
-  font-size: 10px;
-  transition: background 0.2s;
-}
-
-.quick-symbol-item .remove-btn:hover {
-  background: #f44336;
-}
 
 /* Node Properties Symbol Input */
 .node-symbol-input .symbol-input-wrapper {

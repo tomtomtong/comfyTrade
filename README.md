@@ -45,7 +45,7 @@ A comprehensive Electron desktop application that provides a visual trading plat
 ### Advanced Features
 - **Multi-Flow Management**: Run multiple trading strategies simultaneously with independent control
 - **Simulator Mode**: Practice trading with real market data without financial risk
-- **Quick Symbols**: One-click access to frequently used trading symbols
+
 - **Node Editor**: Triggers, indicators (MA, RSI), conditional logic, and trade execution nodes
 - **Historical Data Import**: Support for 8 timeframes with data persistence
 - **Symbol Input**: Autocomplete and MT5 symbol fetching
@@ -69,7 +69,7 @@ A comprehensive Electron desktop application that provides a visual trading plat
 ┌─────────────────────────────────────────────────────────────┐
 │                     Electron Frontend                       │
 │  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐        │
-│  │ Node Editor │  │ Trade Dialog│  │ Quick Symbols│        │
+│  │ Node Editor │  │ Trade Dialog│  │             │        │
 │  │             │  │             │  │             │        │
 │  └─────────────┘  └─────────────┘  └─────────────┘        │
 └─────────────────────┼───────────────────────────────────────┘
@@ -127,7 +127,7 @@ mt5-trader/
 │   ├── node-editor.js          # Node-based strategy builder engine
 │   ├── history-import.js       # Historical data import functionality
 │   ├── symbol-input.js         # Symbol input with autocomplete
-│   ├── quick-symbols.js        # Quick symbol buttons component
+
 │   ├── overtrade-control.js    # Risk management controls
 │   └── styles.css              # Application styling and themes
 │
@@ -197,15 +197,7 @@ Practice trading strategies using real MT5 market data without executing actual 
 - ✅ Trade history tracking
 - ✅ Risk-free practice environment
 
-### Quick Symbols Setup
 
-One-click access to your favorite trading symbols throughout the application.
-
-#### Setting Up Quick Symbols
-
-1. **Open Settings**: Click ⚙ Settings → Quick Symbols tab
-2. **Add Symbols**: Type symbol name (e.g., XAUUSD) and press Enter
-3. **Use Autocomplete**: When connected to MT5 for symbol suggestions
 4. **Remove Symbols**: Click × button next to any symbol
 5. **Save Changes**: Click Close to save
 
@@ -295,16 +287,11 @@ MT5 Trader Alert
 
 ## 👨‍💻 Developer Guide
 
-### Unified Persistence System
+### Persistence System
 
-Both Twilio settings and Quick Symbols use localStorage-based persistence through `AppConfig`:
+Twilio settings use localStorage-based persistence through `AppConfig`:
 
 ```javascript
-// Quick Symbols
-AppConfig.addQuickSymbol('XAUUSD');
-AppConfig.removeQuickSymbol('XAUUSD');
-const symbols = AppConfig.getQuickSymbols();
-
 // Twilio Settings
 AppConfig.updateTwilioSettings({
   enabled: true,
@@ -448,7 +435,7 @@ python -c "import MetaTrader5 as mt5; print(mt5.initialize())"
 ### Testing Checklist
 
 #### Manual Testing
-- Test all quick symbol functionality
+
 - Verify MT5 integration
 - Test node editor operations
 - Validate historical data import
@@ -495,7 +482,6 @@ window.testModifyPositionNode()
 window.debugSymbolInput()
 
 // Configuration check
-console.log(AppConfig.getQuickSymbols())
 console.log(AppConfig.getTwilioSettings())
 ```
 

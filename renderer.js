@@ -352,16 +352,7 @@ function initializeSymbolInput() {
   // Store globally for settings updates
   window.tradeSymbolInput = symbolInput;
   
-  // Quick symbol buttons - dynamically created from config
-  const quickSymbolsContainer = document.getElementById('tradeQuickSymbolsContainer');
-  if (quickSymbolsContainer) {
-    QuickSymbols.create(quickSymbolsContainer, (symbol) => {
-      symbolInput.setValue(symbol);
-      updateCurrentPrice(symbol);
-      // Note: Removed automatic volume loss calculation to prevent immediate popup
-      // Users can still calculate volume loss by changing volume or symbol values
-    });
-  }
+
   
   // Refresh price button
   document.getElementById('refreshPriceBtn').addEventListener('click', () => {
@@ -1006,9 +997,7 @@ async function handleConnect() {
     
     // Reinitialize settings symbol input if settings modal is open
     if (document.getElementById('settingsModal').classList.contains('show')) {
-      // Clear existing input and reinitialize with full functionality
-      window.settingsSymbolInput = null;
-      initializeSettingsSymbolInput();
+
     }
     
     // Start auto-refresh
@@ -1622,7 +1611,6 @@ function updatePropertiesPanel(node) {
           <div class="property-item">
             <label>${key}:</label>
             <div id="nodeSymbolInput-${node.id}" class="node-symbol-input"></div>
-            <div id="nodeQuickSymbols-${node.id}"></div>
           </div>
         `;
       } else if (key === 'action' && node.type === 'trade-signal') {
@@ -2024,7 +2012,7 @@ function updatePropertiesPanel(node) {
   paramEntries.forEach(([key, value]) => {
     if (key === 'symbol') {
       const container = document.getElementById(`nodeSymbolInput-${node.id}`);
-      const quickSymbolsContainer = document.getElementById(`nodeQuickSymbols-${node.id}`);
+
       
       if (container && isConnected) {
         const nodeSymbolInput = new SymbolInput(container, {
@@ -2037,14 +2025,7 @@ function updatePropertiesPanel(node) {
           }
         });
         nodeSymbolInput.setValue(value);
-        
-        // Add quick symbols for node properties
-        if (quickSymbolsContainer) {
-          QuickSymbols.create(quickSymbolsContainer, (symbol) => {
-            nodeSymbolInput.setValue(symbol);
-            updateNodeParam('symbol', symbol);
-          });
-        }
+
       } else if (container) {
         // Fallback to regular input if not connected
         container.innerHTML = `
@@ -2054,17 +2035,7 @@ function updatePropertiesPanel(node) {
                  placeholder="Enter symbol (e.g., EURUSD)"
                  onchange="updateNodeParam('symbol', this.value)">
         `;
-        
-        // Add quick symbols even when not connected
-        if (quickSymbolsContainer) {
-          QuickSymbols.create(quickSymbolsContainer, (symbol) => {
-            const input = container.querySelector('input');
-            if (input) {
-              input.value = symbol;
-              updateNodeParam('symbol', symbol);
-            }
-          });
-        }
+
       }
     }
   });
@@ -3093,13 +3064,11 @@ let originalSettingsState = {};
 function showSettingsModal() {
   document.getElementById('settingsModal').classList.add('show');
   loadGeneralSettings();
-  renderQuickSymbolsList();
   loadOvertradeSettings();
   loadTwilioSettings();
   loadAiAnalysisSettings();
   
-  // Initialize symbol input for settings if not already done
-  initializeSettingsSymbolInput();
+
   
   // Store original settings state for comparison
   storeOriginalSettingsState();
@@ -3116,7 +3085,7 @@ function showSettingsModal() {
   // Setup event listeners
   document.getElementById('closeSettingsBtn').onclick = handleCloseSettings;
   document.getElementById('saveSettingsBtn').onclick = handleSaveSettings;
-  document.getElementById('addSymbolBtn').onclick = addQuickSymbol;
+
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
   document.getElementById('testTwilioBtn').onclick = testTwilioConnection;
@@ -3202,7 +3171,6 @@ async function handleSaveSettings() {
 
 function storeOriginalSettingsState() {
   originalSettingsState = {
-    quickSymbols: [...AppConfig.getQuickSymbols()],
     overtradeSettings: window.overtradeControl ? { ...window.overtradeControl.settings } : null,
     twilioSettings: getCurrentTwilioSettings()
   };
@@ -3227,9 +3195,7 @@ function setupSettingsChangeTracking() {
       element.addEventListener('input', markSettingsAsChanged);
     }
   });
-  
-  // Track changes in quick symbols (will be handled by add/remove functions)
-  // The addQuickSymbol and removeQuickSymbol functions should call markSettingsAsChanged
+
   
   // Track changes in Twilio settings
   setupTwilioChangeTracking();
@@ -3274,53 +3240,7 @@ function setupModalCloseHandlers() {
   document.addEventListener('keydown', handleEscape);
 }
 
-function initializeSettingsSymbolInput() {
-  const container = document.getElementById('settingsSymbolInputContainer');
-  
-  // Only initialize if container exists and not already initialized
-  if (container && !window.settingsSymbolInput) {
-    if (isConnected) {
-      window.settingsSymbolInput = new SymbolInput(container, {
-        placeholder: 'Search and add symbol (e.g., EURUSD, XAUUSD)',
-        onSymbolSelect: (symbol, symbolData) => {
-          // Auto-add symbol when selected from dropdown
-          if (symbol && symbol.length >= 3) {
-            addQuickSymbolFromInput(symbol);
-          }
-        },
-        onEnterKey: (symbol) => {
-          // Add symbol when Enter is pressed
-          if (symbol && symbol.length >= 3) {
-            addQuickSymbolFromInput(symbol);
-          }
-        }
-      });
-    } else {
-      // Show a message that connection is required for symbol search
-      container.innerHTML = `
-        <div class="symbol-input-placeholder">
-          <input type="text" 
-                 class="symbol-input" 
-                 placeholder="Connect to MT5 for symbol search, or type manually"
-                 id="manualSymbolInput">
-        </div>
-      `;
-      
-      // Add manual input handling for when not connected
-      const manualInput = container.querySelector('#manualSymbolInput');
-      if (manualInput) {
-        manualInput.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') {
-            const symbol = e.target.value.trim();
-            if (symbol && symbol.length >= 3) {
-              addQuickSymbolFromInput(symbol);
-            }
-          }
-        });
-      }
-    }
-  }
-}
+
 
 function switchSettingsTab(tabName) {
   // Update tab buttons
@@ -3416,126 +3336,7 @@ async function testOvertradeFromSettings() {
   }
 }
 
-function renderQuickSymbolsList() {
-  const container = document.getElementById('quickSymbolsList');
-  container.innerHTML = '';
-  
-  const symbols = AppConfig.getQuickSymbols();
-  
-  if (symbols.length === 0) {
-    container.innerHTML = '<p style="color: #888; margin: 10px;">No quick symbols configured. Add some below.</p>';
-    return;
-  }
-  
-  symbols.forEach(symbol => {
-    const item = document.createElement('div');
-    item.className = 'quick-symbol-item';
-    
-    const symbolText = document.createElement('span');
-    symbolText.textContent = symbol;
-    
-    const removeBtn = document.createElement('button');
-    removeBtn.className = 'remove-btn';
-    removeBtn.textContent = '×';
-    removeBtn.onclick = () => removeQuickSymbol(symbol);
-    
-    item.appendChild(symbolText);
-    item.appendChild(removeBtn);
-    container.appendChild(item);
-  });
-}
 
-function addQuickSymbol() {
-  if (window.settingsSymbolInput) {
-    const symbol = window.settingsSymbolInput.getValue().trim();
-    addQuickSymbolFromInput(symbol);
-  } else {
-    showMessage('Symbol input not initialized', 'error');
-  }
-}
-
-function addQuickSymbolFromInput(symbol) {
-  if (!symbol) {
-    showMessage('Please enter a symbol', 'error');
-    return;
-  }
-  
-  if (symbol.length < 3) {
-    showMessage('Symbol must be at least 3 characters', 'error');
-    return;
-  }
-  
-  // Preserve case for .cash suffix, uppercase everything else
-  const normalizedSymbol = symbol.endsWith('.cash') 
-    ? symbol.slice(0, -5).toUpperCase() + '.cash'
-    : symbol.toUpperCase();
-  
-  const symbols = AppConfig.getQuickSymbols();
-  if (symbols.includes(normalizedSymbol)) {
-    showMessage('Symbol already exists', 'warning');
-    return;
-  }
-  
-  // Add symbol with proper case handling
-  AppConfig.addQuickSymbol(normalizedSymbol);
-  
-  // Clear the input
-  if (window.settingsSymbolInput) {
-    window.settingsSymbolInput.setValue('');
-  }
-  
-  renderQuickSymbolsList();
-  updateAllQuickSymbols();
-  markSettingsAsChanged();
-  showMessage(`Added ${normalizedSymbol} to quick symbols`, 'success');
-}
-
-function removeQuickSymbol(symbol) {
-  AppConfig.removeQuickSymbol(symbol);
-  renderQuickSymbolsList();
-  updateAllQuickSymbols();
-  markSettingsAsChanged();
-  showMessage(`Removed ${symbol} from quick symbols`, 'success');
-}
-
-
-
-function updateAllQuickSymbols() {
-  // Update trade dialog quick symbols
-  const tradeContainer = document.getElementById('tradeQuickSymbolsContainer');
-  if (tradeContainer) {
-    // Use QuickSymbols.update instead of clearing and recreating
-    const existingWrapper = tradeContainer.querySelector('.quick-symbols');
-    if (existingWrapper) {
-      // Update existing quick symbols
-      QuickSymbols.update(tradeContainer);
-    } else {
-      // Create new quick symbols if none exist
-      const symbolInput = window.tradeSymbolInput;
-      if (symbolInput) {
-        QuickSymbols.create(tradeContainer, (symbol) => {
-          symbolInput.setValue(symbol);
-          updateCurrentPrice(symbol);
-        });
-      }
-    }
-  }
-  
-  // Ensure symbol input is still functional after DOM updates
-  if (window.tradeSymbolInput) {
-    // Re-focus the input if it was focused before
-    const symbolInputElement = window.tradeSymbolInput.input;
-    if (symbolInputElement && document.activeElement === symbolInputElement) {
-      // Small delay to ensure DOM updates are complete
-      setTimeout(() => {
-        symbolInputElement.focus();
-      }, 10);
-    }
-  }
-  
-  // Update any other quick symbol instances
-  // Add more updates here as needed for node properties, etc.
-}
 
 // Show test result modal with detailed information
 function showTestResultModal(title, message, isSuccess) {
@@ -4324,7 +4125,7 @@ window.testConnectionToggle = function() {
 // Twilio Settings Functions
 async function loadTwilioSettings() {
   try {
-    // Load from localStorage using AppConfig (same as quick symbols)
+    // Load from localStorage using AppConfig
     const settings = AppConfig.getTwilioSettings();
     
     // Update UI with current settings
@@ -4376,7 +4177,7 @@ async function saveTwilioSettings() {
       enabled: settings.enabled
     });
     
-    // Save to localStorage using AppConfig (same as quick symbols)
+    // Save to localStorage using AppConfig
     AppConfig.updateTwilioSettings(settings);
     console.log('✓ Twilio settings saved to localStorage');
     
