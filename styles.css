@@ -1173,7 +1173,7 @@ body.resizing * {
 
 /* Settings Modal Tabs */
 .settings-modal .modal-content {
-  max-width: 600px;
+  max-width: 700px;
   max-height: 85vh;
   overflow-y: auto;
   display: flex;
@@ -3243,4 +3243,276 @@ ing Input Node Styling */
   border-radius: 3px;
   font-size: 9px;
   font-weight: bold;
+}
+/* Volume Control Styles - Matching Overtrade Control */
+.volume-control-section {
+  margin-bottom: 20px;
+}
+
+.volume-control-section h3 {
+  color: #2196F3;
+  margin-bottom: 15px;
+}
+
+.volume-status {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 6px;
+  padding: 15px;
+  margin: 15px 0;
+}
+
+.volume-status h3 {
+  color: #64B5F6;
+  font-size: 16px;
+  margin-bottom: 15px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid #444;
+}
+
+.volume-limits-display {
+  min-height: 60px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.volume-actions {
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 6px;
+  padding: 15px;
+  margin-top: 15px;
+}
+
+.volume-add-controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.volume-symbol-container {
+  flex: 1;
+  position: relative;
+}
+
+.volume-limit-input {
+  flex: 1;
+  padding: 8px 12px;
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.volume-limit-input:focus {
+  outline: none;
+  border-color: #64B5F6;
+  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+/* Volume symbol input styling to match the container */
+.volume-symbol-container .symbol-input {
+  width: 100%;
+}
+
+.volume-symbol-container .symbol-input input {
+  background: #2d2d2d;
+  border: 1px solid #444;
+  border-radius: 4px;
+  color: #e0e0e0;
+  font-size: 14px;
+  padding: 8px 12px;
+}
+
+.volume-symbol-container .symbol-input input:focus {
+  outline: none;
+  border-color: #64B5F6;
+  box-shadow: 0 0 0 2px rgba(100, 181, 246, 0.2);
+}
+
+.volume-limit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+}
+
+.volume-limit-item:last-child {
+  margin-bottom: 0;
+}
+
+.volume-limit-info {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+}
+
+.volume-limit-symbol {
+  font-weight: bold;
+  color: #64B5F6;
+  font-size: 14px;
+}
+
+.volume-limit-value {
+  color: #aaa;
+  font-size: 12px;
+}
+
+.volume-limit-actions {
+  display: flex;
+  gap: 5px;
+}
+
+.btn-small {
+  padding: 8px 12px;
+  font-size: 12px;
+  min-width: auto;
+  white-space: nowrap;
+}
+
+.volume-warning {
+  background: rgba(255, 152, 0, 0.1);
+  border: 1px solid rgba(255, 152, 0, 0.3);
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+  color: #FF9800;
+  font-size: 12px;
+}
+
+.volume-error {
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 4px;
+  padding: 10px;
+  margin: 10px 0;
+  color: #f44336;
+  font-size: 12px;
+}/* V
+olume Add Section Styles */
+.volume-add-section {
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  padding-top: 15px;
+  margin-top: 15px;
+  background: rgba(33, 150, 243, 0.05);
+  border-radius: 4px;
+  padding: 15px;
+}
+
+.volume-add-section label {
+  color: #64B5F6;
+  font-weight: 500;
+}/* V
+olume Status Grid - Matching Overtrade Style */
+.volume-limits-display .status-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.volume-limit-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.volume-limit-item .label {
+  font-size: 12px;
+  color: #64B5F6;
+  font-weight: 500;
+}
+
+.volume-limit-item .value {
+  font-size: 12px;
+  color: #e0e0e0;
+  margin-left: auto;
+  margin-right: 10px;
+}
+
+.volume-limit-actions {
+  display: flex;
+  gap: 4px;
+}
+
+.volume-limit-actions .btn-small {
+  padding: 2px 6px;
+  font-size: 10px;
+  min-width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}/* Vol
+ume Warning Modal Styles */
+.volume-warning-modal {
+  max-width: 500px;
+  width: 90vw;
+}
+
+.volume-warning-content {
+  margin: 20px 0;
+}
+
+.volume-warning-details {
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  padding: 15px;
+  margin: 15px 0;
+  border-left: 3px solid #FF9800;
+}
+
+.volume-warning-details div {
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.volume-warning-details div:last-child {
+  margin-bottom: 0;
+}
+
+.volume-modal-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.btn-volume {
+  width: 100%;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Responsive layout for larger screens */
+@media (min-width: 600px) {
+  .volume-modal-buttons {
+    flex-direction: row;
+    justify-content: space-between;
+  }
+  
+  .btn-volume {
+    flex: 1;
+    margin: 0 5px;
+  }
+  
+  .btn-volume:first-child {
+    margin-left: 0;
+  }
+  
+  .btn-volume:last-child {
+    margin-right: 0;
+  }
 }

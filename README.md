@@ -181,13 +181,26 @@ Run multiple trading strategies simultaneously with independent control over eac
 
 Practice trading strategies using real MT5 market data without executing actual trades.
 
-#### How to Use Simulator Mode
+#### 🚀 Quick Start Guide
 
-1. **Enable Simulator**: Settings → General → Trading Mode → "Simulator Mode (Practice)"
-2. **Visual Indicators**: See 🎮 SIMULATOR MODE badge and SIM badges on positions
-3. **Trade Normally**: Use "New Trade" or Node Editor - all trades are simulated
-4. **Monitor Performance**: View balance, equity, and P&L in Settings
-5. **Reset When Needed**: Click "Reset Simulator" to start fresh
+**Get Started in 3 Steps:**
+
+1. **Connect to MT5**
+   - Click "Connect MT5" button
+   - Enter your MT5 credentials (or leave blank for default)
+   - Wait for connection confirmation
+
+2. **Enable Simulator Mode**
+   - Click "⚙ Settings" button
+   - In "General" tab, find "🎮 Simulator Mode"
+   - Change dropdown to "Simulator Mode (Practice)"
+   - See "🎮 SIMULATOR MODE" badge appear
+
+3. **Start Trading!**
+   - Click "New Trade" button
+   - Enter symbol, volume, SL/TP
+   - Click "Execute Trade"
+   - Position appears with "SIM" badge
 
 #### Simulator Features
 - ✅ Real market data from MT5
@@ -196,6 +209,25 @@ Practice trading strategies using real MT5 market data without executing actual 
 - ✅ Auto TP/SL execution
 - ✅ Trade history tracking
 - ✅ Risk-free practice environment
+
+#### 📊 Monitor Your Performance
+
+Go to **Settings → General → Simulator Mode** to see:
+- Balance & Equity
+- Open & Closed Positions
+- Total Profit/Loss
+
+#### 🔄 Reset Anytime
+
+Want to start fresh? **Settings → General → Simulator Mode → Reset Simulator**
+
+#### 🎯 Practice Tips
+- **Practice strategies** before going live
+- **Test different symbols** without risk
+- **Learn position management** safely
+- **Track your progress** over time
+
+**⚠️ Remember**: Simulator positions are NOT real trades. Switch back to "Real Trading" when ready.
 
 
 4. **Remove Symbols**: Click × button next to any symbol

@@ -845,6 +845,41 @@ async function handleExecuteTrade() {
     return;
   }
 
+  // Check volume control before proceeding
+  if (window.volumeControl && window.volumeControl.settings.enabled) {
+    const volumeResult = await window.volumeControl.validateTradeVolume(symbol, volume);
+    
+    if (!volumeResult.allowed) {
+      if (volumeResult.cancelled) {
+        showMessage('Trade cancelled', 'info');
+        return;
+      }
+    } else if (volumeResult.adjustedVolume) {
+      // User chose to use the maximum allowed volume
+      document.getElementById('tradeVolume').value = volumeResult.adjustedVolume;
+      showMessage(`Volume adjusted to maximum allowed: ${volumeResult.adjustedVolume}`, 'info');
+      // Update the volume variable for the trade
+      const adjustedVolume = volumeResult.adjustedVolume;
+      // Continue with adjusted volume
+      return handleExecuteTradeWithVolume(symbol, type, adjustedVolume, stopLoss, takeProfit);
+    }
+  }
+
+  // Check overtrade control before proceeding
+  const tradeData = { symbol, type, volume, stopLoss, takeProfit, action: 'executeOrder' };
+  const shouldProceed = await window.overtradeControl.checkBeforeTrade('manual', tradeData);
+  
+  if (!shouldProceed) {
+    showMessage('Trade cancelled', 'info');
+    return;
+  }
+  
+  // Show confirmation dialog and open TradingView
+  showTradeConfirmationModal(symbol, type, volume, stopLoss, takeProfit);
+}
+
+// Helper function to execute trade with specific volume (used for volume adjustments)
+async function handleExecuteTradeWithVolume(symbol, type, volume, stopLoss, takeProfit) {
   // Check overtrade control before proceeding
   const tradeData = { symbol, type, volume, stopLoss, takeProfit, action: 'executeOrder' };
   const shouldProceed = await window.overtradeControl.checkBeforeTrade('manual', tradeData);
@@ -3065,6 +3100,7 @@ function showSettingsModal() {
   document.getElementById('settingsModal').classList.add('show');
   loadGeneralSettings();
   loadOvertradeSettings();
+  loadVolumeControlSettings();
   loadTwilioSettings();
   loadAiAnalysisSettings();
   
@@ -3088,6 +3124,7 @@ function showSettingsModal() {
 
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
+  document.getElementById('addVolumeLimitBtn').onclick = addVolumeLimit;
   document.getElementById('testTwilioBtn').onclick = testTwilioConnection;
   document.getElementById('testFirecrawlBtn').onclick = testFirecrawlConnection;
   document.getElementById('testOpenRouterBtn').onclick = testOpenRouterConnection;
@@ -3185,7 +3222,9 @@ function setupSettingsChangeTracking() {
     'settingsReminderFrequency',
     'settingsApplyToManual',
     'settingsApplyToStrategy',
-    'settingsApplyToNodes'
+    'settingsApplyToNodes',
+    'settingsApplyToOpenPositions',
+    'settingsApplyToClosePositions'
   ];
   
   overtradeInputs.forEach(inputId => {
@@ -3196,6 +3235,22 @@ function setupSettingsChangeTracking() {
     }
   });
 
+  // Track changes in volume control settings
+  const volumeControlInputs = [
+    'settingsVolumeControlEnabled',
+    'newVolumeLimit'
+  ];
+  
+  volumeControlInputs.forEach(inputId => {
+    const element = document.getElementById(inputId);
+    if (element) {
+      element.addEventListener('change', markSettingsAsChanged);
+      element.addEventListener('input', markSettingsAsChanged);
+    }
+  });
+  
+  // Track changes in volume symbol input (will be set up when symbol input is initialized)
+  // The symbol input component handles its own change events
   
   // Track changes in Twilio settings
   setupTwilioChangeTracking();
@@ -3272,6 +3327,8 @@ function loadOvertradeSettings() {
   document.getElementById('settingsApplyToManual').checked = settings.applyToManual;
   document.getElementById('settingsApplyToStrategy').checked = settings.applyToStrategy;
   document.getElementById('settingsApplyToNodes').checked = settings.applyToNodes;
+  document.getElementById('settingsApplyToOpenPositions').checked = settings.applyToOpenPositions;
+  document.getElementById('settingsApplyToClosePositions').checked = settings.applyToClosePositions;
   
   updateOvertradeStatusInSettings();
 }
@@ -3304,9 +3361,17 @@ async function saveAllSettings() {
     window.overtradeControl.settings.applyToManual = document.getElementById('settingsApplyToManual').checked;
     window.overtradeControl.settings.applyToStrategy = document.getElementById('settingsApplyToStrategy').checked;
     window.overtradeControl.settings.applyToNodes = document.getElementById('settingsApplyToNodes').checked;
+    window.overtradeControl.settings.applyToOpenPositions = document.getElementById('settingsApplyToOpenPositions').checked;
+    window.overtradeControl.settings.applyToClosePositions = document.getElementById('settingsApplyToClosePositions').checked;
     
     window.overtradeControl.saveSettings();
     await window.overtradeControl.updateStatusDisplay();
+  }
+  
+  // Save volume control settings
+  if (window.volumeControl) {
+    const enabled = document.getElementById('settingsVolumeControlEnabled').value === 'true';
+    window.volumeControl.setEnabled(enabled);
   }
   
   // Save Twilio settings
@@ -3333,6 +3398,183 @@ async function testOvertradeFromSettings() {
   if (window.overtradeControl) {
     await window.overtradeControl.simulateOpenPositionsForTesting();
     await updateOvertradeStatusInSettings();
+  }
+}
+
+// Volume Control Settings Functions
+let volumeSymbolInput = null;
+
+function initializeVolumeSymbolInput() {
+  const container = document.getElementById('volumeSymbolInputContainer');
+  if (!container) return;
+  
+  // Create symbol input for volume control
+  volumeSymbolInput = new SymbolInput(container, {
+    placeholder: 'Enter symbol (e.g., EURUSD)',
+    onSymbolSelect: (symbol, symbolData) => {
+      console.log('Volume control - Selected symbol:', symbol, symbolData);
+      markSettingsAsChanged();
+    },
+    onSymbolChange: (symbol) => {
+      // Track changes for settings
+      markSettingsAsChanged();
+      
+      // Optional: Could show symbol info or validation here
+      if (symbol && symbol.length >= 6) {
+        console.log('Volume control - Symbol changed:', symbol);
+      }
+    }
+  });
+  
+  // Store globally for easy access
+  window.volumeSymbolInput = volumeSymbolInput;
+}
+
+function loadVolumeControlSettings() {
+  if (!window.volumeControl) return;
+  
+  // Load enabled state
+  const enabledSelect = document.getElementById('settingsVolumeControlEnabled');
+  const statusDiv = document.querySelector('.volume-status');
+  const actionsDiv = document.querySelector('.volume-actions');
+  
+  if (enabledSelect) {
+    enabledSelect.value = window.volumeControl.settings.enabled.toString();
+    
+    // Setup enabled toggle handler
+    enabledSelect.onchange = (e) => {
+      const enabled = e.target.value === 'true';
+      if (statusDiv) {
+        statusDiv.style.display = enabled ? 'block' : 'none';
+      }
+      if (actionsDiv) {
+        actionsDiv.style.display = enabled ? 'block' : 'none';
+      }
+      markSettingsAsChanged();
+    };
+  }
+  
+  // Show/hide settings based on enabled state
+  const isEnabled = window.volumeControl.settings.enabled;
+  if (statusDiv) {
+    statusDiv.style.display = isEnabled ? 'block' : 'none';
+  }
+  if (actionsDiv) {
+    actionsDiv.style.display = isEnabled ? 'block' : 'none';
+  }
+  
+  // Initialize symbol input for volume control
+  initializeVolumeSymbolInput();
+  
+  // Load existing volume limits
+  updateVolumeLimitsList();
+}
+
+function updateVolumeLimitsList() {
+  if (!window.volumeControl) return;
+  
+  const container = document.getElementById('volumeLimitsList');
+  if (!container) return;
+  
+  const limits = window.volumeControl.getSymbolLimits();
+  
+  if (Object.keys(limits).length === 0) {
+    container.innerHTML = '<div class="status-grid"><div class="status-item" style="grid-column: 1 / -1; text-align: center; color: #aaa; font-style: italic;">No volume limits configured</div></div>';
+    return;
+  }
+  
+  const html = `
+    <div class="status-grid">
+      ${Object.entries(limits).map(([symbol, limit]) => `
+        <div class="status-item volume-limit-item">
+          <span class="label">${symbol}:</span>
+          <span class="value">${limit} max</span>
+          <div class="volume-limit-actions">
+            <button class="btn btn-warning btn-small" onclick="editVolumeLimit('${symbol}', ${limit})" title="Edit limit">✏️</button>
+            <button class="btn btn-danger btn-small" onclick="removeVolumeLimit('${symbol}')" title="Remove limit">🗑️</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+  
+  container.innerHTML = html;
+}
+
+function addVolumeLimit() {
+  const limitInput = document.getElementById('newVolumeLimit');
+  
+  // Get symbol from the symbol input component
+  const symbol = volumeSymbolInput ? volumeSymbolInput.getValue().trim().toUpperCase() : '';
+  const limit = parseFloat(limitInput.value);
+  
+  if (!symbol) {
+    showMessage('Please enter a symbol', 'error');
+    return;
+  }
+  
+  if (!limit || limit <= 0) {
+    showMessage('Please enter a valid volume limit', 'error');
+    return;
+  }
+  
+  try {
+    window.volumeControl.setSymbolLimit(symbol, limit);
+    updateVolumeLimitsList();
+    
+    // Clear inputs
+    if (volumeSymbolInput) {
+      volumeSymbolInput.setValue('');
+    }
+    limitInput.value = '';
+    
+    showMessage(`Volume limit set for ${symbol}: ${limit}`, 'success');
+    markSettingsAsChanged();
+  } catch (error) {
+    showMessage('Error setting volume limit: ' + error.message, 'error');
+  }
+}
+
+function editVolumeLimit(symbol, currentLimit) {
+  const newLimit = prompt(`Enter new volume limit for ${symbol}:`, currentLimit);
+  
+  if (newLimit === null) return; // User cancelled
+  
+  const limit = parseFloat(newLimit);
+  if (!limit || limit <= 0) {
+    showMessage('Invalid volume limit', 'error');
+    return;
+  }
+  
+  try {
+    window.volumeControl.setSymbolLimit(symbol, limit);
+    updateVolumeLimitsList();
+    showMessage(`Volume limit updated for ${symbol}: ${limit}`, 'success');
+    markSettingsAsChanged();
+  } catch (error) {
+    showMessage('Error updating volume limit: ' + error.message, 'error');
+  }
+}
+
+function removeVolumeLimit(symbol) {
+  if (typeof showConfirmation === 'function') {
+    showConfirmation(
+      'Remove Volume Limit',
+      `Are you sure you want to remove the volume limit for ${symbol}?`,
+      () => {
+        window.volumeControl.removeSymbolLimit(symbol);
+        updateVolumeLimitsList();
+        showMessage(`Volume limit removed for ${symbol}`, 'info');
+        markSettingsAsChanged();
+      }
+    );
+  } else {
+    if (confirm(`Remove volume limit for ${symbol}?`)) {
+      window.volumeControl.removeSymbolLimit(symbol);
+      updateVolumeLimitsList();
+      showMessage(`Volume limit removed for ${symbol}`, 'info');
+      markSettingsAsChanged();
+    }
   }
 }
 

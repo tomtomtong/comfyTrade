@@ -572,6 +572,8 @@
           <small>Automatically open TradingView chart when a position is opened</small>
         </div>
         
+
+        
         <div class="form-group simulator-section">
           <h3 style="margin-top: 20px; border-top: 1px solid #333; padding-top: 15px;">🎮 Simulator Mode</h3>
           <div class="form-group">
@@ -663,6 +665,13 @@
             <label><input type="checkbox" id="settingsApplyToNodes" checked> Node-based Trades</label>
           </div>
         </div>
+        <div class="form-group">
+          <label>Count these position types:</label>
+          <div class="checkbox-group">
+            <label><input type="checkbox" id="settingsApplyToOpenPositions" checked> Opening Positions</label>
+            <label><input type="checkbox" id="settingsApplyToClosePositions"> Closing Positions</label>
+          </div>
+        </div>
         <div class="overtrade-status">
           <h3>Current Status</h3>
           <div class="status-grid">
@@ -687,6 +696,33 @@
         <div class="overtrade-actions">
           <button id="settingsResetTradeCountBtn" class="btn btn-warning">Reset Count</button>
           <button id="settingsTestOvertradeBtn" class="btn btn-info">Test (Add 5 Trades)</button>
+        </div>
+        
+        <div class="volume-control-section" style="margin-top: 30px; border-top: 1px solid #333; padding-top: 20px;">
+          <h3>📊 Volume Controls</h3>
+          <div class="form-group">
+            <label>Enable Symbol Volume Limits:</label>
+            <select id="settingsVolumeControlEnabled">
+              <option value="false">Disabled</option>
+              <option value="true">Enabled</option>
+            </select>
+            <small>Prevent trading more than specified volume for specific symbols</small>
+          </div>
+          
+          <div class="volume-status">
+            <h3>Current Volume Limits</h3>
+            <div id="volumeLimitsList" class="volume-limits-display">
+              <!-- Volume limits will be populated here -->
+            </div>
+          </div>
+          
+          <div class="volume-actions">
+            <div class="volume-add-controls">
+              <div id="volumeSymbolInputContainer" class="volume-symbol-container"></div>
+              <input type="number" id="newVolumeLimit" placeholder="Max Volume" min="0.01" step="0.01" class="volume-limit-input">
+              <button id="addVolumeLimitBtn" class="btn btn-primary">Add Limit</button>
+            </div>
+          </div>
         </div>
       </div>
       
@@ -900,6 +936,7 @@
   <script src="node-editor.js"></script>
   <script src="history-import.js"></script>
   <script src="overtrade-control.js"></script>
+  <script src="volume-control.js"></script>
   <script src="resizable-panels.js"></script>
   <script src="renderer.js"></script>
 </body>
