@@ -350,13 +350,19 @@ class NodeEditor {
         }
       },
 
-      'trigger-output': {
-        title: 'Trigger Output',
-        inputs: ['string'],
-        outputs: ['trigger'],
+
+
+      'llm-node': {
+        title: 'LLM Node',
+        inputs: ['trigger', 'string'],
+        outputs: ['string', 'trigger'],
         params: { 
-          condition: 'always',
-          threshold: ''
+          model: 'gpt-3.5-turbo',
+          prompt: 'You are a helpful assistant. Respond to: {input}',
+          maxTokens: 150,
+          temperature: 0.7,
+          apiKey: '',
+          useStringInput: true
         }
       },
 
@@ -1384,27 +1390,7 @@ class NodeEditor {
           result = true; // Alert nodes don't stop flow
           break;
 
-        case 'trigger-output':
-          console.log('Trigger Output node processing input:', inputResult);
-          
-          // The trigger output node converts string input to trigger output
-          if (node.params.condition === 'always') {
-            result = true; // Always trigger
-            console.log('✓ Trigger Output: Always condition - triggering');
-          } else if (node.params.condition === 'not_empty' && inputResult && inputResult.toString().trim() !== '') {
-            result = true; // Trigger if input is not empty
-            console.log('✓ Trigger Output: Not empty condition - triggering');
-          } else if (node.params.condition === 'contains' && inputResult && inputResult.toString().includes(node.params.threshold)) {
-            result = true; // Trigger if input contains threshold text
-            console.log('✓ Trigger Output: Contains condition - triggering');
-          } else if (node.params.condition === 'numeric_gt' && !isNaN(parseFloat(inputResult)) && parseFloat(inputResult) > parseFloat(node.params.threshold || 0)) {
-            result = true; // Trigger if numeric input is greater than threshold
-            console.log('✓ Trigger Output: Numeric greater than condition - triggering');
-          } else {
-            result = false; // Don't trigger
-            console.log('✗ Trigger Output: Condition not met - not triggering');
-          }
-          break;
+
           
         case 'end-strategy':
           console.log('End Strategy node reached:', node.params.message);
@@ -1476,6 +1462,78 @@ class NodeEditor {
             result = false; // Stop trigger flow on error
           }
           break;
+
+        case 'llm-node':
+          console.log('Processing LLM node with model:', node.params.model);
+          
+          try {
+            // Get input text from connected string input or use default
+            let inputText = 'Hello';
+            
+            // Check if there's a string input connected (second input)
+            if (node.inputs.length > 1 && node.inputs[1] === 'string') {
+              const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
+              if (stringConnection) {
+                if (stringConnection.from.type === 'string-input') {
+                  inputText = stringConnection.from.params.value || 'Hello';
+                  console.log('Using string input for LLM:', inputText);
+                } else if (stringConnection.from.type === 'yfinance-data') {
+                  inputText = stringConnection.from.fetchedData || 'No data';
+                  console.log('Using yfinance data for LLM:', inputText);
+                }
+              }
+            }
+            
+            // Prepare the prompt by replacing {input} placeholder
+            const finalPrompt = node.params.prompt.replace('{input}', inputText);
+            console.log('LLM prompt:', finalPrompt);
+            
+            // Call LLM API through MT5 bridge
+            if (window.mt5API && window.mt5API.callLLM) {
+              const llmResult = await window.mt5API.callLLM({
+                model: node.params.model,
+                prompt: finalPrompt,
+                maxTokens: node.params.maxTokens,
+                temperature: node.params.temperature,
+                apiKey: node.params.apiKey
+              });
+              
+              if (llmResult.success && llmResult.data) {
+                console.log('✓ LLM response received:', llmResult.data.response);
+                
+                // Store the LLM response in the node for string output connections
+                node.llmResponse = llmResult.data.response;
+                
+                if (window.showMessage) {
+                  window.showMessage(`LLM response: ${node.llmResponse.substring(0, 50)}...`, 'success');
+                }
+                
+                result = true; // Continue trigger flow
+              } else {
+                console.error('✗ LLM call failed:', llmResult.error);
+                if (window.showMessage) {
+                  window.showMessage(`LLM call failed: ${llmResult.error}`, 'error');
+                }
+                node.llmResponse = 'Error: LLM call failed';
+                result = false; // Stop trigger flow on error
+              }
+            } else {
+              console.error('LLM API not available');
+              if (window.showMessage) {
+                window.showMessage('LLM API not available - check Python bridge', 'error');
+              }
+              node.llmResponse = 'Error: API not available';
+              result = false; // Stop trigger flow on error
+            }
+          } catch (error) {
+            console.error('Error calling LLM:', error);
+            if (window.showMessage) {
+              window.showMessage(`LLM error: ${error.message}`, 'error');
+            }
+            node.llmResponse = 'Error: ' + error.message;
+            result = false; // Stop trigger flow on error
+          }
+          break;
       }
     }
     
@@ -1502,6 +1560,14 @@ class NodeEditor {
         if (fromOutput === 0) {
           // String output - pass the fetched data
           outputValue = node.fetchedData || 'No data';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
+      } else if (node.type === 'llm-node') {
+        if (fromOutput === 0) {
+          // String output - pass the LLM response
+          outputValue = node.llmResponse || 'No response';
         } else if (fromOutput === 1) {
           // Trigger output - pass the boolean result
           outputValue = result;

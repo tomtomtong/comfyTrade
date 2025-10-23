@@ -12,6 +12,7 @@ from datetime import datetime
 from twilio_alerts import TwilioAlerts
 from simulator import TradingSimulator
 import yfinance as yf
+import requests
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -904,6 +905,60 @@ class MT5Bridge:
             logger.error(f"Error fetching yFinance data for {symbol}: {e}")
             return {"error": str(e)}
     
+    def call_llm(self, model='gpt-3.5-turbo', prompt='Hello', max_tokens=150, temperature=0.7, api_key=''):
+        """Call LLM API (OpenAI compatible) with the given prompt"""
+        try:
+            logger.info(f"Calling LLM with model: {model}, prompt length: {len(prompt)}")
+            
+            if not api_key:
+                return {"error": "API key is required for LLM calls"}
+            
+            import requests
+            
+            # OpenAI API endpoint
+            url = "https://api.openai.com/v1/chat/completions"
+            
+            headers = {
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json"
+            }
+            
+            payload = {
+                "model": model,
+                "messages": [
+                    {"role": "user", "content": prompt}
+                ],
+                "max_tokens": max_tokens,
+                "temperature": temperature
+            }
+            
+            logger.info(f"Sending request to OpenAI API...")
+            response = requests.post(url, json=payload, headers=headers, timeout=30)
+            
+            if response.status_code == 200:
+                result = response.json()
+                if 'choices' in result and len(result['choices']) > 0:
+                    llm_response = result['choices'][0]['message']['content']
+                    logger.info(f"LLM response received: {llm_response[:100]}...")
+                    
+                    return {
+                        "success": True,
+                        "model": model,
+                        "response": llm_response,
+                        "usage": result.get('usage', {}),
+                        "timestamp": datetime.now().isoformat()
+                    }
+                else:
+                    return {"error": "No response from LLM"}
+            else:
+                error_msg = f"API request failed with status {response.status_code}: {response.text}"
+                logger.error(error_msg)
+                return {"error": error_msg}
+                
+        except Exception as e:
+            logger.error(f"Error calling LLM: {e}")
+            return {"error": str(e)}
+    
     def execute_node_strategy(self, node_graph):
         """Execute a node-based trading strategy"""
         if not self.connected_to_mt5:
@@ -1093,6 +1148,15 @@ class MT5Bridge:
                 period = data.get('period', '1d')
                 interval = data.get('interval', '1m')
                 result = self.get_yfinance_data(symbol, data_type, period, interval)
+                response['data'] = result
+            
+            elif action == 'callLLM':
+                model = data.get('model', 'gpt-3.5-turbo')
+                prompt = data.get('prompt', 'Hello')
+                max_tokens = data.get('maxTokens', 150)
+                temperature = data.get('temperature', 0.7)
+                api_key = data.get('apiKey', '')
+                result = self.call_llm(model, prompt, max_tokens, temperature, api_key)
                 response['data'] = result
             
             else:

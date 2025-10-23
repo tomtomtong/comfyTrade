@@ -243,6 +243,15 @@ ipcMain.handle('mt5:getYFinanceData', async (event, params) => {
     }
 });
 
+ipcMain.handle('mt5:callLLM', async (event, params) => {
+    try {
+        const result = await mt5Bridge.callLLM(params);
+        return { success: true, data: result };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
 // Handler for opening external URLs
 ipcMain.handle('electron:openExternal', async (event, url) => {
     try {

@@ -22,7 +22,8 @@ contextBridge.exposeInMainWorld('mt5API', {
   toggleSimulatorMode: (enabled) => ipcRenderer.invoke('mt5:toggleSimulatorMode', enabled),
   getSimulatorStatus: () => ipcRenderer.invoke('mt5:getSimulatorStatus'),
   resetSimulator: (initialBalance) => ipcRenderer.invoke('mt5:resetSimulator', initialBalance),
-  getYFinanceData: (params) => ipcRenderer.invoke('mt5:getYFinanceData', params)
+  getYFinanceData: (params) => ipcRenderer.invoke('mt5:getYFinanceData', params),
+  callLLM: (params) => ipcRenderer.invoke('mt5:callLLM', params)
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

@@ -1986,32 +1986,95 @@ function updatePropertiesPanel(node) {
             </small>
           </div>
         `;
-      } else if (key === 'condition' && node.type === 'trigger-output') {
+
+      } else if (key === 'model' && node.type === 'llm-node') {
         return `
           <div class="property-item">
-            <label>Trigger Condition:</label>
+            <label>LLM Model:</label>
             <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
-              <option value="always" ${value === 'always' ? 'selected' : ''}>Always Trigger</option>
-              <option value="not_empty" ${value === 'not_empty' ? 'selected' : ''}>Not Empty</option>
-              <option value="contains" ${value === 'contains' ? 'selected' : ''}>Contains Text</option>
-              <option value="numeric_gt" ${value === 'numeric_gt' ? 'selected' : ''}>Numeric Greater Than</option>
+              <option value="gpt-3.5-turbo" ${value === 'gpt-3.5-turbo' ? 'selected' : ''}>GPT-3.5 Turbo</option>
+              <option value="gpt-4" ${value === 'gpt-4' ? 'selected' : ''}>GPT-4</option>
+              <option value="gpt-4-turbo" ${value === 'gpt-4-turbo' ? 'selected' : ''}>GPT-4 Turbo</option>
+              <option value="gpt-4o" ${value === 'gpt-4o' ? 'selected' : ''}>GPT-4o</option>
+              <option value="gpt-4o-mini" ${value === 'gpt-4o-mini' ? 'selected' : ''}>GPT-4o Mini</option>
             </select>
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
-              Condition to evaluate the input string before triggering
+              Select the OpenAI model to use for LLM calls
             </small>
           </div>
         `;
-      } else if (key === 'threshold' && node.type === 'trigger-output') {
+      } else if (key === 'prompt' && node.type === 'llm-node') {
         return `
           <div class="property-item">
-            <label>Threshold Value:</label>
-            <input type="text" 
+            <label>Prompt Template:</label>
+            <textarea data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.value)"
+                     rows="4"
+                     style="width: 100%; resize: vertical; font-family: monospace;"
+                     placeholder="Enter your prompt template here...">${value}</textarea>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Use {input} as placeholder for the input text. Example: "Analyze this data: {input}"
+            </small>
+          </div>
+        `;
+      } else if (key === 'maxTokens' && node.type === 'llm-node') {
+        return `
+          <div class="property-item">
+            <label>Max Tokens:</label>
+            <input type="number" 
                    value="${value}" 
-                   placeholder="Enter threshold value..."
+                   min="1"
+                   max="4000"
+                   step="1"
                    data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseInt(this.value))">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Maximum number of tokens in the response (1-4000)
+            </small>
+          </div>
+        `;
+      } else if (key === 'temperature' && node.type === 'llm-node') {
+        return `
+          <div class="property-item">
+            <label>Temperature:</label>
+            <input type="number" 
+                   value="${value}" 
+                   min="0"
+                   max="2"
+                   step="0.1"
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseFloat(this.value))">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Controls randomness: 0 = deterministic, 2 = very creative
+            </small>
+          </div>
+        `;
+      } else if (key === 'apiKey' && node.type === 'llm-node') {
+        return `
+          <div class="property-item">
+            <label>API Key:</label>
+            <input type="password" 
+                   value="${value}" 
+                   data-param="${key}"
+                   placeholder="sk-..."
                    onchange="updateNodeParam('${key}', this.value)">
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
-              For 'Contains': text to search for. For 'Numeric GT': number to compare against.
+              Your OpenAI API key (starts with sk-). Keep this secure!
+            </small>
+          </div>
+        `;
+      } else if (key === 'useStringInput' && node.type === 'llm-node') {
+        return `
+          <div class="property-item">
+            <label>
+              <input type="checkbox" 
+                     ${value ? 'checked' : ''} 
+                     data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.checked)">
+              Use String Input
+            </label>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              When enabled, the prompt input will come from a connected String Input node
             </small>
           </div>
         `;

@@ -66,10 +66,10 @@
   },
   "overtradeHistory": [
     {
-      "timestamp": 1761199873916,
+      "timestamp": 1761201062534,
       "type": "manual",
       "data": {
-        "symbol": "XAUUSD",
+        "symbol": "BTCUSD",
         "type": "BUY",
         "volume": 0.01,
         "stopLoss": 0,

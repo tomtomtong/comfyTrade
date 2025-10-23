@@ -451,6 +451,16 @@ class MT5Bridge {
     return response.data;
   }
 
+  async callLLM(params) {
+    if (!this.connected) {
+      throw new Error('Not connected to MT5');
+    }
+
+    console.log(`Calling LLM with model: ${params.model}`);
+    const response = await this.sendMessage('callLLM', params);
+    return response.data;
+  }
+
   isConnected() {
     return this.connected;
   }
