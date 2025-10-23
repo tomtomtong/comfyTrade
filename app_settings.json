@@ -64,22 +64,7 @@
     "warningEnabled": true,
     "blockTrading": false
   },
-  "overtradeHistory": [
-    {
-      "timestamp": 1761201062534,
-      "type": "manual",
-      "data": {
-        "symbol": "BTCUSD",
-        "type": "BUY",
-        "volume": 0.01,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    }
-  ],
+  "overtradeHistory": [],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {

@@ -1737,28 +1737,7 @@ function updatePropertiesPanel(node) {
             </small>
           </div>
         `;
-      } else if (key === 'type' && node.type === 'signal-popup') {
-        return `
-          <div class="property-item">
-            <label>${key}:</label>
-            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
-              <option value="info" ${value === 'info' ? 'selected' : ''}>Info</option>
-              <option value="success" ${value === 'success' ? 'selected' : ''}>Success</option>
-              <option value="warning" ${value === 'warning' ? 'selected' : ''}>Warning</option>
-              <option value="error" ${value === 'error' ? 'selected' : ''}>Error</option>
-            </select>
-          </div>
-        `;
-      } else if (key === 'autoClose' && node.type === 'signal-popup') {
-        return `
-          <div class="property-item">
-            <label>${key}:</label>
-            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value === 'true')">
-              <option value="true" ${value ? 'selected' : ''}>Auto Close</option>
-              <option value="false" ${!value ? 'selected' : ''}>Manual Close</option>
-            </select>
-          </div>
-        `;
+
       } else if (key === 'stopAllTriggers' && node.type === 'end-strategy') {
         return `
           <div class="property-item">
@@ -1769,18 +1748,7 @@ function updatePropertiesPanel(node) {
             </select>
           </div>
         `;
-      } else if (key === 'duration' && node.type === 'signal-popup') {
-        return `
-          <div class="property-item">
-            <label>${key} (ms):</label>
-            <input type="number" 
-                   value="${value}" 
-                   min="1000"
-                   step="1000"
-                   data-param="${key}"
-                   onchange="updateNodeParam('${key}', parseInt(this.value))">
-          </div>
-        `;
+
       } else if (key === 'ticket' && (node.type === 'close-position' || node.type === 'modify-position')) {
         const positionOptions = currentPositions.map(pos => 
           `<option value="${pos.ticket}" ${value == pos.ticket ? 'selected' : ''}>
@@ -2078,6 +2046,49 @@ function updatePropertiesPanel(node) {
             </small>
           </div>
         `;
+      } else if (key === 'displayValue' && node.type === 'string-output') {
+        return `
+          <div class="property-item">
+            <label>Current Value:</label>
+            <textarea readonly
+                     rows="4"
+                     style="width: 100%; resize: vertical; font-family: monospace; background: #f5f5f5;"
+                     placeholder="No value received yet...">${value}</textarea>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              This shows the current string value received from connected nodes (read-only)
+            </small>
+          </div>
+        `;
+      } else if (key === 'showPopup' && node.type === 'string-output') {
+        return `
+          <div class="property-item">
+            <label>
+              <input type="checkbox" 
+                     ${value ? 'checked' : ''} 
+                     data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.checked)">
+              Show Popup Message
+            </label>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              When enabled, displays the string value in a popup message
+            </small>
+          </div>
+        `;
+      } else if (key === 'logToConsole' && node.type === 'string-output') {
+        return `
+          <div class="property-item">
+            <label>
+              <input type="checkbox" 
+                     ${value ? 'checked' : ''} 
+                     data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.checked)">
+              Log to Console
+            </label>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              When enabled, logs the string value to the browser console
+            </small>
+          </div>
+        `;
       } else {
         return `
           <div class="property-item">
@@ -2117,14 +2128,7 @@ function updatePropertiesPanel(node) {
     `;
   }
   
-  // Add test popup button for signal nodes
-  if (node.type === 'signal-popup') {
-    actionButtons += `
-      <button class="btn btn-info btn-small" onclick="testSignalPopup('${node.id}')">
-        Test Popup
-      </button>
-    `;
-  }
+
   
   // Add test buttons for logic gates
   if (node.type === 'logic-and' || node.type === 'logic-or') {
@@ -3006,18 +3010,6 @@ async function getCurrentPriceForNode(nodeId) {
 // Make functions globally available
 window.getCurrentPriceForNode = getCurrentPriceForNode;
 
-// Test signal popup function
-function testSignalPopup(nodeId) {
-  const node = nodeEditor.nodes.find(n => n.id == nodeId);
-  if (!node || node.type !== 'signal-popup') {
-    showMessage('Please select a signal popup node first', 'error');
-    return;
-  }
-  
-  // Show the popup with the node's parameters
-  showSignalPopup(node.params);
-  showMessage('Testing signal popup with current parameters', 'info');
-}
 
 // Test end strategy function
 function testEndStrategy(nodeId) {
@@ -3111,7 +3103,7 @@ async function testTwilioAlert(nodeId) {
 }
 
 // Make functions globally available
-window.testSignalPopup = testSignalPopup;
+
 window.testEndStrategy = testEndStrategy;
 window.testTwilioAlert = testTwilioAlert;
 

@@ -292,23 +292,12 @@ class NodeEditor {
         }
       },
 
-      'signal-popup': {
-        title: 'Popup Signal',
-        inputs: ['trigger'],
-        outputs: ['trigger'],
-        params: { 
-          title: 'Signal Alert',
-          message: 'Trading signal triggered!',
-          type: 'info',
-          autoClose: true,
-          duration: 5000
-        }
-      },
+
 
       'string-input': {
         title: 'String Input',
-        inputs: [],
-        outputs: ['string'],
+        inputs: ['trigger'],
+        outputs: ['string', 'trigger'],
         params: { 
           value: 'Custom message text'
         }
@@ -363,6 +352,17 @@ class NodeEditor {
           temperature: 0.7,
           apiKey: '',
           useStringInput: true
+        }
+      },
+
+      'string-output': {
+        title: 'String Output',
+        inputs: ['trigger', 'string'],
+        outputs: ['trigger'],
+        params: { 
+          displayValue: '',
+          showPopup: true,
+          logToConsole: true
         }
       },
 
@@ -842,6 +842,8 @@ class NodeEditor {
         label = i === 0 ? 'trigger1' : 'trigger2';
       } else if (node.type === 'twilio-alert' && inputType === 'string') {
         label = 'message';
+      } else if (node.type === 'string-output') {
+        label = i === 0 ? 'trigger' : 'string';
       }
       ctx.fillText(label, pos.x + 10, pos.y + 4);
     }
@@ -861,7 +863,11 @@ class NodeEditor {
       ctx.fillStyle = '#b0b0b0';
       ctx.font = '11px Arial';
       ctx.textAlign = 'right';
-      ctx.fillText(outputType, pos.x - 10, pos.y + 4);
+      let outputLabel = outputType;
+      if (node.type === 'string-input') {
+        outputLabel = i === 0 ? 'string' : 'trigger';
+      }
+      ctx.fillText(outputLabel, pos.x - 10, pos.y + 4);
     }
 
     // Parameters with text wrapping
@@ -1095,8 +1101,10 @@ class NodeEditor {
       // Execute node-specific logic and get boolean result
       switch (node.type) {
         case 'string-input':
-          console.log('String input node providing value:', node.params.value);
-          result = node.params.value; // Return the string value
+          console.log('String input node triggered, providing value:', node.params.value);
+          // Store the string value for string output connections
+          node.stringValue = node.params.value;
+          result = true; // Continue trigger flow
           break;
 
         case 'indicator-ma':
@@ -1287,14 +1295,7 @@ class NodeEditor {
           break;
           
 
-        case 'signal-popup':
-          console.log('Showing popup signal:', node.params.title, node.params.message);
-          if (window.showSignalPopup) {
-            window.showSignalPopup(node.params);
-          }
-          result = true; // Popup nodes don't stop flow
-          break;
-          
+
         case 'twilio-alert':
           console.log('Sending Twilio alert:', node.params.message);
           
@@ -1534,6 +1535,56 @@ class NodeEditor {
             result = false; // Stop trigger flow on error
           }
           break;
+
+        case 'string-output':
+          console.log('Processing String Output node');
+          
+          try {
+            // Get input string from connected node (second input is string)
+            let displayText = 'No input';
+            
+            // Check if there's a string input connected (input index 1)
+            const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
+            if (stringConnection) {
+              if (stringConnection.from.type === 'string-input') {
+                displayText = stringConnection.from.stringValue || stringConnection.from.params.value || 'Empty string input';
+              } else if (stringConnection.from.type === 'llm-node') {
+                displayText = stringConnection.from.llmResponse || 'No LLM response';
+              } else if (stringConnection.from.type === 'yfinance-data') {
+                displayText = stringConnection.from.fetchedData || 'No yfinance data';
+              } else {
+                // For other nodes, try to get a string representation
+                displayText = inputResult ? inputResult.toString() : 'No data';
+              }
+            }
+            
+            // Store the display value in the node
+            node.params.displayValue = displayText;
+            
+            // Log to console if enabled
+            if (node.params.logToConsole) {
+              console.log('📄 String Output:', displayText);
+            }
+            
+            // Show popup if enabled
+            if (node.params.showPopup && window.showMessage) {
+              const truncatedText = displayText.length > 200 ? 
+                displayText.substring(0, 200) + '...' : displayText;
+              window.showMessage(`String Output: ${truncatedText}`, 'info');
+            }
+            
+            // String output nodes now continue the trigger flow
+            result = true;
+            console.log('✓ String Output displayed successfully');
+            
+          } catch (error) {
+            console.error('Error in String Output node:', error);
+            if (window.showMessage) {
+              window.showMessage(`String Output error: ${error.message}`, 'error');
+            }
+            result = false;
+          }
+          break;
       }
     }
     
@@ -1556,7 +1607,15 @@ class NodeEditor {
       // Determine what to pass based on output type
       let outputValue = result;
       
-      if (node.type === 'yfinance-data') {
+      if (node.type === 'string-input') {
+        if (fromOutput === 0) {
+          // String output - pass the string value
+          outputValue = node.stringValue || node.params.value || 'No value';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
+      } else if (node.type === 'yfinance-data') {
         if (fromOutput === 0) {
           // String output - pass the fetched data
           outputValue = node.fetchedData || 'No data';
