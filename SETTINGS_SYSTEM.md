@@ -161,7 +161,6 @@ await window.settingsBackup.resetToDefaults();
 
 - **Main Settings**: `app_settings.json` (root directory)
 - **Legacy Files**: Still maintained for backward compatibility
-  - `twilio_config.json`
   - `simulator_positions.json`
   - `mt5_trading_settings.json`
 

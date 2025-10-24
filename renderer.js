@@ -3281,6 +3281,23 @@ function showSettingsModal() {
   // Setup event listeners
   document.getElementById('closeSettingsBtn').onclick = handleCloseSettings;
   document.getElementById('saveSettingsBtn').onclick = handleSaveSettings;
+  
+  // Setup load settings functionality
+  const loadSettingsBtn = document.getElementById('loadSettingsBtn');
+  const loadSettingsFileInput = document.getElementById('loadSettingsFileInput');
+  
+  if (loadSettingsBtn && loadSettingsFileInput) {
+    loadSettingsBtn.onclick = () => {
+      loadSettingsFileInput.click();
+    };
+    
+    loadSettingsFileInput.onchange = (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        loadSettingsFromFile(file);
+      }
+    };
+  }
 
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('settingsTestOvertradeBtn').onclick = testOvertradeFromSettings;
@@ -3737,6 +3754,46 @@ function removeVolumeLimit(symbol) {
       showMessage(`Volume limit removed for ${symbol}`, 'info');
       markSettingsAsChanged();
     }
+  }
+}
+
+async function loadSettingsFromFile(file) {
+  try {
+    const text = await file.text();
+    const data = JSON.parse(text);
+    
+    // Load volume control settings if present
+    if (data.settings && window.volumeControl) {
+      const success = window.volumeControl.importSettings(JSON.stringify(data));
+      
+      if (success) {
+        // Refresh the volume control UI
+        if (typeof updateVolumeLimitsList === 'function') {
+          updateVolumeLimitsList();
+        }
+        
+        // Reload all settings to reflect changes
+        loadGeneralSettings();
+        loadOvertradeSettings();
+        loadVolumeControlSettings();
+        loadTwilioSettings();
+        loadAiAnalysisSettings();
+        
+        showMessage('Settings loaded successfully', 'success');
+      }
+    } else {
+      showMessage('Invalid settings file format', 'error');
+    }
+    
+    // Clear the file input
+    const fileInput = document.getElementById('loadSettingsFileInput');
+    if (fileInput) {
+      fileInput.value = '';
+    }
+    
+  } catch (error) {
+    console.error('Error loading settings file:', error);
+    showMessage('Failed to load settings file', 'error');
   }
 }
 

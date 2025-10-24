@@ -2,8 +2,12 @@
 class VolumeControl {
   constructor() {
     this.settings = {
-      enabled: false,
-      symbolLimits: {} // { "EURUSD": 0.5, "GBPUSD": 1.0, etc. }
+      enabled: true,
+      symbolLimits: {}, // { "EURUSD": 0.5, "GBPUSD": 1.0, etc. }
+      maxVolume: 1.0,
+      warningThreshold: 0.8,
+      autoReduce: false,
+      reductionFactor: 0.5
     };
     
     this.loadSettings();
@@ -42,6 +46,35 @@ class VolumeControl {
 
   setupEventListeners() {
     // Settings modal event listeners will be set up when modal is shown
+    this.setupFileControls();
+  }
+
+  setupFileControls() {
+    // File controls are now handled in the main settings modal
+    // This method is kept for compatibility but no longer needed
+  }
+
+  async loadSettingsFromFile(file) {
+    try {
+      const text = await file.text();
+      const success = this.importSettings(text);
+      
+      if (success) {
+        // Refresh the UI if we're in settings modal
+        if (typeof updateVolumeLimitsList === 'function') {
+          updateVolumeLimitsList();
+        }
+        
+        // Clear the file input
+        const fileInput = document.getElementById('volumeSettingsFileInput');
+        if (fileInput) {
+          fileInput.value = '';
+        }
+      }
+    } catch (error) {
+      console.error('Error reading settings file:', error);
+      showMessage('Failed to read settings file', 'error');
+    }
   }
 
   // Check if a trade volume exceeds the limit for a symbol
@@ -186,25 +219,7 @@ class VolumeControl {
     modal.classList.add('show');
   }
 
-  // Export settings for backup
-  exportSettings() {
-    const data = {
-      settings: this.settings,
-      exportDate: new Date().toISOString(),
-      version: '1.0'
-    };
-    
-    const dataStr = JSON.stringify(data, null, 2);
-    const blob = new Blob([dataStr], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `volume-control-backup-${Date.now()}.json`;
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    showMessage('Volume control settings exported', 'success');
-  }
+
 
   // Import settings from backup
   importSettings(jsonData) {

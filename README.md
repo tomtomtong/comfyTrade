@@ -142,8 +142,7 @@ mt5-trader/
 │   ├── package.json            # Node.js dependencies and build scripts
 │   ├── requirements.txt        # Python dependencies
 │   ├── config.js               # Application configuration management
-│   ├── sample_history.csv      # Example CSV format for data import
-│   └── twilio_config.json      # Twilio settings (auto-generated)
+│   └── sample_history.csv      # Example CSV format for data import
 │
 └── Build & Distribution
     ├── dist/                   # Build output directory (generated)
@@ -497,7 +496,7 @@ window.debugStrategy()
 
 #### Settings Don't Persist
 **Solution**: Settings now use unified localStorage system
-- Check `twilio_config.json` exists
+- Check `app_settings.json` exists and is properly formatted
 - Verify localStorage permissions
 - Use "Save Settings" button
 

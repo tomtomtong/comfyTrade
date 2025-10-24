@@ -34,18 +34,11 @@ class MT5Bridge:
     def load_twilio_config(self):
         """Load Twilio configuration from unified settings file"""
         try:
-            # Try to load from unified settings first
-            try:
-                with open('app_settings.json', 'r') as f:
-                    settings = json.load(f)
-                    twilio_config = settings.get('twilio', {})
-            except FileNotFoundError:
-                # Fallback to old config file
-                with open('twilio_config.json', 'r') as f:
-                    config = json.load(f)
-                    twilio_config = config.get('twilio', {})
-            self.twilio_config = twilio_config  # Store for later retrieval
-            self.alert_config = config.get('notifications', {})
+            with open('app_settings.json', 'r') as f:
+                settings = json.load(f)
+                twilio_config = settings.get('twilio', {})
+                self.twilio_config = twilio_config  # Store for later retrieval
+                self.alert_config = settings.get('notifications', {})
             
             if twilio_config.get('enabled', False):
                 self.twilio_alerts = TwilioAlerts(
@@ -58,7 +51,7 @@ class MT5Bridge:
                 logger.info("Twilio alerts disabled in configuration")
                 
         except FileNotFoundError:
-            logger.warning("twilio_config.json not found. Twilio alerts disabled.")
+            logger.warning("app_settings.json not found. Twilio alerts disabled.")
             self.twilio_config = {}
         except Exception as e:
             logger.error(f"Error loading Twilio config: {e}")
@@ -462,26 +455,6 @@ class MT5Bridge:
             # Save updated config to unified settings
             with open('app_settings.json', 'w') as f:
                 json.dump(current_config, f, indent=2)
-            
-            # Also maintain backward compatibility by updating old file
-            try:
-                old_config = {
-                    "twilio": {
-                        "account_sid": current_config['twilio'].get('accountSid', ''),
-                        "auth_token": current_config['twilio'].get('authToken', ''),
-                        "from_number": current_config['twilio'].get('fromNumber', ''),
-                        "enabled": current_config['twilio'].get('enabled', False)
-                    },
-                    "notifications": {
-                        "recipient_number": current_config['twilio'].get('recipientNumber', ''),
-                        "method": current_config['twilio'].get('method', 'sms'),
-                        "alerts": current_config['twilio'].get('alerts', {})
-                    }
-                }
-                with open('twilio_config.json', 'w') as f:
-                    json.dump(old_config, f, indent=2)
-            except Exception as e:
-                logger.warning(f"Could not update legacy twilio_config.json: {e}")
             
             # Reload configuration
             self.load_twilio_config()

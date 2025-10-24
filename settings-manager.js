@@ -47,6 +47,7 @@ class SettingsManager {
       // Volume control settings
       volumeControl: {
         enabled: true,
+        symbolLimits: {},
         maxVolume: 1.0,
         warningThreshold: 0.8,
         autoReduce: false,

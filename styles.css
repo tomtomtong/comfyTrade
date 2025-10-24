@@ -3444,6 +3444,9 @@ olume Status Grid - Matching Overtrade Style */
 .volume-limit-actions .btn-small {
   padding: 2px 6px;
   font-size: 10px;
+}
+
+
   min-width: 24px;
   height: 24px;
   display: flex;

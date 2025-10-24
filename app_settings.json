@@ -36,7 +36,9 @@
   },
   "volumeControl": {
     "enabled": true,
-    "symbolLimits": {},
+    "symbolLimits": {
+      "XAUUSD": 0.01
+    },
     "maxVolume": 1,
     "warningThreshold": 0.8,
     "autoReduce": false,
