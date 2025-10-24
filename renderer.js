@@ -126,6 +126,44 @@ async function loadAllSettingsOnStartup() {
   }
 }
 
+// Reload settings from JSON file (like manual load but automatic)
+async function reloadSettingsFromFile() {
+  try {
+    console.log('🔄 Reloading settings from JSON file...');
+    
+    if (window.settingsManager && window.electronAPI && window.electronAPI.loadSettings) {
+      const fileSettings = await window.electronAPI.loadSettings('app_settings.json');
+      if (fileSettings) {
+        // Update settings manager with fresh data
+        window.settingsManager.settings = window.settingsManager.mergeSettings(window.settingsManager.defaultSettings, fileSettings);
+        console.log('✅ Settings reloaded from JSON file');
+        
+        // Reload all control systems with fresh settings
+        if (window.overtradeControl) {
+          window.overtradeControl.loadSettings();
+          console.log('✅ Overtrade control settings reloaded');
+        }
+        
+        if (window.volumeControl) {
+          window.volumeControl.loadSettings();
+          console.log('✅ Volume control settings reloaded');
+        }
+        
+        return true;
+      } else {
+        console.log('📁 No settings file found or file is empty');
+        return false;
+      }
+    } else {
+      console.error('❌ Settings manager or Electron API not available');
+      return false;
+    }
+  } catch (error) {
+    console.error('❌ Error reloading settings from file:', error);
+    return false;
+  }
+}
+
 function initializeNodeEditor() {
   const canvas = document.getElementById('nodeCanvas');
   nodeEditor = new NodeEditor(canvas);
@@ -3324,15 +3362,35 @@ function createSignalPopup() {
 let settingsHasUnsavedChanges = false;
 let originalSettingsState = {};
 
-function showSettingsModal() {
+async function showSettingsModal() {
   document.getElementById('settingsModal').classList.add('show');
+  
+  // Show loading indicator
+  const modalTitle = document.querySelector('#settingsModal h2');
+  const originalTitle = modalTitle.textContent;
+  modalTitle.textContent = 'Settings (Reloading...)';
+  
+  // Automatically reload settings from JSON file when modal opens
+  console.log('🔄 Settings modal opened - reloading from JSON file...');
+  const reloadSuccess = await reloadSettingsFromFile();
+  
+  if (reloadSuccess) {
+    console.log('✅ Settings reloaded successfully');
+    modalTitle.textContent = 'Settings (Reloaded)';
+    setTimeout(() => {
+      modalTitle.textContent = originalTitle;
+    }, 1000);
+  } else {
+    console.log('⚠️ Settings reload failed, using current settings');
+    modalTitle.textContent = originalTitle;
+  }
+  
+  // Load all settings components with fresh data
   loadGeneralSettings();
   loadOvertradeSettings();
   loadVolumeControlSettings();
   loadTwilioSettings();
   loadAiAnalysisSettings();
-  
-
   
   // Store original settings state for comparison
   storeOriginalSettingsState();

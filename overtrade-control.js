@@ -18,14 +18,15 @@ class OvertradeControl {
     this.warningCount = 0;
     this.cachedOpenPositionsCount = 0;
     
-    this.loadSettings();
+    // Don't load settings here - wait for settings manager to be ready
+    this.settingsLoaded = false;
     this.setupEventListeners();
     this.startPeriodicCleanup();
   }
 
   loadSettings() {
     try {
-      if (window.settingsManager) {
+      if (window.settingsManager && window.settingsManager.settings) {
         const saved = window.settingsManager.get('overtradeControl');
         if (saved) {
           this.settings = { ...this.settings, ...saved };
@@ -46,6 +47,12 @@ class OvertradeControl {
         if (warningCount) {
           this.warningCount = warningCount;
         }
+        
+        this.settingsLoaded = true;
+      } else {
+        // Settings manager not ready yet, retry in 100ms
+        setTimeout(() => this.loadSettings(), 100);
+        return;
       }
       
       console.log('Overtrade control loaded:', {

@@ -10,17 +10,23 @@ class VolumeControl {
       reductionFactor: 0.5
     };
     
-    this.loadSettings();
+    // Don't load settings here - wait for settings manager to be ready
+    this.settingsLoaded = false;
     this.setupEventListeners();
   }
 
   loadSettings() {
     try {
-      if (window.settingsManager) {
+      if (window.settingsManager && window.settingsManager.settings) {
         const saved = window.settingsManager.get('volumeControl');
         if (saved) {
           this.settings = { ...this.settings, ...saved };
+          this.settingsLoaded = true;
         }
+      } else {
+        // Settings manager not ready yet, retry in 100ms
+        setTimeout(() => this.loadSettings(), 100);
+        return;
       }
       
       console.log('Volume control loaded:', {
