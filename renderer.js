@@ -2013,6 +2013,23 @@ function updatePropertiesPanel(node) {
             </small>
           </div>
         `;
+      } else if (key === 'apiKey' && node.type === 'firecrawl-node') {
+        const firecrawlSettings = window.settingsManager ? window.settingsManager.get('ai.firecrawl') : null;
+        const isConfigured = firecrawlSettings && firecrawlSettings.enabled && firecrawlSettings.apiKey;
+        
+        return `
+          <div class="property-item">
+            <label>API Configuration:</label>
+            <div style="padding: 8px; background: ${isConfigured ? '#1a4d1a' : '#4d1a1a'}; border-radius: 4px; margin-bottom: 8px;">
+              <div style="color: ${isConfigured ? '#4ade80' : '#f87171'}; font-size: 12px; font-weight: bold;">
+                ${isConfigured ? '✓ Firecrawl Configured' : '✗ Firecrawl Not Configured'}
+              </div>
+              <div style="color: #aaa; font-size: 11px; margin-top: 4px;">
+                ${isConfigured ? 'Using API key from settings' : 'API key required in Settings → AI → Firecrawl'}
+              </div>
+            </div>
+          </div>
+        `;
       } else if (key === 'apiKey' && node.type === 'llm-node') {
         const openRouterSettings = window.settingsManager ? window.settingsManager.get('ai.openRouter') : null;
         const isConfigured = openRouterSettings && openRouterSettings.enabled && openRouterSettings.apiKey;

@@ -3,8 +3,8 @@
   "ai": {
     "enabled": true,
     "firecrawl": {
-      "enabled": false,
-      "apiKey": "",
+      "enabled": true,
+      "apiKey": "fc-835a843fa061413391468b8b2fb877da",
       "baseUrl": "https://api.firecrawl.dev"
     },
     "openRouter": {
@@ -57,7 +57,28 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistory": [],
+  "overtradeHistory": [
+    {
+      "timestamp": 1761523470083,
+      "type": "node",
+      "data": {
+        "nodeCount": 3,
+        "action": "executeNodeStrategy"
+      },
+      "action": "executeNodeStrategy",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1761523504062,
+      "type": "node",
+      "data": {
+        "nodeCount": 3,
+        "action": "executeNodeStrategy"
+      },
+      "action": "executeNodeStrategy",
+      "positionType": "open"
+    }
+  ],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {

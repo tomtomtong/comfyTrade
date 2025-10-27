@@ -1096,7 +1096,13 @@ class NodeEditor {
     for (let [key, value] of params) {
       if (currentY + lineHeight > maxY) break; // Stop if we run out of space
       
-      const paramText = `${key}: ${value}`;
+      // Truncate URL for display (for firecrawl-node)
+      let displayValue = value;
+      if (key === 'url' && typeof value === 'string' && value.length > 40) {
+        displayValue = value.substring(0, 37) + '...';
+      }
+      
+      const paramText = `${key}: ${displayValue}`;
       const wrappedLines = this.wrapText(ctx, paramText, maxWidth);
       
       for (let line of wrappedLines) {
