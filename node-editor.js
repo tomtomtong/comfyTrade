@@ -12,7 +12,7 @@ class NodeEditor {
     this.scale = 1;
     this.mousePos = { x: 0, y: 0 };
     this.hoveredConnection = null;
-    
+
     // Canvas pan/zoom
     this.panOffset = { x: 0, y: 0 };
     this.isPanning = false;
@@ -20,19 +20,19 @@ class NodeEditor {
     this.lastPanPos = { x: 0, y: 0 };
     this.lastZoomY = 0;
     this.spacePressed = false;
-    
+
     // Undo system for node deletion
     this.undoStack = [];
     this.maxUndoSteps = 20;
-    
+
     // Track execution state for logic gates
     this.executionState = new Map(); // nodeId -> { inputResults: [], timestamp }
-    
+
     // Strategy execution state
     this.isStrategyExecuting = false;
     this.currentExecutingNode = null;
     this.executingNodeStartTime = null;
-    
+
     this.setupCanvas();
     this.setupEventListeners();
     this.animate();
@@ -146,7 +146,7 @@ class NodeEditor {
     const rect = this.canvas.getBoundingClientRect();
     const screenX = e.clientX - rect.left;
     const screenY = e.clientY - rect.top;
-    
+
     // Store screen coordinates for drawing connection lines
     this.mousePos.x = screenX;
     this.mousePos.y = screenY;
@@ -155,10 +155,10 @@ class NodeEditor {
     if (this.isPanning) {
       const dx = e.clientX - this.lastPanPos.x;
       const dy = e.clientY - this.lastPanPos.y;
-      
+
       this.panOffset.x += dx;
       this.panOffset.y += dy;
-      
+
       this.lastPanPos = { x: e.clientX, y: e.clientY };
       this.canvas.style.cursor = 'grabbing';
       return;
@@ -168,18 +168,18 @@ class NodeEditor {
     if (this.isZoomDragging) {
       const dy = this.lastZoomY - e.clientY; // Inverted: drag up = zoom in
       const zoomFactor = 1 + (dy * 0.005); // Sensitivity factor
-      
+
       const oldScale = this.scale;
       this.scale *= zoomFactor;
       this.scale = Math.max(0.1, Math.min(5, this.scale)); // Extended zoom range
-      
+
       // Zoom towards center of canvas
       const centerX = this.canvas.width / 2;
       const centerY = this.canvas.height / 2;
       const scaleChange = this.scale / oldScale - 1;
       this.panOffset.x -= centerX * scaleChange;
       this.panOffset.y -= centerY * scaleChange;
-      
+
       this.lastZoomY = e.clientY;
       return;
     }
@@ -222,7 +222,7 @@ class NodeEditor {
       const rect = this.canvas.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
-      
+
       // Convert to canvas coordinates
       const canvasPos = this.screenToCanvas(screenX, screenY);
       const x = canvasPos.x;
@@ -231,7 +231,7 @@ class NodeEditor {
       // Check if released on an input socket
       for (let node of this.nodes) {
         if (node === this.connectingFrom.node) continue;
-        
+
         for (let i = 0; i < node.inputs.length; i++) {
           const socket = this.getInputSocketPos(node, i);
           const dist = Math.hypot(x - socket.x, y - socket.y);
@@ -250,16 +250,16 @@ class NodeEditor {
   onWheel(e) {
     e.preventDefault();
     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    
+
     const oldScale = this.scale;
     this.scale *= delta;
     this.scale = Math.max(0.1, Math.min(5, this.scale)); // Extended zoom range
-    
+
     // Zoom towards mouse position
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    
+
     const scaleChange = this.scale / oldScale - 1;
     this.panOffset.x -= mouseX * scaleChange;
     this.panOffset.y -= mouseY * scaleChange;
@@ -287,7 +287,7 @@ class NodeEditor {
         this.deleteSelectedNode();
       }
     }
-    
+
     // Ctrl+Z for undo
     if (e.ctrlKey && e.key === 'z') {
       e.preventDefault();
@@ -355,11 +355,11 @@ class NodeEditor {
     const baseHeight = 80;
     const inputHeight = nodeConfig.inputs.length * 25;
     const outputHeight = nodeConfig.outputs.length > 1 ? (nodeConfig.outputs.length - 1) * 25 : 0;
-    
+
     // Estimate parameter text height
     const paramCount = Object.keys(nodeConfig.params).length;
     const estimatedParamHeight = paramCount > 0 ? Math.max(30, paramCount * 15) : 0;
-    
+
     return baseHeight + Math.max(inputHeight, outputHeight) + estimatedParamHeight;
   }
 
@@ -387,7 +387,7 @@ class NodeEditor {
         title: 'Conditional Check',
         inputs: ['trigger'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           symbol: 'EURUSD',
           operator: '>',
           price: 1.1000,
@@ -412,8 +412,8 @@ class NodeEditor {
         title: 'Open Position',
         inputs: ['trigger'],
         outputs: ['trigger'],
-        params: { 
-          action: 'BUY', 
+        params: {
+          action: 'BUY',
           symbol: 'EURUSD',
           volume: 0.1,
           stopLoss: 0,
@@ -424,7 +424,7 @@ class NodeEditor {
         title: 'Close Position',
         inputs: ['trigger'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           ticket: '',
           closeType: 'all'
         }
@@ -433,7 +433,7 @@ class NodeEditor {
         title: 'Modify Position',
         inputs: ['trigger'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           ticket: '',
           stopLoss: 0,
           takeProfit: 0,
@@ -448,7 +448,7 @@ class NodeEditor {
         title: 'String Input',
         inputs: ['trigger'],
         outputs: ['string', 'trigger'],
-        params: { 
+        params: {
           value: 'Custom message text'
         }
       },
@@ -457,7 +457,7 @@ class NodeEditor {
         title: 'Twilio Alert',
         inputs: ['trigger', 'string'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           message: 'Trading alert from strategy',
           method: 'sms',
           recipient: '',
@@ -471,7 +471,7 @@ class NodeEditor {
         title: 'End Strategy',
         inputs: ['trigger'],
         outputs: [],
-        params: { 
+        params: {
           stopAllTriggers: true,
           message: 'Strategy execution completed'
         }
@@ -481,7 +481,7 @@ class NodeEditor {
         title: 'yFinance Data',
         inputs: ['trigger'],
         outputs: ['string', 'trigger'],
-        params: { 
+        params: {
           symbol: 'AAPL',
           dataType: 'price',
           period: '1d',
@@ -495,7 +495,7 @@ class NodeEditor {
         title: 'LLM Node',
         inputs: ['trigger', 'string'],
         outputs: ['string', 'trigger'],
-        params: { 
+        params: {
           model: '', // Will use model from OpenRouter settings if empty
           prompt: 'You are a helpful assistant. Respond to: {input}',
           maxTokens: 150,
@@ -508,7 +508,7 @@ class NodeEditor {
         title: 'Firecrawl Scraper',
         inputs: ['trigger', 'string'],
         outputs: ['string', 'trigger'],
-        params: { 
+        params: {
           url: 'https://example.com',
           scrapeType: 'scrape',
           apiKey: '', // Will use Firecrawl settings if empty
@@ -527,7 +527,7 @@ class NodeEditor {
         title: 'String Output',
         inputs: ['trigger', 'string'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           displayValue: '',
           showPopup: true,
           logToConsole: true
@@ -538,15 +538,26 @@ class NodeEditor {
         title: 'String Contains',
         inputs: ['trigger', 'string'],
         outputs: ['trigger'],
-        params: { 
+        params: {
           keyword: 'word',
           caseSensitive: false,
           passOnMatch: true
         }
       },
 
+      'python-script': {
+        title: 'Python Script',
+        inputs: ['trigger', 'string'],
+        outputs: ['string', 'trigger'],
+        params: {
+          script: 'result = "Hello from Python"',
+          useStringInput: false,
+          inputVarName: 'input_data'
+        }
+      },
+
     };
-    
+
     // Return config or a default fallback for unknown types
     return configs[type] || {
       title: 'Unknown Node',
@@ -566,7 +577,7 @@ class NodeEditor {
     if (inputIndex >= toNode.inputs.length) {
       return;
     }
-    
+
     if (outputIndex >= fromNode.outputs.length) {
       return;
     }
@@ -574,7 +585,7 @@ class NodeEditor {
     // Validate connection type compatibility
     const fromOutputType = fromNode.outputs[outputIndex];
     const toInputType = toNode.inputs[inputIndex];
-    
+
     if (fromOutputType !== toInputType) {
       return;
     }
@@ -583,7 +594,7 @@ class NodeEditor {
     const existingConnection = this.connections.find(
       conn => conn.from === fromNode && conn.to === toNode && conn.toInput === inputIndex && conn.fromOutput === outputIndex
     );
-    
+
     if (existingConnection) {
       return;
     }
@@ -600,7 +611,7 @@ class NodeEditor {
       toInput: inputIndex,
       fromOutput: outputIndex
     });
-    
+
   }
 
   removeNode(node) {
@@ -615,67 +626,67 @@ class NodeEditor {
     const nodeConnections = this.connections.filter(
       c => c.from === node || c.to === node
     );
-    
+
     const undoData = {
       type: 'nodeDelete',
       node: { ...node }, // Deep copy the node
       connections: nodeConnections.map(c => ({ ...c })), // Deep copy connections
       timestamp: Date.now()
     };
-    
+
     // Add to undo stack
     this.undoStack.push(undoData);
-    
+
     // Limit undo stack size
     if (this.undoStack.length > this.maxUndoSteps) {
       this.undoStack.shift();
     }
-    
+
     // Remove the node
     this.removeNode(node);
-    
+
     // Show undo hint
     this.showUndoHint();
-    
+
   }
 
   undoLastDeletion() {
     if (this.undoStack.length === 0) {
       return;
     }
-    
+
     const undoData = this.undoStack.pop();
-    
+
     if (undoData.type === 'nodeDelete') {
       // Restore the node
       const restoredNode = this.restoreNode(undoData.node);
-      
+
       // Restore connections
       for (let connData of undoData.connections) {
         // Find the actual node objects
-        const fromNode = connData.from.id === restoredNode.id ? restoredNode : 
-                         this.nodes.find(n => n.id === connData.from.id);
-        const toNode = connData.to.id === restoredNode.id ? restoredNode : 
-                       this.nodes.find(n => n.id === connData.to.id);
-        
+        const fromNode = connData.from.id === restoredNode.id ? restoredNode :
+          this.nodes.find(n => n.id === connData.from.id);
+        const toNode = connData.to.id === restoredNode.id ? restoredNode :
+          this.nodes.find(n => n.id === connData.to.id);
+
         if (fromNode && toNode) {
           this.addConnection(fromNode, toNode, connData.toInput);
         }
       }
-      
+
       // Select the restored node
       this.selectedNode = restoredNode;
-      
+
       // Update properties panel
       if (window.updatePropertiesPanel) {
         window.updatePropertiesPanel(restoredNode);
       }
-      
+
       // Hide undo hint if no more undos available
       if (this.undoStack.length === 0) {
         this.hideUndoHint();
       }
-      
+
     }
   }
 
@@ -693,7 +704,7 @@ class NodeEditor {
       outputs: [...nodeData.outputs],
       params: { ...nodeData.params }
     };
-    
+
     this.nodes.push(node);
     return node;
   }
@@ -720,60 +731,60 @@ class NodeEditor {
 
   getConnectionAtPoint(x, y) {
     const tolerance = 8; // Click tolerance for connection lines
-    
+
     for (let conn of this.connections) {
       const from = this.getOutputSocketPos(conn.from);
       const to = this.getInputSocketPos(conn.to, conn.toInput);
-      
+
       // Check if point is near the bezier curve
       if (this.isPointNearBezierCurve(x, y, from, to, tolerance)) {
         return conn;
       }
     }
-    
+
     return null;
   }
 
   isPointNearBezierCurve(x, y, from, to, tolerance) {
     // Sample points along the bezier curve and check distance
     const samples = 20;
-    
+
     for (let i = 0; i <= samples; i++) {
       const t = i / samples;
       const midX = (from.x + to.x) / 2;
-      
+
       // Calculate point on bezier curve
-      const curveX = Math.pow(1 - t, 3) * from.x + 
-                    3 * Math.pow(1 - t, 2) * t * midX + 
-                    3 * (1 - t) * Math.pow(t, 2) * midX + 
-                    Math.pow(t, 3) * to.x;
-      
-      const curveY = Math.pow(1 - t, 3) * from.y + 
-                    3 * Math.pow(1 - t, 2) * t * from.y + 
-                    3 * (1 - t) * Math.pow(t, 2) * to.y + 
-                    Math.pow(t, 3) * to.y;
-      
+      const curveX = Math.pow(1 - t, 3) * from.x +
+        3 * Math.pow(1 - t, 2) * t * midX +
+        3 * (1 - t) * Math.pow(t, 2) * midX +
+        Math.pow(t, 3) * to.x;
+
+      const curveY = Math.pow(1 - t, 3) * from.y +
+        3 * Math.pow(1 - t, 2) * t * from.y +
+        3 * (1 - t) * Math.pow(t, 2) * to.y +
+        Math.pow(t, 3) * to.y;
+
       const distance = Math.hypot(x - curveX, y - curveY);
       if (distance <= tolerance) {
         return true;
       }
     }
-    
+
     return false;
   }
 
   isPointInNode(x, y, node) {
     return x >= node.x && x <= node.x + node.width &&
-           y >= node.y && y <= node.y + node.height;
+      y >= node.y && y <= node.y + node.height;
   }
 
   getInputSocketPos(node, index) {
     // Always position trigger inputs at the top, then string inputs
     const triggerInputs = node.inputs.filter(input => input === 'trigger');
     const stringInputs = node.inputs.filter(input => input === 'string');
-    
+
     let yOffset = 40; // Base offset from node top
-    
+
     if (node.inputs[index] === 'trigger') {
       // Position trigger inputs at the top
       const triggerIndex = node.inputs.slice(0, index + 1).filter(input => input === 'trigger').length - 1;
@@ -783,7 +794,7 @@ class NodeEditor {
       const stringIndex = node.inputs.slice(0, index + 1).filter(input => input === 'string').length - 1;
       yOffset += triggerInputs.length * 25 + stringIndex * 25;
     }
-    
+
     return {
       x: node.x,
       y: node.y + yOffset
@@ -794,9 +805,9 @@ class NodeEditor {
     // Always position trigger outputs at the top, then string outputs
     const triggerOutputs = node.outputs.filter(output => output === 'trigger');
     const stringOutputs = node.outputs.filter(output => output === 'string');
-    
+
     let yOffset = 40; // Base offset from node top
-    
+
     if (node.outputs[index] === 'trigger') {
       // Position trigger outputs at the top
       const triggerIndex = node.outputs.slice(0, index + 1).filter(output => output === 'trigger').length - 1;
@@ -806,7 +817,7 @@ class NodeEditor {
       const stringIndex = node.outputs.slice(0, index + 1).filter(output => output === 'string').length - 1;
       yOffset += triggerOutputs.length * 25 + stringIndex * 25;
     }
-    
+
     return {
       x: node.x + node.width,
       y: node.y + yOffset
@@ -824,7 +835,7 @@ class NodeEditor {
 
     // Save context and apply transformations
     ctx.save();
-    
+
     // Apply pan and zoom transformations
     ctx.translate(this.panOffset.x, this.panOffset.y);
     ctx.scale(this.scale, this.scale);
@@ -836,33 +847,33 @@ class NodeEditor {
     for (let conn of this.connections) {
       const from = this.getOutputSocketPos(conn.from, conn.fromOutput || 0);
       const to = this.getInputSocketPos(conn.to, conn.toInput);
-      
+
       // Determine connection type and color
       const connectionType = conn.from.outputs[conn.fromOutput || 0];
       const isHovered = conn === this.hoveredConnection;
-      
+
       let connectionColor = '#64B5F6'; // Default trigger color
       if (connectionType === 'string') {
         connectionColor = '#FF9800'; // Orange for string connections
       }
-      
+
       ctx.strokeStyle = isHovered ? '#FF6B6B' : connectionColor;
       ctx.lineWidth = isHovered ? 4 : 2;
-      
+
       ctx.beginPath();
       ctx.moveTo(from.x, from.y);
-      
+
       const midX = (from.x + to.x) / 2;
       ctx.bezierCurveTo(midX, from.y, midX, to.y, to.x, to.y);
       ctx.stroke();
-      
+
       // Add visual indicator for hovered connection
       if (isHovered) {
         ctx.fillStyle = '#FF6B6B';
         ctx.beginPath();
         ctx.arc(midX, (from.y + to.y) / 2, 6, 0, Math.PI * 2);
         ctx.fill();
-        
+
         // Add "X" to indicate deletion
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
@@ -921,25 +932,25 @@ class NodeEditor {
     const isSelected = node === this.selectedNode;
     const isTrigger = node.type.startsWith('trigger-');
     const isCurrentlyExecuting = node === this.currentExecutingNode;
-    
+
     // Check if node recently failed (within last 2 seconds)
-    const recentlyFailed = node.lastResult === false && 
-                          node.lastExecutionTime && 
-                          (Date.now() - node.lastExecutionTime) < 2000;
+    const recentlyFailed = node.lastResult === false &&
+      node.lastExecutionTime &&
+      (Date.now() - node.lastExecutionTime) < 2000;
 
     // Node body - dim all nodes during strategy execution except the executing one
     let nodeOpacity = 1;
     if (this.isStrategyExecuting && !isCurrentlyExecuting) {
       nodeOpacity = 0.5;
     }
-    
+
     ctx.globalAlpha = nodeOpacity;
     ctx.fillStyle = isTrigger ? '#2d3d2d' : '#2d2d2d';
-    
+
     // Change border color based on state
     let borderColor = '#444';
     let borderWidth = 2;
-    
+
     if (isCurrentlyExecuting) {
       borderColor = '#FFA726'; // Orange for currently executing
       borderWidth = 4;
@@ -952,7 +963,7 @@ class NodeEditor {
     } else if (isTrigger) {
       borderColor = '#66BB6A';
     }
-    
+
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = borderWidth;
     ctx.beginPath();
@@ -989,19 +1000,19 @@ class NodeEditor {
       ctx.textAlign = 'center';
       ctx.fillText('EXECUTING', node.x + node.width / 2, node.y + node.height - 8);
     }
-    
+
     // Show status indicator for recently executed nodes
     if (node.lastExecutionTime && (Date.now() - node.lastExecutionTime) < 2000) {
       const statusX = node.x + node.width - 15;
       const statusY = node.y + 15;
-      
+
       if (node.lastResult === false) {
         // Red X for failed
         ctx.fillStyle = '#FF5252';
         ctx.beginPath();
         ctx.arc(statusX, statusY, 8, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1016,7 +1027,7 @@ class NodeEditor {
         ctx.beginPath();
         ctx.arc(statusX, statusY, 8, 0, Math.PI * 2);
         ctx.fill();
-        
+
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
         ctx.beginPath();
@@ -1026,7 +1037,7 @@ class NodeEditor {
         ctx.stroke();
       }
     }
-    
+
     // Draw status indicator for trigger node
     if (node.type === 'trigger') {
       // Show periodic status if actively running
@@ -1039,7 +1050,7 @@ class NodeEditor {
     for (let i = 0; i < node.inputs.length; i++) {
       const inputType = node.inputs[i];
       const pos = this.getInputSocketPos(node, i);
-      
+
       // Set color based on input type
       ctx.fillStyle = inputType === 'string' ? '#FF9800' : '#64B5F6';
       ctx.beginPath();
@@ -1065,7 +1076,7 @@ class NodeEditor {
     for (let i = 0; i < node.outputs.length; i++) {
       const outputType = node.outputs[i];
       const pos = this.getOutputSocketPos(node, i);
-      
+
       // Set color based on output type
       ctx.fillStyle = outputType === 'string' ? '#FF9800' : '#4CAF50';
       ctx.beginPath();
@@ -1087,7 +1098,7 @@ class NodeEditor {
     ctx.fillStyle = '#888';
     ctx.font = '10px Arial';
     this.drawWrappedParameters(ctx, node);
-    
+
     // Reset opacity
     ctx.globalAlpha = 1;
   }
@@ -1103,22 +1114,22 @@ class NodeEditor {
     const maxY = node.y + node.height - 10;
 
     let currentY = startY;
-    
+
     for (let [key, value] of params) {
       if (currentY + lineHeight > maxY) break; // Stop if we run out of space
-      
+
       // Truncate URL for display (for firecrawl-node)
       let displayValue = value;
       if (key === 'url' && typeof value === 'string' && value.length > 40) {
         displayValue = value.substring(0, 37) + '...';
       }
-      
+
       const paramText = `${key}: ${displayValue}`;
       const wrappedLines = this.wrapText(ctx, paramText, maxWidth);
-      
+
       for (let line of wrappedLines) {
         if (currentY + lineHeight > maxY) break; // Stop if we run out of space
-        
+
         ctx.textAlign = 'left';
         ctx.fillText(line, node.x + padding, currentY);
         currentY += lineHeight;
@@ -1134,7 +1145,7 @@ class NodeEditor {
     for (let word of words) {
       const testLine = currentLine + (currentLine ? ' ' : '') + word;
       const metrics = ctx.measureText(testLine);
-      
+
       if (metrics.width > maxWidth && currentLine) {
         lines.push(currentLine);
         currentLine = word;
@@ -1142,11 +1153,11 @@ class NodeEditor {
         currentLine = testLine;
       }
     }
-    
+
     if (currentLine) {
       lines.push(currentLine);
     }
-    
+
     return lines;
   }
 
@@ -1206,10 +1217,10 @@ class NodeEditor {
     if (!executing) {
       this.setCurrentExecutingNode(null);
     }
-    
+
     // Update cursor style to indicate locked state
     this.canvas.style.cursor = executing ? 'not-allowed' : 'default';
-    
+
     // Trigger UI updates
     if (window.onStrategyExecutionStateChanged) {
       window.onStrategyExecutionStateChanged(executing);
@@ -1231,14 +1242,14 @@ class NodeEditor {
     const ctx = this.ctx;
     const x = node.x + node.width - 25;
     const y = node.y + 10;
-    
+
     // Status indicator
     const isActive = node.params.enabled && node.intervalId;
     ctx.fillStyle = isActive ? '#4CAF50' : '#666';
     ctx.beginPath();
     ctx.arc(x, y, 6, 0, Math.PI * 2);
     ctx.fill();
-    
+
     // Pulse effect for active triggers
     if (isActive) {
       const pulse = Math.sin(Date.now() / 500) * 0.3 + 0.7;
@@ -1256,49 +1267,49 @@ class NodeEditor {
       console.log('Trigger disabled, skipping execution');
       return;
     }
-    
+
     // Visual feedback
     node.lastTriggerTime = Date.now();
-    
-    
+
+
     // Clear execution state for new trigger cycle
     this.executionState.clear();
-    
+
     // Find all connected nodes and execute the flow
     const connectedNodes = this.connections
       .filter(c => c.from === node)
       .map(c => ({ node: c.to, inputIndex: c.toInput, fromOutput: c.fromOutput || 0 }));
-    
-    
+
+
     if (connectedNodes.length === 0) {
       console.warn('⚠️ No nodes connected to trigger! Connect the trigger output to other nodes.');
     }
-    
+
     // Execute the connected nodes in sequence with async support
     for (let { node: connectedNode, inputIndex, fromOutput } of connectedNodes) {
       // Add small delay to make execution visible
       await new Promise(resolve => setTimeout(resolve, 200));
       await this.executeNode(connectedNode, inputIndex, true);
     }
-    
+
     if (window.onTriggerExecute) {
       window.onTriggerExecute(node, connectedNodes.map(c => c.node));
     }
-    
+
   }
 
   async executeNode(node, inputIndex = 0, inputResult = true) {
     // Set this node as currently executing
     this.setCurrentExecutingNode(node);
-    
+
     // Execute the node's specific logic based on its type
-    
+
     let result = true; // Default: continue flow
-    
+
     // For logic gates, track inputs from multiple connections
     if (node.type === 'logic-and' || node.type === 'logic-or') {
       result = await this.evaluateLogicGate(node, inputIndex, inputResult);
-      
+
       // If we haven't received all inputs yet, don't continue
       if (result === null) {
         return null;
@@ -1315,20 +1326,20 @@ class NodeEditor {
         case 'indicator-ma':
           result = true; // Indicators always pass through
           break;
-          
+
         case 'indicator-rsi':
           result = true; // Indicators always pass through
           break;
-          
+
         case 'conditional-check':
           result = await this.evaluateConditional(node);
           if (result) {
           } else {
           }
           break;
-          
+
         case 'trade-signal':
-          
+
           // Execute the actual trade
           if (window.mt5API) {
             try {
@@ -1339,20 +1350,20 @@ class NodeEditor {
                 stopLoss: node.params.stopLoss || 0,
                 takeProfit: node.params.takeProfit || 0
               };
-              
+
               // Check overtrade control before executing
               const shouldProceed = await window.overtradeControl.checkBeforeTrade('node', orderData);
-              
+
               if (shouldProceed) {
                 const tradeResult = await window.mt5API.executeOrder(orderData);
-                
+
                 if (tradeResult.success && tradeResult.data.success) {
-                  
+
                   // Open TradingView for the traded symbol
                   if (window.openTradingViewForSymbol) {
                     window.openTradingViewForSymbol(node.params.symbol);
                   }
-                  
+
                   if (window.handleRefreshPositions) {
                     window.handleRefreshPositions();
                   }
@@ -1389,9 +1400,9 @@ class NodeEditor {
             result = false; // Mark as failed
           }
           break;
-          
+
         case 'close-position':
-          
+
           // Execute the actual position closure
           if (node.params.ticket && window.mt5API) {
             try {
@@ -1420,7 +1431,7 @@ class NodeEditor {
               } else {
                 // Close specific position by ticket
                 const closeResult = await window.mt5API.closePosition(node.params.ticket);
-                
+
                 if (closeResult.success && closeResult.data.success) {
                   if (window.handleRefreshPositions) {
                     window.handleRefreshPositions();
@@ -1451,18 +1462,18 @@ class NodeEditor {
             result = false; // Mark as failed
           }
           break;
-          
+
         case 'modify-position':
-          
+
           // Execute the actual modification
           if (node.params.ticket && window.mt5API) {
             try {
               const modifyResult = await window.mt5API.modifyPosition(
-                node.params.ticket, 
-                node.params.stopLoss || 0, 
+                node.params.ticket,
+                node.params.stopLoss || 0,
                 node.params.takeProfit || 0
               );
-              
+
               if (modifyResult.success && modifyResult.data.success) {
                 if (window.handleRefreshPositions) {
                   window.handleRefreshPositions();
@@ -1474,14 +1485,14 @@ class NodeEditor {
               console.error('Error modifying position via node:', error);
             }
           }
-          
+
           result = true; // Action nodes don't stop flow
           break;
-          
+
 
 
         case 'twilio-alert':
-          
+
           try {
             // Check if there's a string input connected (second input)
             let alertMessage = node.params.message;
@@ -1498,7 +1509,7 @@ class NodeEditor {
                 }
               }
             }
-            
+
             // Add account info if requested
             if (node.params.includeAccountInfo && window.mt5API) {
               try {
@@ -1511,7 +1522,7 @@ class NodeEditor {
                 console.warn('Could not fetch account info for alert:', error);
               }
             }
-            
+
             // Add position info if requested
             if (node.params.includePositions && window.mt5API) {
               try {
@@ -1533,7 +1544,7 @@ class NodeEditor {
                 console.warn('Could not fetch positions for alert:', error);
               }
             }
-            
+
             // Send the alert via MT5 bridge
             if (window.mt5API && window.mt5API.sendTwilioAlert) {
               const alertResult = await window.mt5API.sendTwilioAlert({
@@ -1541,7 +1552,7 @@ class NodeEditor {
                 toNumber: node.params.recipient || '', // Use node-specific recipient or default
                 method: node.params.method || 'sms'
               });
-              
+
               if (alertResult.success && alertResult.data && alertResult.data.success) {
                 if (window.showMessage) {
                   window.showMessage('Twilio alert sent successfully', 'success');
@@ -1565,37 +1576,37 @@ class NodeEditor {
               window.showMessage(`Twilio alert error: ${error.message}`, 'error');
             }
           }
-          
+
           result = true; // Alert nodes don't stop flow
           break;
 
 
-          
+
         case 'end-strategy':
           console.log('End Strategy node reached:', node.params.message);
-          
+
           // Stop all triggers if configured to do so
           if (node.params.stopAllTriggers) {
             console.log('Stopping all strategy triggers...');
             this.stopAllTriggers();
-            
+
             // Update strategy status in UI
             if (window.updateStrategyStatus) {
               window.updateStrategyStatus('stopped');
             }
           }
-          
+
           // Show completion message
           if (window.showMessage) {
             window.showMessage(node.params.message, 'success');
           }
-          
+
           result = false; // End strategy nodes stop the flow
           break;
 
         case 'yfinance-data':
           console.log('Fetching yFinance data for:', node.params.symbol);
-          
+
           try {
             if (window.mt5API && window.mt5API.getYFinanceData) {
               const yfinanceResult = await window.mt5API.getYFinanceData({
@@ -1604,17 +1615,17 @@ class NodeEditor {
                 period: node.params.period,
                 interval: node.params.interval
               });
-              
+
               if (yfinanceResult.success && yfinanceResult.data) {
                 console.log('✓ yFinance data fetched successfully:', yfinanceResult.data);
-                
+
                 // Store the fetched data in the node for string output connections
                 node.fetchedData = yfinanceResult.data.value;
-                
+
                 if (window.showMessage) {
                   window.showMessage(`yFinance data: ${node.params.symbol} = ${node.fetchedData}`, 'success');
                 }
-                
+
                 result = true; // Continue trigger flow
               } else {
                 console.error('✗ yFinance data fetch failed:', yfinanceResult.error);
@@ -1644,11 +1655,11 @@ class NodeEditor {
 
         case 'llm-node':
           console.log('Processing LLM node with model:', node.params.model);
-          
+
           try {
             // Get OpenRouter settings from global settings
             const openRouterSettings = window.settingsManager ? window.settingsManager.get('ai.openRouter') : null;
-            
+
             if (!openRouterSettings || !openRouterSettings.enabled) {
               console.error('OpenRouter is not enabled in settings');
               if (window.showMessage) {
@@ -1658,7 +1669,7 @@ class NodeEditor {
               result = false;
               break;
             }
-            
+
             if (!openRouterSettings.apiKey) {
               console.error('OpenRouter API key not configured');
               if (window.showMessage) {
@@ -1668,10 +1679,10 @@ class NodeEditor {
               result = false;
               break;
             }
-            
+
             // Get input text from connected string input or use default
             let inputText = 'Hello';
-            
+
             // Check if there's a string input connected (second input)
             if (node.inputs.length > 1 && node.inputs[1] === 'string') {
               const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
@@ -1685,14 +1696,14 @@ class NodeEditor {
                 }
               }
             }
-            
+
             // Prepare the prompt by replacing {input} placeholder
             const finalPrompt = node.params.prompt.replace('{input}', inputText);
             console.log('LLM prompt:', finalPrompt);
-            
+
             // Use model from node params or fallback to settings
             const modelToUse = node.params.model || openRouterSettings.model;
-            
+
             // Call LLM API through MT5 bridge
             if (window.mt5API && window.mt5API.callLLM) {
               const llmResult = await window.mt5API.callLLM({
@@ -1703,17 +1714,17 @@ class NodeEditor {
                 apiKey: openRouterSettings.apiKey,
                 baseUrl: openRouterSettings.baseUrl
               });
-              
+
               if (llmResult.success && llmResult.data) {
                 console.log('✓ LLM response received:', llmResult.data.response);
-                
+
                 // Store the LLM response in the node for string output connections
                 node.llmResponse = llmResult.data.response;
-                
+
                 if (window.showMessage) {
                   window.showMessage(`LLM response: ${node.llmResponse.substring(0, 50)}...`, 'success');
                 }
-                
+
                 result = true; // Continue trigger flow
               } else {
                 console.error('✗ LLM call failed:', llmResult.error);
@@ -1743,11 +1754,11 @@ class NodeEditor {
 
         case 'firecrawl-node':
           console.log('Processing Firecrawl node for URL:', node.params.url);
-          
+
           try {
             // Get Firecrawl settings from global settings
             const firecrawlSettings = window.settingsManager ? window.settingsManager.get('ai.firecrawl') : null;
-            
+
             if (!firecrawlSettings || !firecrawlSettings.enabled) {
               console.error('Firecrawl is not enabled in settings');
               if (window.showMessage) {
@@ -1757,7 +1768,7 @@ class NodeEditor {
               result = false;
               break;
             }
-            
+
             if (!firecrawlSettings.apiKey) {
               console.error('Firecrawl API key not configured');
               if (window.showMessage) {
@@ -1767,10 +1778,10 @@ class NodeEditor {
               result = false;
               break;
             }
-            
+
             // Get URL from node params or connected string input
             let targetUrl = node.params.url;
-            
+
             // Check if there's a string input connected (second input)
             if (node.inputs.length > 1 && node.inputs[1] === 'string') {
               const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
@@ -1784,7 +1795,7 @@ class NodeEditor {
                 }
               }
             }
-            
+
             // Prepare extractor schema if prompt is provided
             let extractorSchema = null;
             if (node.params.extractorPrompt && node.params.extractorPrompt.trim()) {
@@ -1800,11 +1811,11 @@ class NodeEditor {
                 }
               };
             }
-            
+
             // Use API key from node params or fallback to settings
             const apiKeyToUse = node.params.apiKey || firecrawlSettings.apiKey;
             const baseUrlToUse = node.params.baseUrl || firecrawlSettings.baseUrl || 'https://api.firecrawl.dev/v0';
-            
+
             // Call Firecrawl API through MT5 bridge
             if (window.mt5API && window.mt5API.firecrawlScrape) {
               const firecrawlResult = await window.mt5API.firecrawlScrape({
@@ -1819,31 +1830,31 @@ class NodeEditor {
                 timeout: node.params.timeout,
                 extractorSchema: extractorSchema
               });
-              
+
               if (firecrawlResult.success && firecrawlResult.data) {
                 console.log('✓ Firecrawl scraping successful for:', targetUrl);
-                
+
                 // Store the scraped content in the node for string output connections
                 let contentToStore = firecrawlResult.data.content || 'No content found';
-                
+
                 // Add metadata if available
                 if (firecrawlResult.data.metadata) {
                   contentToStore = `Title: ${firecrawlResult.data.metadata.title || 'N/A'}\nURL: ${targetUrl}\n\n${contentToStore}`;
                 }
-                
+
                 // Add extracted data if available
                 if (firecrawlResult.data.extracted_data) {
                   contentToStore += `\n\n--- EXTRACTED DATA ---\n${JSON.stringify(firecrawlResult.data.extracted_data, null, 2)}`;
                 }
-                
+
                 node.firecrawlData = contentToStore;
-                
+
                 if (window.showMessage) {
-                  const truncatedContent = contentToStore.length > 200 ? 
+                  const truncatedContent = contentToStore.length > 200 ?
                     contentToStore.substring(0, 200) + '...' : contentToStore;
                   window.showMessage(`Firecrawl data: ${truncatedContent}`, 'success');
                 }
-                
+
                 result = true; // Continue trigger flow
               } else {
                 console.error('✗ Firecrawl scraping failed:', firecrawlResult.error);
@@ -1873,11 +1884,11 @@ class NodeEditor {
 
         case 'string-output':
           console.log('Processing String Output node');
-          
+
           try {
             // Get input string from connected node (second input is string)
             let displayText = 'No input';
-            
+
             // Check if there's a string input connected (input index 1)
             const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
             if (stringConnection) {
@@ -1889,31 +1900,33 @@ class NodeEditor {
                 displayText = stringConnection.from.fetchedData || 'No yfinance data';
               } else if (stringConnection.from.type === 'firecrawl-node') {
                 displayText = stringConnection.from.firecrawlData || 'No Firecrawl data';
+              } else if (stringConnection.from.type === 'python-script') {
+                displayText = stringConnection.from.pythonOutput || 'No Python output';
               } else {
                 // For other nodes, try to get a string representation
                 displayText = inputResult ? inputResult.toString() : 'No data';
               }
             }
-            
+
             // Store the display value in the node
             node.params.displayValue = displayText;
-            
+
             // Log to console if enabled
             if (node.params.logToConsole) {
               console.log('📄 String Output:', displayText);
             }
-            
+
             // Show popup if enabled
             if (node.params.showPopup && window.showMessage) {
-              const truncatedText = displayText.length > 200 ? 
+              const truncatedText = displayText.length > 200 ?
                 displayText.substring(0, 200) + '...' : displayText;
               window.showMessage(`String Output: ${truncatedText}`, 'info');
             }
-            
+
             // String output nodes now continue the trigger flow
             result = true;
             console.log('✓ String Output displayed successfully');
-            
+
           } catch (error) {
             console.error('Error in String Output node:', error);
             if (window.showMessage) {
@@ -1925,11 +1938,11 @@ class NodeEditor {
 
         case 'string-contains':
           console.log('Processing String Contains node');
-          
+
           try {
             // Get input string from connected node (second input is string)
             let inputText = '';
-            
+
             // Check if there's a string input connected (input index 1)
             const stringInputConn = this.connections.find(c => c.to === node && c.toInput === 1);
             if (stringInputConn) {
@@ -1941,16 +1954,18 @@ class NodeEditor {
                 inputText = stringInputConn.from.fetchedData || '';
               } else if (stringInputConn.from.type === 'firecrawl-node') {
                 inputText = stringInputConn.from.firecrawlData || '';
+              } else if (stringInputConn.from.type === 'python-script') {
+                inputText = stringInputConn.from.pythonOutput || '';
               } else if (typeof inputResult === 'string') {
                 inputText = inputResult;
               } else {
                 inputText = inputResult ? inputResult.toString() : '';
               }
             }
-            
+
             // Get keyword to search for
             const keyword = node.params.keyword || '';
-            
+
             // Perform case-sensitive or case-insensitive search
             let containsKeyword = false;
             if (node.params.caseSensitive) {
@@ -1958,7 +1973,7 @@ class NodeEditor {
             } else {
               containsKeyword = inputText.toLowerCase().includes(keyword.toLowerCase());
             }
-            
+
             // Determine result based on passOnMatch setting
             if (node.params.passOnMatch) {
               // Pass trigger if keyword is found
@@ -1967,18 +1982,18 @@ class NodeEditor {
               // Pass trigger if keyword is NOT found
               result = !containsKeyword;
             }
-            
+
             // Log the result
             console.log(`String Contains: "${keyword}" ${containsKeyword ? 'FOUND' : 'NOT FOUND'} in input text`);
             console.log(`Result: ${result ? 'PASS' : 'BLOCK'} trigger`);
-            
+
             // Show message
             if (window.showMessage) {
               const matchStatus = containsKeyword ? 'contains' : 'does not contain';
               const flowStatus = result ? 'PASSED' : 'BLOCKED';
               window.showMessage(`String ${matchStatus} "${keyword}" - Flow ${flowStatus}`, result ? 'success' : 'warning');
             }
-            
+
           } catch (error) {
             console.error('Error in String Contains node:', error);
             if (window.showMessage) {
@@ -1987,28 +2002,104 @@ class NodeEditor {
             result = false;
           }
           break;
+
+        case 'python-script':
+          console.log('Processing Python Script node');
+
+          try {
+            // Get input string from connected node if useStringInput is enabled
+            let inputData = '';
+
+            if (node.params.useStringInput) {
+              // Check if there's a string input connected (input index 1)
+              const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
+              if (stringConnection) {
+                if (stringConnection.from.type === 'string-input') {
+                  inputData = stringConnection.from.stringValue || stringConnection.from.params.value || '';
+                } else if (stringConnection.from.type === 'llm-node') {
+                  inputData = stringConnection.from.llmResponse || '';
+                } else if (stringConnection.from.type === 'yfinance-data') {
+                  inputData = stringConnection.from.fetchedData || '';
+                } else if (stringConnection.from.type === 'firecrawl-node') {
+                  inputData = stringConnection.from.firecrawlData || '';
+                } else if (stringConnection.from.type === 'python-script') {
+                  inputData = stringConnection.from.pythonOutput || '';
+                } else if (typeof inputResult === 'string') {
+                  inputData = inputResult;
+                } else {
+                  inputData = inputResult ? inputResult.toString() : '';
+                }
+              }
+            }
+
+            // Execute Python script through MT5 bridge
+            if (window.mt5API && window.mt5API.executePythonScript) {
+              const scriptResult = await window.mt5API.executePythonScript({
+                script: node.params.script,
+                inputData: inputData,
+                inputVarName: node.params.inputVarName || 'input_data'
+              });
+
+              if (scriptResult.success && scriptResult.data) {
+                console.log('✓ Python script executed successfully');
+
+                // Store the output in the node for string output connections
+                node.pythonOutput = scriptResult.data.output || '';
+
+                if (window.showMessage) {
+                  const truncatedOutput = node.pythonOutput.length > 100 ?
+                    node.pythonOutput.substring(0, 100) + '...' : node.pythonOutput;
+                  window.showMessage(`Python output: ${truncatedOutput}`, 'success');
+                }
+
+                result = true; // Continue trigger flow
+              } else {
+                console.error('✗ Python script execution failed:', scriptResult.error);
+                if (window.showMessage) {
+                  window.showMessage(`Python script failed: ${scriptResult.error}`, 'error');
+                }
+                node.pythonOutput = 'Error: ' + (scriptResult.error || 'Unknown error');
+                result = false; // Stop trigger flow on error
+              }
+            } else {
+              console.error('Python script execution API not available');
+              if (window.showMessage) {
+                window.showMessage('Python script API not available - check Python bridge', 'error');
+              }
+              node.pythonOutput = 'Error: API not available';
+              result = false; // Stop trigger flow on error
+            }
+          } catch (error) {
+            console.error('Error executing Python script:', error);
+            if (window.showMessage) {
+              window.showMessage(`Python script error: ${error.message}`, 'error');
+            }
+            node.pythonOutput = 'Error: ' + error.message;
+            result = false; // Stop trigger flow on error
+          }
+          break;
       }
     }
-    
+
     // Store result for this node
     node.lastResult = result;
     node.lastExecutionTime = Date.now();
-    
+
     // Only continue if result is true
     if (!result) {
       console.log('Flow stopped at node:', node.title);
       return result;
     }
-    
+
     // Continue the trigger chain to connected nodes
     const connectedNodes = this.connections
       .filter(c => c.from === node)
       .map(c => ({ node: c.to, inputIndex: c.toInput, fromOutput: c.fromOutput || 0 }));
-    
+
     for (let { node: connectedNode, inputIndex: targetInput, fromOutput } of connectedNodes) {
       // Determine what to pass based on output type
       let outputValue = result;
-      
+
       if (node.type === 'string-input') {
         if (fromOutput === 0) {
           // String output - pass the string value
@@ -2041,25 +2132,33 @@ class NodeEditor {
           // Trigger output - pass the boolean result
           outputValue = result;
         }
+      } else if (node.type === 'python-script') {
+        if (fromOutput === 0) {
+          // String output - pass the Python script output
+          outputValue = node.pythonOutput || 'No output';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
       }
-      
+
       // Add small delay to make execution visible
       await new Promise(resolve => setTimeout(resolve, 200));
       await this.executeNode(connectedNode, targetInput, outputValue);
     }
-    
+
     // Clear this node as executing (only if it's still the current one)
     if (this.currentExecutingNode === node) {
       this.setCurrentExecutingNode(null);
     }
-    
+
     return result;
   }
-  
+
   async evaluateLogicGate(node, inputIndex, inputResult) {
     const now = Date.now();
     const timeout = 100; // ms - time window to collect inputs
-    
+
     // Initialize or get execution state for this node
     if (!this.executionState.has(node.id)) {
       this.executionState.set(node.id, {
@@ -2067,26 +2166,26 @@ class NodeEditor {
         timestamp: now
       });
     }
-    
+
     const state = this.executionState.get(node.id);
-    
+
     // Reset if too much time has passed (new execution cycle)
     if (now - state.timestamp > timeout) {
       state.inputResults = new Array(node.inputs.length).fill(null);
       state.timestamp = now;
     }
-    
+
     // Store the input result
     state.inputResults[inputIndex] = inputResult;
-    
+
     // Check if we have all required inputs
     const hasAllInputs = state.inputResults.every(r => r !== null);
-    
+
     if (!hasAllInputs) {
       // Wait for more inputs
       return null;
     }
-    
+
     // Evaluate the logic gate
     let result;
     if (node.type === 'logic-and') {
@@ -2096,51 +2195,51 @@ class NodeEditor {
       result = state.inputResults.some(r => r === true);
       console.log('OR Gate:', state.inputResults.join(' || '), '=', result);
     }
-    
+
     if (!result) {
       console.log('✗', node.type.toUpperCase(), 'gate FAILED - Flow stopped');
     }
-    
+
     // Clear the state for next execution
     this.executionState.delete(node.id);
-    
+
     return result;
   }
-  
+
   async evaluateConditional(node) {
     console.log('Evaluating conditional node:', node.params);
-    
+
     // Check if symbol is set
     if (!node.params.symbol) {
       console.warn('No symbol set for conditional node');
       return false;
     }
-    
+
     // Get current price from MT5 bridge
     const currentPrice = await this.getCurrentPrice(node.params.symbol);
-    
+
     console.log('Current price for', node.params.symbol, ':', currentPrice);
-    
+
     if (currentPrice === null) {
       console.warn('Could not get price for', node.params.symbol);
       return false;
     }
-    
+
     let conditionMet = false;
-    
+
     if (node.params.usePercentageChange) {
       // Check percentage change
       const percentageChange = await this.getPercentageChange(
-        node.params.symbol, 
+        node.params.symbol,
         node.params.timeframe
       );
-      
+
       if (percentageChange === null) {
         return false;
       }
-      
+
       const targetChange = node.params.percentageChange;
-      
+
       switch (node.params.operator) {
         case '>':
           conditionMet = percentageChange > targetChange;
@@ -2158,12 +2257,12 @@ class NodeEditor {
           conditionMet = Math.abs(percentageChange - targetChange) < 0.0001;
           break;
       }
-      
+
       console.log(`Checking: ${node.params.symbol} ${node.params.timeframe} change ${percentageChange.toFixed(2)}% ${node.params.operator} ${targetChange}% = ${conditionMet}`);
     } else {
       // Check absolute price
       const targetPrice = node.params.price;
-      
+
       switch (node.params.operator) {
         case '>':
           conditionMet = currentPrice > targetPrice;
@@ -2181,23 +2280,23 @@ class NodeEditor {
           conditionMet = Math.abs(currentPrice - targetPrice) < 0.00001;
           break;
       }
-      
+
       console.log(`Checking: ${node.params.symbol} price ${currentPrice} ${node.params.operator} ${targetPrice} = ${conditionMet}`);
     }
-    
+
     return conditionMet;
   }
-  
+
   async getCurrentPrice(symbol) {
     console.log('Getting current price for symbol:', symbol);
-    
+
     // Try to get price from MT5 API
     if (window.mt5API && window.mt5API.getMarketData) {
       try {
         console.log('Calling MT5 API getMarketData for', symbol);
         const result = await window.mt5API.getMarketData(symbol);
         console.log('MT5 API result:', result);
-        
+
         if (result.success && result.data) {
           console.log('Returning bid price:', result.data.bid);
           // Return bid price for current price checks
@@ -2211,17 +2310,17 @@ class NodeEditor {
     } else {
       console.warn('MT5 API not available');
     }
-    
+
     // Fallback: try to get from market data if available
     if (window.marketData && window.marketData[symbol]) {
       console.log('Using fallback market data for', symbol);
       return window.marketData[symbol].bid;
     }
-    
+
     console.warn('No price data available for', symbol);
     return null;
   }
-  
+
   async getPercentageChange(symbol, timeframe) {
     // Try to get percentage change from MT5 API
     if (window.mt5API && window.mt5API.getPercentageChange) {
@@ -2234,17 +2333,17 @@ class NodeEditor {
         console.error('Error getting percentage change from MT5:', error);
       }
     }
-    
+
     console.warn('No percentage change data available for', symbol, timeframe);
     return null;
   }
 
   startPeriodTrigger(node) {
     if (node.type !== 'trigger') return;
-    
+
     // Stop existing interval if any
     this.stopPeriodTrigger(node);
-    
+
     // Calculate interval in milliseconds
     let intervalMs = node.params.interval * 1000; // default: seconds
     if (node.params.unit === 'minutes') {
@@ -2252,12 +2351,12 @@ class NodeEditor {
     } else if (node.params.unit === 'hours') {
       intervalMs = node.params.interval * 60 * 60 * 1000;
     }
-    
+
     // Start new interval
     node.intervalId = setInterval(() => {
       this.executeTrigger(node);
     }, intervalMs);
-    
+
     console.log(`Period trigger started: ${node.params.interval} ${node.params.unit}`);
   }
 
@@ -2279,14 +2378,14 @@ class NodeEditor {
   stopAllTriggers() {
     // Stop all period triggers
     this.stopAllPeriodTriggers();
-    
+
     // Disable all manual triggers
     this.nodes.forEach(node => {
       if (node.type.startsWith('trigger-')) {
         node.params.enabled = false;
       }
     });
-    
+
     // Update properties panel if a trigger is selected
     if (this.selectedNode && this.selectedNode.type.startsWith('trigger-')) {
       window.updatePropertiesPanel(this.selectedNode);

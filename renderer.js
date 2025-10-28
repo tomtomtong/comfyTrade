@@ -2157,6 +2157,51 @@ function updatePropertiesPanel(node) {
             </small>
           </div>
         `;
+      } else if (key === 'script' && node.type === 'python-script') {
+        return `
+          <div class="property-item">
+            <label>Python Script:</label>
+            <textarea data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.value)"
+                     rows="8"
+                     style="width: 100%; resize: vertical; font-family: 'Courier New', monospace; font-size: 12px;"
+                     placeholder="# Write your Python script here\n# Set 'result' variable for output\nresult = 'Hello from Python'">${value}</textarea>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Write Python code. Set 'result' variable for string output.<br>
+              Available: datetime, json, math, re modules<br>
+              Input data available as variable (see Input Variable Name below)
+            </small>
+          </div>
+        `;
+      } else if (key === 'useStringInput' && node.type === 'python-script') {
+        return `
+          <div class="property-item">
+            <label>
+              <input type="checkbox" 
+                     ${value ? 'checked' : ''} 
+                     data-param="${key}"
+                     onchange="updateNodeParam('${key}', this.checked)">
+              Use String Input
+            </label>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              When enabled, accepts string input from connected nodes
+            </small>
+          </div>
+        `;
+      } else if (key === 'inputVarName' && node.type === 'python-script') {
+        return `
+          <div class="property-item">
+            <label>Input Variable Name:</label>
+            <input type="text" 
+                   value="${value}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', this.value)"
+                   placeholder="input_data">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Name of the variable containing input string data in your script
+            </small>
+          </div>
+        `;
       } else {
         return `
           <div class="property-item">
@@ -2242,6 +2287,15 @@ function updatePropertiesPanel(node) {
       </button>
       <button class="btn btn-warning btn-small" onclick="testModifyPosition('${node.id}')">
         🧪 Test Modify
+      </button>
+    `;
+  }
+  
+  // Add test button for python-script node
+  if (node.type === 'python-script') {
+    actionButtons += `
+      <button class="btn btn-success btn-small" onclick="testPythonScript('${node.id}')">
+        🐍 Run Script
       </button>
     `;
   }
@@ -3198,10 +3252,74 @@ async function testTwilioAlert(nodeId) {
   }
 }
 
+// Test Python Script function
+async function testPythonScript(nodeId) {
+  const node = nodeEditor.nodes.find(n => n.id == nodeId);
+  if (!node || node.type !== 'python-script') {
+    showMessage('Please select a Python Script node first', 'error');
+    return;
+  }
+  
+  if (!isConnected) {
+    showMessage('Please connect to MT5 first to execute Python scripts', 'error');
+    return;
+  }
+  
+  if (!node.params.script || !node.params.script.trim()) {
+    showMessage('Please enter a Python script first', 'error');
+    return;
+  }
+  
+  try {
+    showMessage('Executing Python script...', 'info');
+    
+    // Get input data if useStringInput is enabled
+    let inputData = '';
+    if (node.params.useStringInput) {
+      // Check if there's a string input connected
+      const stringConnection = nodeEditor.connections.find(c => c.to === node && c.toInput === 1);
+      if (stringConnection) {
+        if (stringConnection.from.type === 'string-input') {
+          inputData = stringConnection.from.params.value || '';
+        } else if (stringConnection.from.type === 'llm-node') {
+          inputData = stringConnection.from.llmResponse || '';
+        } else if (stringConnection.from.type === 'yfinance-data') {
+          inputData = stringConnection.from.fetchedData || '';
+        } else if (stringConnection.from.type === 'firecrawl-node') {
+          inputData = stringConnection.from.firecrawlData || '';
+        } else if (stringConnection.from.type === 'python-script') {
+          inputData = stringConnection.from.pythonOutput || '';
+        }
+      }
+    }
+    
+    // Execute the script
+    const result = await window.mt5API.executePythonScript({
+      script: node.params.script,
+      inputData: inputData,
+      inputVarName: node.params.inputVarName || 'input_data'
+    });
+    
+    if (result.success && result.data) {
+      node.pythonOutput = result.data.output || '';
+      showMessage(`✓ Python script executed successfully!\nOutput: ${node.pythonOutput}`, 'success');
+      
+      // Update properties panel to show the output
+      updatePropertiesPanel(node);
+    } else {
+      showMessage(`✗ Python script failed: ${result.data?.error || result.error}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error testing Python script:', error);
+    showMessage(`Python script error: ${error.message}`, 'error');
+  }
+}
+
 // Make functions globally available
 
 window.testEndStrategy = testEndStrategy;
 window.testTwilioAlert = testTwilioAlert;
+window.testPythonScript = testPythonScript;
 
 // Log Modal Functions
 function showLogModal() {

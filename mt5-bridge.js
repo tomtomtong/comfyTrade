@@ -471,6 +471,16 @@ class MT5Bridge {
     return response.data;
   }
 
+  async executePythonScript(params) {
+    if (!this.connected) {
+      throw new Error('Not connected to MT5');
+    }
+
+    console.log('Executing Python script');
+    const response = await this.sendMessage('executePythonScript', params);
+    return response.data;
+  }
+
   isConnected() {
     return this.connected;
   }

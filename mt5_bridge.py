@@ -1086,6 +1086,85 @@ class MT5Bridge:
             logger.error(error_msg)
             return {"error": error_msg}
     
+    def execute_python_script(self, script='', input_data='', input_var_name='input_data'):
+        """Execute custom Python script and return the result as a string"""
+        try:
+            logger.info(f"Executing Python script with input variable: {input_var_name}")
+            
+            if not script or not script.strip():
+                return {"error": "Python script is required"}
+            
+            # Create a safe execution environment with limited globals
+            safe_globals = {
+                '__builtins__': {
+                    'print': print,
+                    'len': len,
+                    'str': str,
+                    'int': int,
+                    'float': float,
+                    'bool': bool,
+                    'list': list,
+                    'dict': dict,
+                    'tuple': tuple,
+                    'set': set,
+                    'range': range,
+                    'enumerate': enumerate,
+                    'zip': zip,
+                    'map': map,
+                    'filter': filter,
+                    'sum': sum,
+                    'min': min,
+                    'max': max,
+                    'abs': abs,
+                    'round': round,
+                    'sorted': sorted,
+                    'reversed': reversed,
+                    'any': any,
+                    'all': all,
+                },
+                'datetime': datetime,
+                'json': json,
+                'math': __import__('math'),
+                're': __import__('re'),
+            }
+            
+            # Add input data to the execution environment
+            local_vars = {
+                input_var_name: input_data,
+                'result': ''  # Default result variable
+            }
+            
+            # Execute the script
+            exec(script, safe_globals, local_vars)
+            
+            # Get the result - check for 'result' variable
+            if 'result' in local_vars:
+                output = str(local_vars['result'])
+            else:
+                output = "Script executed successfully (no 'result' variable set)"
+            
+            logger.info(f"Python script executed successfully, output length: {len(output)}")
+            
+            return {
+                "success": True,
+                "output": output
+            }
+            
+        except SyntaxError as e:
+            error_msg = f"Python syntax error: {str(e)}"
+            logger.error(error_msg)
+            return {"error": error_msg}
+            
+        except NameError as e:
+            error_msg = f"Python name error: {str(e)}"
+            logger.error(error_msg)
+            return {"error": error_msg}
+            
+        except Exception as e:
+            error_msg = f"Error executing Python script: {str(e)}"
+            logger.error(error_msg)
+            return {"error": error_msg}
+    
     async def handle_message(self, websocket, message):
         """Handle incoming WebSocket messages from Electron"""
         try:
@@ -1265,6 +1344,13 @@ class MT5Bridge:
                 result = self.firecrawl_scrape(url, scrape_type, api_key, base_url, 
                                             include_raw_html, only_main_content, max_pages,
                                             wait_for, timeout, extractor_schema)
+                response['data'] = result
+            
+            elif action == 'executePythonScript':
+                script = data.get('script', '')
+                input_data = data.get('inputData', '')
+                input_var_name = data.get('inputVarName', 'input_data')
+                result = self.execute_python_script(script, input_data, input_var_name)
                 response['data'] = result
             
             else:
