@@ -158,6 +158,9 @@ function initializeNodeEditor() {
   const canvas = document.getElementById('nodeCanvas');
   nodeEditor = new NodeEditor(canvas);
   
+  // Initialize plugin manager
+  window.nodePluginManager = new NodePluginManager(nodeEditor);
+  
   // Canvas starts empty - users can add nodes from the palette
 }
 
@@ -185,6 +188,12 @@ function setupEventListeners() {
   document.getElementById('saveGraphBtn').addEventListener('click', saveGraph);
   document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
   document.getElementById('clearGraphBtn').addEventListener('click', clearGraph);
+  
+  // Plugin import
+  document.getElementById('importPluginBtn').addEventListener('click', () => {
+    document.getElementById('pluginFileInput').click();
+  });
+  document.getElementById('pluginFileInput').addEventListener('change', handlePluginImport);
   
   // Modal buttons
   document.getElementById('confirmConnectBtn').addEventListener('click', handleConnect);
@@ -3320,6 +3329,68 @@ async function testPythonScript(nodeId) {
 window.testEndStrategy = testEndStrategy;
 window.testTwilioAlert = testTwilioAlert;
 window.testPythonScript = testPythonScript;
+
+// Plugin Import Handler
+async function handlePluginImport(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  
+  console.log('Importing plugin file:', file.name);
+  
+  try {
+    showMessage('Loading plugin...', 'info');
+    
+    const text = await file.text();
+    console.log('Plugin file content loaded, length:', text.length);
+    
+    // Parse the plugin definition
+    let pluginDefinition;
+    try {
+      console.log('Attempting to parse as module.exports...');
+      // Try to evaluate as module.exports
+      const moduleExports = {};
+      const module = { exports: moduleExports };
+      eval(text);
+      pluginDefinition = module.exports;
+      console.log('Parsed as module.exports:', pluginDefinition);
+    } catch (e) {
+      console.log('module.exports parsing failed, trying direct eval:', e.message);
+      // Try direct evaluation
+      pluginDefinition = eval(`(${text})`);
+      console.log('Parsed via direct eval:', pluginDefinition);
+    }
+    
+    if (!pluginDefinition || typeof pluginDefinition !== 'object') {
+      throw new Error('Plugin file did not export a valid plugin definition');
+    }
+    
+    console.log('Plugin definition:', pluginDefinition);
+    
+    // Load the plugin
+    if (window.nodePluginManager) {
+      console.log('Loading plugin via plugin manager...');
+      const success = window.nodePluginManager.loadPlugin(pluginDefinition);
+      if (success) {
+        showMessage(`✓ Plugin "${pluginDefinition.title}" loaded! Check the "${pluginDefinition.category || 'custom'}" category.`, 'success');
+      } else {
+        showMessage('Plugin loading failed - check console for details', 'error');
+      }
+    } else {
+      console.error('Plugin manager not initialized!');
+      showMessage('Plugin manager not initialized', 'error');
+    }
+    
+  } catch (error) {
+    console.error('Error importing plugin:', error);
+    console.error('Stack trace:', error.stack);
+    showMessage(`Failed to import plugin: ${error.message}`, 'error');
+  }
+  
+  // Reset file input
+  event.target.value = '';
+}
+
+window.handlePluginImport = handlePluginImport;
 
 // Log Modal Functions
 function showLogModal() {

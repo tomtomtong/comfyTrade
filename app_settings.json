@@ -57,18 +57,7 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistory": [
-    {
-      "timestamp": 1761616493741,
-      "type": "node",
-      "data": {
-        "nodeCount": 3,
-        "action": "executeNodeStrategy"
-      },
-      "action": "executeNodeStrategy",
-      "positionType": "open"
-    }
-  ],
+  "overtradeHistory": [],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {

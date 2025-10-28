@@ -32,7 +32,13 @@
       <div class="top-section">
         <!-- Left Sidebar - Node Palette -->
         <div class="sidebar left-sidebar">
-          <h3>Node Library</h3>
+          <div style="display: flex; justify-content: space-between; align-items: center; padding: 0 10px;">
+            <h3>Node Library</h3>
+            <button id="importPluginBtn" class="btn btn-small btn-secondary" title="Import Custom Node Plugin" style="font-size: 11px; padding: 4px 8px;">
+              📦 Import
+            </button>
+          </div>
+          <input type="file" id="pluginFileInput" accept=".js" style="display: none;">
           
           <div class="node-category">
             <h4>Triggers</h4>
@@ -953,6 +959,7 @@
   <script src="overtrade-control.js"></script>
   <script src="volume-control.js"></script>
   <script src="resizable-panels.js"></script>
+  <script src="node-plugin-manager.js"></script>
   <script src="renderer.js"></script>
 </body>
 </html>
