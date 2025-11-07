@@ -59,7 +59,36 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistory": [],
+  "overtradeHistory": [
+    {
+      "timestamp": 1762557469937,
+      "type": "manual",
+      "data": {
+        "symbol": "XAUUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 3879.8836,
+        "takeProfit": 4119.8764,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1762557512899,
+      "type": "manual",
+      "data": {
+        "symbol": "XAUUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 3879.8836,
+        "takeProfit": 4119.8764,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    }
+  ],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {

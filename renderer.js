@@ -242,7 +242,10 @@ function setupEventListeners() {
   
   // Volume loss calculation
   document.getElementById('tradeVolume').addEventListener('input', calculateVolumeLoss);
-  document.getElementById('tradeType').addEventListener('change', calculateVolumeLoss);
+  document.getElementById('tradeType').addEventListener('change', () => {
+    calculateVolumeLoss();
+    setDefaultStopLossTakeProfit();
+  });
   
   // Volume loss reminder modal
   document.getElementById('closeAlertBtn').addEventListener('click', hidePriceDropAlert);
@@ -417,12 +420,19 @@ function showTradeModal() {
   
   document.getElementById('tradeModal').classList.add('show');
   
+  // Clear stop loss and take profit fields for new trade
+  const stopLossInput = document.getElementById('tradeStopLoss');
+  const takeProfitInput = document.getElementById('tradeTakeProfit');
+  if (stopLossInput) stopLossInput.value = '';
+  if (takeProfitInput) takeProfitInput.value = '';
+  
   // Update current price if symbol is already selected
   const currentSymbol = symbolInput ? symbolInput.getValue() : '';
   if (currentSymbol && currentSymbol.length >= 6) {
     updateCurrentPrice(currentSymbol);
     // Also set default volume for already selected symbol
     setDefaultVolumeForSymbol(currentSymbol);
+    // setDefaultStopLossTakeProfit will be called automatically when price updates
   }
   
   // Note: Removed automatic volume loss calculation to prevent immediate popup
@@ -472,6 +482,90 @@ function setDefaultVolumeForSymbol(symbol) {
   }
 }
 
+// Helper function to set default stop loss and take profit values (3% from current price)
+// Can accept bid/ask prices directly, or read from DOM if not provided
+function setDefaultStopLossTakeProfit(bidPrice = null, askPrice = null) {
+  const stopLossInput = document.getElementById('tradeStopLoss');
+  const takeProfitInput = document.getElementById('tradeTakeProfit');
+  const tradeTypeSelect = document.getElementById('tradeType');
+  
+  if (!stopLossInput || !takeProfitInput || !tradeTypeSelect) {
+    return;
+  }
+  
+  let bid, ask;
+  
+  // If prices are provided directly, use them
+  if (bidPrice !== null && askPrice !== null) {
+    bid = parseFloat(bidPrice);
+    ask = parseFloat(askPrice);
+  } else {
+    // Otherwise, try to read from DOM
+    const bidElement = document.getElementById('currentBid');
+    const askElement = document.getElementById('currentAsk');
+    
+    if (!bidElement || !askElement) {
+      return;
+    }
+    
+    // Get price values from the display elements
+    const bidText = bidElement.textContent;
+    const askText = askElement.textContent;
+    
+    // Check if prices are valid (not loading, error, or dash)
+    if (!bidText || !askText || bidText === '-' || askText === 'Loading...' || bidText === 'Error' || 
+        askText === 'Loading...' || askText === 'Error') {
+      return;
+    }
+    
+    bid = parseFloat(bidText);
+    ask = parseFloat(askText);
+  }
+  
+  if (isNaN(bid) || isNaN(ask)) {
+    return;
+  }
+  
+  const tradeType = tradeTypeSelect.value;
+  const PERCENTAGE = 0.03; // 3%
+  
+  let stopLoss, takeProfit;
+  
+  if (tradeType === 'BUY') {
+    // For BUY: use ask price
+    // Stop Loss: 3% below ask price
+    stopLoss = ask * (1 - PERCENTAGE);
+    // Take Profit: 3% above ask price
+    takeProfit = ask * (1 + PERCENTAGE);
+  } else {
+    // For SELL: use bid price
+    // Stop Loss: 3% above bid price
+    stopLoss = bid * (1 + PERCENTAGE);
+    // Take Profit: 3% below bid price
+    takeProfit = bid * (1 - PERCENTAGE);
+  }
+  
+  // Round to 5 decimal places
+  stopLoss = Math.round(stopLoss * 100000) / 100000;
+  takeProfit = Math.round(takeProfit * 100000) / 100000;
+  
+  // Check if fields are empty or zero (don't overwrite user input)
+  const stopLossValue = stopLossInput.value.trim();
+  const takeProfitValue = takeProfitInput.value.trim();
+  
+  // Set stop loss if field is empty or zero
+  if (!stopLossValue || stopLossValue === '0' || stopLossValue === '') {
+    stopLossInput.value = stopLoss.toFixed(5);
+    console.log(`Set default Stop Loss: ${stopLoss.toFixed(5)} (${tradeType}, ${tradeType === 'BUY' ? 'Ask' : 'Bid'}: ${tradeType === 'BUY' ? ask : bid})`);
+  }
+  
+  // Set take profit if field is empty or zero
+  if (!takeProfitValue || takeProfitValue === '0' || takeProfitValue === '') {
+    takeProfitInput.value = takeProfit.toFixed(5);
+    console.log(`Set default Take Profit: ${takeProfit.toFixed(5)} (${tradeType}, ${tradeType === 'BUY' ? 'Ask' : 'Bid'}: ${tradeType === 'BUY' ? ask : bid})`);
+  }
+}
+
 function initializeSymbolInput() {
   const container = document.getElementById('symbolInputContainer');
   symbolInput = new SymbolInput(container, {
@@ -481,6 +575,7 @@ function initializeSymbolInput() {
       
       // Set default volume from volume limit configuration
       setDefaultVolumeForSymbol(symbol);
+      // setDefaultStopLossTakeProfit will be called automatically when price updates
     },
     onSymbolChange: (symbol) => {
       // Update market data display if needed
@@ -490,6 +585,7 @@ function initializeSymbolInput() {
         
         // Set default volume from volume limit configuration
         setDefaultVolumeForSymbol(symbol);
+        // setDefaultStopLossTakeProfit will be called automatically when price updates
         
         // Note: Removed automatic volume loss calculation to prevent immediate popup
         // Users can still calculate volume loss by changing volume or symbol values
@@ -555,6 +651,10 @@ async function updateCurrentPrice(symbol) {
       // Update timestamp
       const now = new Date();
       document.getElementById('priceUpdateTime').textContent = now.toLocaleTimeString();
+      
+      // Set default stop loss and take profit values (3% from current price)
+      // Pass prices directly to avoid timing issues with DOM updates
+      setDefaultStopLossTakeProfit(data.bid, data.ask);
       
       // Start auto-refresh if not already running
       startPriceAutoRefresh(symbol);
