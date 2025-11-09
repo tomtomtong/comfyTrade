@@ -1832,8 +1832,9 @@ function updatePropertiesPanel(node) {
   }
   
   // Filter out percentage parameters as they're handled within their main parameter UI
+  // Also filter out apiKey for alphavantage-data nodes as it comes from settings
   const paramEntries = Object.entries(node.params).filter(([key]) => 
-    !key.endsWith('Percent')
+    !key.endsWith('Percent') && !(key === 'apiKey' && node.type === 'alphavantage-data')
   );
   
   if (paramEntries.length === 0) {
@@ -2182,6 +2183,8 @@ function updatePropertiesPanel(node) {
               <option value="TIME_SERIES_WEEKLY" ${value === 'TIME_SERIES_WEEKLY' ? 'selected' : ''}>Time Series Weekly</option>
               <option value="TIME_SERIES_MONTHLY" ${value === 'TIME_SERIES_MONTHLY' ? 'selected' : ''}>Time Series Monthly</option>
               <option value="OVERVIEW" ${value === 'OVERVIEW' ? 'selected' : ''}>Company Overview</option>
+              <option value="MACD" ${value === 'MACD' ? 'selected' : ''}>MACD (Technical Indicator)</option>
+              <option value="RSI" ${value === 'RSI' ? 'selected' : ''}>RSI (Technical Indicator)</option>
             </select>
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
               Select Alpha Vantage API function
@@ -2189,31 +2192,28 @@ function updatePropertiesPanel(node) {
           </div>
         `;
       } else if (key === 'apiKey' && node.type === 'alphavantage-data') {
-        return `
-          <div class="property-item">
-            <label>API Key:</label>
-            <input type="text" data-param="${key}" value="${value || ''}" 
-                   onchange="updateNodeParam('${key}', this.value)" 
-                   placeholder="Enter Alpha Vantage API key"
-                   style="width: 100%; padding: 6px; border: 1px solid #444; background: #2d2d2d; color: #e0e0e0; border-radius: 4px;">
-            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
-              Get your free API key from <a href="https://www.alphavantage.co/support/#api-key" target="_blank" style="color: #64B5F6;">alphavantage.co</a>
-            </small>
-          </div>
-        `;
+        // API key comes from settings, don't show input field
+        return '';
       } else if (key === 'interval' && node.type === 'alphavantage-data') {
+        const isTechnicalIndicator = node.params.function === 'MACD' || node.params.function === 'RSI';
         return `
           <div class="property-item">
             <label>Interval:</label>
             <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
+              ${isTechnicalIndicator ? `
+              <option value="daily" ${value === 'daily' ? 'selected' : ''}>Daily</option>
+              <option value="weekly" ${value === 'weekly' ? 'selected' : ''}>Weekly</option>
+              <option value="monthly" ${value === 'monthly' ? 'selected' : ''}>Monthly</option>
+              ` : `
               <option value="1min" ${value === '1min' ? 'selected' : ''}>1 Minute</option>
               <option value="5min" ${value === '5min' ? 'selected' : ''}>5 Minutes</option>
               <option value="15min" ${value === '15min' ? 'selected' : ''}>15 Minutes</option>
               <option value="30min" ${value === '30min' ? 'selected' : ''}>30 Minutes</option>
               <option value="60min" ${value === '60min' ? 'selected' : ''}>1 Hour</option>
+              `}
             </select>
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
-              Data interval (for intraday functions only)
+              ${isTechnicalIndicator ? 'Time interval for technical indicators (MACD, RSI)' : 'Data interval (for intraday functions only)'}
             </small>
           </div>
         `;
@@ -2227,6 +2227,73 @@ function updatePropertiesPanel(node) {
             </select>
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
               Number of data points to return (for time series functions)
+            </small>
+          </div>
+        `;
+      } else if (key === 'seriesType' && node.type === 'alphavantage-data') {
+        return `
+          <div class="property-item">
+            <label>Series Type:</label>
+            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
+              <option value="close" ${value === 'close' ? 'selected' : ''}>Close</option>
+              <option value="open" ${value === 'open' ? 'selected' : ''}>Open</option>
+              <option value="high" ${value === 'high' ? 'selected' : ''}>High</option>
+              <option value="low" ${value === 'low' ? 'selected' : ''}>Low</option>
+            </select>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Price type for technical indicators (MACD, RSI)
+            </small>
+          </div>
+        `;
+      } else if (key === 'timePeriod' && node.type === 'alphavantage-data') {
+        return `
+          <div class="property-item">
+            <label>Time Period:</label>
+            <input type="number" data-param="${key}" value="${value || 14}" 
+                   onchange="updateNodeParam('${key}', parseInt(this.value))" 
+                   min="1" max="200"
+                   style="width: 100%; padding: 6px; border: 1px solid #444; background: #2d2d2d; color: #e0e0e0; border-radius: 4px;">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Number of periods for RSI calculation (default: 14)
+            </small>
+          </div>
+        `;
+      } else if (key === 'fastPeriod' && node.type === 'alphavantage-data') {
+        return `
+          <div class="property-item">
+            <label>Fast Period:</label>
+            <input type="number" data-param="${key}" value="${value || 12}" 
+                   onchange="updateNodeParam('${key}', parseInt(this.value))" 
+                   min="1" max="200"
+                   style="width: 100%; padding: 6px; border: 1px solid #444; background: #2d2d2d; color: #e0e0e0; border-radius: 4px;">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Fast period for MACD (default: 12)
+            </small>
+          </div>
+        `;
+      } else if (key === 'slowPeriod' && node.type === 'alphavantage-data') {
+        return `
+          <div class="property-item">
+            <label>Slow Period:</label>
+            <input type="number" data-param="${key}" value="${value || 26}" 
+                   onchange="updateNodeParam('${key}', parseInt(this.value))" 
+                   min="1" max="200"
+                   style="width: 100%; padding: 6px; border: 1px solid #444; background: #2d2d2d; color: #e0e0e0; border-radius: 4px;">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Slow period for MACD (default: 26)
+            </small>
+          </div>
+        `;
+      } else if (key === 'signalPeriod' && node.type === 'alphavantage-data') {
+        return `
+          <div class="property-item">
+            <label>Signal Period:</label>
+            <input type="number" data-param="${key}" value="${value || 9}" 
+                   onchange="updateNodeParam('${key}', parseInt(this.value))" 
+                   min="1" max="200"
+                   style="width: 100%; padding: 6px; border: 1px solid #444; background: #2d2d2d; color: #e0e0e0; border-radius: 4px;">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Signal period for MACD (default: 9)
             </small>
           </div>
         `;
@@ -3571,6 +3638,8 @@ async function testPythonScript(nodeId) {
       if (stringConnection) {
         if (stringConnection.from.type === 'string-input') {
           inputData = stringConnection.from.params.value || '';
+        } else if (stringConnection.from.type === 'string-output') {
+          inputData = stringConnection.from.stringValue || stringConnection.from.params.displayValue || '';
         } else if (stringConnection.from.type === 'llm-node') {
           inputData = stringConnection.from.llmResponse || '';
         } else if (stringConnection.from.type === 'yfinance-data') {

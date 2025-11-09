@@ -878,7 +878,8 @@ class MT5Bridge:
             logger.error(f"Error fetching yFinance data for {symbol}: {e}")
             return {"error": str(e)}
     
-    def get_alpha_vantage_data(self, symbol, function='GLOBAL_QUOTE', api_key='', interval='1min', outputsize='compact'):
+    def get_alpha_vantage_data(self, symbol, function='GLOBAL_QUOTE', api_key='', interval='1min', outputsize='compact', 
+                               series_type='close', time_period=14, fastperiod=12, slowperiod=26, signalperiod=9):
         """Get data from Alpha Vantage API for the specified symbol"""
         try:
             logger.info(f"Fetching Alpha Vantage data for {symbol}: function={function}, interval={interval}")
@@ -896,13 +897,29 @@ class MT5Bridge:
                 'apikey': api_key
             }
             
-            # Add interval for intraday functions
+            # Add interval for intraday functions and technical indicators
             if function in ['TIME_SERIES_INTRADAY', 'TIME_SERIES_INTRADAY_EXTENDED']:
+                params['interval'] = interval
+            elif function in ['MACD', 'RSI', 'BBANDS', 'STOCH', 'ADX', 'CCI', 'AROON', 'AD', 'OBV', 'ATR', 'HT_SINE', 'HT_TRENDLINE', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_PHASOR']:
                 params['interval'] = interval
             
             # Add outputsize for time series functions
             if function.startswith('TIME_SERIES_'):
                 params['outputsize'] = outputsize
+            
+            # Add series_type for technical indicators
+            if function in ['MACD', 'RSI', 'BBANDS', 'STOCH', 'ADX', 'CCI', 'AROON', 'AD', 'OBV', 'ATR', 'HT_SINE', 'HT_TRENDLINE', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_PHASOR']:
+                params['series_type'] = series_type
+            
+            # Add time_period for RSI and other indicators
+            if function in ['RSI', 'BBANDS', 'STOCH', 'ADX', 'CCI', 'AROON', 'ATR', 'HT_SINE', 'HT_TRENDLINE', 'HT_DCPERIOD', 'HT_DCPHASE', 'HT_PHASOR']:
+                params['time_period'] = time_period
+            
+            # Add MACD-specific parameters
+            if function == 'MACD':
+                params['fastperiod'] = fastperiod
+                params['slowperiod'] = slowperiod
+                params['signalperiod'] = signalperiod
             
             # Make API request
             response = requests.get(base_url, params=params, timeout=30)
@@ -990,6 +1007,48 @@ class MT5Bridge:
                               f"Market Cap: {data.get('MarketCapitalization', 'N/A')}, " \
                               f"PE Ratio: {data.get('PERatio', 'N/A')}, " \
                               f"Dividend Yield: {data.get('DividendYield', 'N/A')}"
+                
+                return {
+                    "success": True,
+                    "symbol": symbol,
+                    "function": function,
+                    "value": result_value,
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            elif function == 'MACD':
+                if 'Technical Analysis: MACD' not in data or not data.get('Technical Analysis: MACD'):
+                    return {"error": f"No MACD data available for symbol {symbol}"}
+                
+                macd_data = data['Technical Analysis: MACD']
+                # Get the most recent data point
+                latest_date = max(macd_data.keys())
+                latest_macd = macd_data[latest_date]
+                
+                result_value = f"Date: {latest_date}, " \
+                              f"MACD: {latest_macd.get('MACD', 'N/A')}, " \
+                              f"MACD Signal: {latest_macd.get('MACD_Signal', 'N/A')}, " \
+                              f"MACD Hist: {latest_macd.get('MACD_Hist', 'N/A')}"
+                
+                return {
+                    "success": True,
+                    "symbol": symbol,
+                    "function": function,
+                    "value": result_value,
+                    "timestamp": datetime.now().isoformat()
+                }
+            
+            elif function == 'RSI':
+                if 'Technical Analysis: RSI' not in data or not data.get('Technical Analysis: RSI'):
+                    return {"error": f"No RSI data available for symbol {symbol}"}
+                
+                rsi_data = data['Technical Analysis: RSI']
+                # Get the most recent data point
+                latest_date = max(rsi_data.keys())
+                latest_rsi = rsi_data[latest_date]
+                
+                rsi_value = latest_rsi.get('RSI', 'N/A')
+                result_value = f"Date: {latest_date}, RSI: {rsi_value}"
                 
                 return {
                     "success": True,
@@ -1464,7 +1523,13 @@ class MT5Bridge:
                 api_key = data.get('apiKey', '')
                 interval = data.get('interval', '1min')
                 outputsize = data.get('outputsize', 'compact')
-                result = self.get_alpha_vantage_data(symbol, function, api_key, interval, outputsize)
+                series_type = data.get('seriesType', 'close')
+                time_period = data.get('timePeriod', 14)
+                fastperiod = data.get('fastPeriod', 12)
+                slowperiod = data.get('slowPeriod', 26)
+                signalperiod = data.get('signalPeriod', 9)
+                result = self.get_alpha_vantage_data(symbol, function, api_key, interval, outputsize, 
+                                                     series_type, time_period, fastperiod, slowperiod, signalperiod)
                 response['data'] = result
             
             elif action == 'callLLM':

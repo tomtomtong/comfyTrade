@@ -73,45 +73,9 @@
     "applyToStrategy": true,
     "applyToNodes": true,
     "applyToOpenPositions": true,
-    "applyToClosePositions": false,
-    "maxTradesPerHour": 10,
-    "maxTradesPerDay": 50,
-    "cooldownMinutes": 5,
-    "warningEnabled": true,
-    "blockTrading": false
+    "applyToClosePositions": false
   },
-  "overtradeHistory": [
-    {
-      "timestamp": 1762646093163,
-      "type": "node",
-      "data": {
-        "nodeCount": 3,
-        "action": "executeNodeStrategy"
-      },
-      "action": "executeNodeStrategy",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1762646472754,
-      "type": "node",
-      "data": {
-        "nodeCount": 3,
-        "action": "executeNodeStrategy"
-      },
-      "action": "executeNodeStrategy",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1762647160614,
-      "type": "node",
-      "data": {
-        "nodeCount": 3,
-        "action": "executeNodeStrategy"
-      },
-      "action": "executeNodeStrategy",
-      "positionType": "open"
-    }
-  ],
+  "overtradeHistory": [],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {

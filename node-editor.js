@@ -270,11 +270,22 @@ class NodeEditor {
 
   onKeyDown(e) {
     // Handle Space key for pan mode
+    // Don't prevent default if user is typing in a text input field
+    const activeElement = document.activeElement;
+    const isTextInput = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable
+    );
+    
     if (e.code === 'Space' && !this.spacePressed) {
-      e.preventDefault();
-      this.spacePressed = true;
-      if (!this.isPanning && !this.isZoomDragging && !this.draggingNode && !this.connectingFrom) {
-        this.canvas.style.cursor = 'grab';
+      // Only prevent default and enable pan mode if not in a text input
+      if (!isTextInput) {
+        e.preventDefault();
+        this.spacePressed = true;
+        if (!this.isPanning && !this.isZoomDragging && !this.draggingNode && !this.connectingFrom) {
+          this.canvas.style.cursor = 'grab';
+        }
       }
       return;
     }
@@ -300,11 +311,25 @@ class NodeEditor {
 
   onKeyUp(e) {
     // Handle Space key release
+    // Don't prevent default if user is typing in a text input field
+    const activeElement = document.activeElement;
+    const isTextInput = activeElement && (
+      activeElement.tagName === 'INPUT' ||
+      activeElement.tagName === 'TEXTAREA' ||
+      activeElement.isContentEditable
+    );
+    
     if (e.code === 'Space') {
-      e.preventDefault();
-      this.spacePressed = false;
-      if (!this.isPanning && !this.isZoomDragging) {
-        this.canvas.style.cursor = 'default';
+      // Only prevent default and disable pan mode if not in a text input
+      if (!isTextInput) {
+        e.preventDefault();
+        this.spacePressed = false;
+        if (!this.isPanning && !this.isZoomDragging) {
+          this.canvas.style.cursor = 'default';
+        }
+      } else {
+        // If in text input, just reset the flag without preventing default
+        this.spacePressed = false;
       }
     }
   }
@@ -501,7 +526,12 @@ class NodeEditor {
           function: 'GLOBAL_QUOTE',
           apiKey: '',
           interval: '1min',
-          outputsize: 'compact'
+          outputsize: 'compact',
+          seriesType: 'close',
+          timePeriod: 14,
+          fastPeriod: 12,
+          slowPeriod: 26,
+          signalPeriod: 9
         }
       },
 
@@ -542,7 +572,7 @@ class NodeEditor {
       'string-output': {
         title: 'String Output',
         inputs: ['trigger', 'string'],
-        outputs: ['trigger'],
+        outputs: ['string', 'trigger'],
         params: {
           displayValue: '',
           showPopup: true,
@@ -1154,6 +1184,8 @@ class NodeEditor {
       let outputLabel = outputType;
       if (node.type === 'string-input') {
         outputLabel = i === 0 ? 'string' : 'trigger';
+      } else if (node.type === 'string-output') {
+        outputLabel = i === 0 ? 'string' : 'trigger';
       }
       ctx.fillText(outputLabel, pos.x - 10, pos.y + 4);
     }
@@ -1567,6 +1599,9 @@ class NodeEditor {
                 if (stringConnection.from.type === 'string-input') {
                   // Get the string value from the connected string input node
                   alertMessage = stringConnection.from.params.value || 'Custom message';
+                } else if (stringConnection.from.type === 'string-output') {
+                  // Get the string value from the connected string output node
+                  alertMessage = stringConnection.from.stringValue || stringConnection.from.params.displayValue || 'Custom message';
                 } else if (stringConnection.from.type === 'yfinance-data') {
                   // Get the fetched data from yfinance node
                   alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
@@ -1757,7 +1792,12 @@ class NodeEditor {
                 function: node.params.function,
                 apiKey: apiKeyToUse,
                 interval: node.params.interval,
-                outputsize: node.params.outputsize
+                outputsize: node.params.outputsize,
+                seriesType: node.params.seriesType || 'close',
+                timePeriod: node.params.timePeriod || 14,
+                fastPeriod: node.params.fastPeriod || 12,
+                slowPeriod: node.params.slowPeriod || 26,
+                signalPeriod: node.params.signalPeriod || 9
               });
 
               if (avResult.success && avResult.data) {
@@ -1834,6 +1874,9 @@ class NodeEditor {
                 if (stringConnection.from.type === 'string-input') {
                   inputText = stringConnection.from.params.value || 'Hello';
                   console.log('Using string input for LLM:', inputText);
+                } else if (stringConnection.from.type === 'string-output') {
+                  inputText = stringConnection.from.stringValue || stringConnection.from.params.displayValue || 'Hello';
+                  console.log('Using string output for LLM:', inputText);
                 } else if (stringConnection.from.type === 'yfinance-data') {
                   inputText = stringConnection.from.fetchedData || 'No data';
                   console.log('Using yfinance data for LLM:', inputText);
@@ -1936,6 +1979,9 @@ class NodeEditor {
                 if (stringConnection.from.type === 'string-input') {
                   targetUrl = stringConnection.from.params.value || node.params.url;
                   console.log('Using string input URL for Firecrawl:', targetUrl);
+                } else if (stringConnection.from.type === 'string-output') {
+                  targetUrl = stringConnection.from.stringValue || stringConnection.from.params.displayValue || node.params.url;
+                  console.log('Using string output URL for Firecrawl:', targetUrl);
                 } else if (stringConnection.from.type === 'yfinance-data') {
                   targetUrl = stringConnection.from.fetchedData || node.params.url;
                   console.log('Using yfinance data URL for Firecrawl:', targetUrl);
@@ -2044,6 +2090,8 @@ class NodeEditor {
             if (stringConnection) {
               if (stringConnection.from.type === 'string-input') {
                 displayText = stringConnection.from.stringValue || stringConnection.from.params.value || 'Empty string input';
+              } else if (stringConnection.from.type === 'string-output') {
+                displayText = stringConnection.from.stringValue || stringConnection.from.params.displayValue || 'Empty string output';
               } else if (stringConnection.from.type === 'llm-node') {
                 displayText = stringConnection.from.llmResponse || 'No LLM response';
               } else if (stringConnection.from.type === 'yfinance-data') {
@@ -2060,8 +2108,9 @@ class NodeEditor {
               }
             }
 
-            // Store the display value in the node
+            // Store the display value in the node params and as stringValue for string output
             node.params.displayValue = displayText;
+            node.stringValue = displayText;
 
             // Log to console if enabled
             if (node.params.logToConsole) {
@@ -2100,6 +2149,8 @@ class NodeEditor {
             if (stringInputConn) {
               if (stringInputConn.from.type === 'string-input') {
                 inputText = stringInputConn.from.stringValue || stringInputConn.from.params.value || '';
+              } else if (stringInputConn.from.type === 'string-output') {
+                inputText = stringInputConn.from.stringValue || stringInputConn.from.params.displayValue || '';
               } else if (stringInputConn.from.type === 'llm-node') {
                 inputText = stringInputConn.from.llmResponse || '';
               } else if (stringInputConn.from.type === 'yfinance-data') {
@@ -2170,6 +2221,8 @@ class NodeEditor {
               if (stringConnection) {
                 if (stringConnection.from.type === 'string-input') {
                   inputData = stringConnection.from.stringValue || stringConnection.from.params.value || '';
+                } else if (stringConnection.from.type === 'string-output') {
+                  inputData = stringConnection.from.stringValue || stringConnection.from.params.displayValue || '';
                 } else if (stringConnection.from.type === 'llm-node') {
                   inputData = stringConnection.from.llmResponse || '';
                 } else if (stringConnection.from.type === 'yfinance-data') {
@@ -2300,6 +2353,14 @@ class NodeEditor {
         if (fromOutput === 0) {
           // String output - pass the Python script output
           outputValue = node.pythonOutput || 'No output';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
+      } else if (node.type === 'string-output') {
+        if (fromOutput === 0) {
+          // String output - pass the string value
+          outputValue = node.stringValue || node.params.displayValue || 'No value';
         } else if (fromOutput === 1) {
           // Trigger output - pass the boolean result
           outputValue = result;

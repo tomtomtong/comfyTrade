@@ -257,6 +257,8 @@ class NodePluginManager {
     // Check for standard node types
     if (node.type === 'string-input') {
       return node.stringValue || node.params.value || '';
+    } else if (node.type === 'string-output') {
+      return node.stringValue || node.params.displayValue || '';
     } else if (node.type === 'llm-node') {
       return node.llmResponse || '';
     } else if (node.type === 'yfinance-data') {
