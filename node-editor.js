@@ -2442,7 +2442,11 @@ class NodeEditor {
 
             // Perform case-sensitive or case-insensitive search
             let containsKeyword = false;
-            if (node.params.caseSensitive) {
+            // Explicitly check for true value to handle undefined/null/string values
+            // Only treat as case-sensitive if explicitly true (boolean) or string 'true'
+            const isCaseSensitive = node.params.caseSensitive === true || String(node.params.caseSensitive).toLowerCase() === 'true';
+            
+            if (isCaseSensitive) {
               containsKeyword = inputText.includes(keyword);
             } else {
               containsKeyword = inputText.toLowerCase().includes(keyword.toLowerCase());
@@ -2460,6 +2464,34 @@ class NodeEditor {
             // Log the result
             console.log(`String Contains: "${keyword}" ${containsKeyword ? 'FOUND' : 'NOT FOUND'} in input text`);
             console.log(`Result: ${result ? 'PASS' : 'BLOCK'} trigger`);
+
+            // Show detailed result modal when string contains keyword (check is true)
+            if (containsKeyword && window.showTestResultModal) {
+              // Truncate input text for display if too long
+              const displayText = inputText.length > 200 
+                ? inputText.substring(0, 200) + '...' 
+                : inputText;
+              
+              // Build detailed result message
+              let message = `🔍 String Contains Check\n\n`;
+              message += `Keyword: "${keyword}"\n`;
+              message += `Case Sensitive: ${isCaseSensitive ? 'Yes' : 'No'}\n`;
+              message += `Pass on Match: ${node.params.passOnMatch ? 'Yes' : 'No'}\n\n`;
+              message += `Input Text (${inputText.length} chars):\n`;
+              message += `"${displayText}"\n\n`;
+              message += `Result: ${containsKeyword ? '✅ KEYWORD FOUND!' : '❌ Keyword not found'}\n\n`;
+              message += `Flow Status: ${result ? '✅ TRIGGER PASSED' : '❌ TRIGGER BLOCKED'}\n\n`;
+              
+              if (result) {
+                message += `The trigger will CONTINUE.\n`;
+                message += `Connected nodes will be executed.`;
+              } else {
+                message += `The trigger will STOP here.\n`;
+                message += `Connected nodes will NOT be executed.`;
+              }
+              
+              window.showTestResultModal('String Contains Result ✅', message, true);
+            }
 
             // Show message
             if (window.showMessage) {
