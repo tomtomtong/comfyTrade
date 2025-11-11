@@ -670,6 +670,20 @@ class NodeEditor {
         }
       },
 
+      'mt5-data': {
+        title: 'MT5 Data',
+        inputs: ['trigger', 'string'],
+        outputs: ['string', 'trigger'],
+        params: {
+          symbol: 'EURUSD',
+          dataType: 'market',
+          timeframe: 'M1',
+          bars: 100,
+          startDate: '',
+          endDate: ''
+        }
+      },
+
 
 
       'llm-node': {
@@ -1686,6 +1700,8 @@ class NodeEditor {
                 stringInput = stringConnection.from.fetchedData || '';
               } else if (stringConnection.from.type === 'alphavantage-data') {
                 stringInput = stringConnection.from.fetchedData || '';
+              } else if (stringConnection.from.type === 'mt5-data') {
+                stringInput = stringConnection.from.fetchedData || '';
               } else if (stringConnection.from.type === 'llm-node') {
                 stringInput = stringConnection.from.llmResponse || '';
               } else if (stringConnection.from.type === 'firecrawl-node') {
@@ -1902,6 +1918,9 @@ class NodeEditor {
                   alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
                 } else if (stringConnection.from.type === 'alphavantage-data') {
                   // Get the fetched data from Alpha Vantage node
+                  alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
+                } else if (stringConnection.from.type === 'mt5-data') {
+                  // Get the fetched data from MT5 node
                   alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
                 }
               }
@@ -2188,6 +2207,153 @@ class NodeEditor {
           }
           break;
 
+        case 'mt5-data':
+          console.log('Fetching MT5 data for:', node.params.symbol, 'Type:', node.params.dataType);
+
+          try {
+            // Get string input from connected node if available
+            let stringInput = '';
+            if (node.inputs.length > 1 && node.inputs[1] === 'string') {
+              const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
+              if (stringConnection) {
+                if (stringConnection.from.type === 'string-input') {
+                  stringInput = stringConnection.from.stringValue || stringConnection.from.params.value || '';
+                } else if (stringConnection.from.type === 'string-output') {
+                  stringInput = stringConnection.from.stringValue || stringConnection.from.params.displayValue || '';
+                } else if (stringConnection.from.type === 'yfinance-data') {
+                  stringInput = stringConnection.from.fetchedData || '';
+                } else if (stringConnection.from.type === 'alphavantage-data') {
+                  stringInput = stringConnection.from.fetchedData || '';
+                } else if (stringConnection.from.type === 'mt5-data') {
+                  stringInput = stringConnection.from.fetchedData || '';
+                } else if (stringConnection.from.type === 'llm-node') {
+                  stringInput = stringConnection.from.llmResponse || '';
+                } else if (stringConnection.from.type === 'firecrawl-node') {
+                  stringInput = stringConnection.from.firecrawlData || '';
+                } else if (stringConnection.from.type === 'python-script') {
+                  stringInput = stringConnection.from.pythonOutput || '';
+                }
+              }
+            }
+
+            // Get symbol from params or string input
+            const symbol = stringInput && stringInput.trim() ? stringInput.trim() : (node.params.symbol || 'EURUSD');
+            const dataType = node.params.dataType || 'market';
+
+            if (!window.mt5API || !window.mt5API.isConnected()) {
+              console.error('MT5 not connected');
+              if (window.showMessage) {
+                window.showMessage('MT5 not connected. Please connect to MT5 first.', 'error');
+              }
+              node.fetchedData = 'Error: MT5 not connected';
+              result = false;
+              break;
+            }
+
+            if (dataType === 'historical' || dataType === 'timeseries') {
+              // Fetch historical/time series data
+              const timeframe = node.params.timeframe || 'M1';
+              const bars = node.params.bars || 100;
+              const startDate = node.params.startDate || null;
+              const endDate = node.params.endDate || null;
+
+              if (window.mt5API && window.mt5API.getHistoricalData) {
+                const historicalResult = await window.mt5API.getHistoricalData(
+                  symbol,
+                  timeframe,
+                  startDate,
+                  endDate,
+                  bars
+                );
+
+                if (historicalResult && !historicalResult.error) {
+                  console.log('✓ MT5 historical data fetched successfully:', historicalResult);
+
+                  // Format the historical data
+                  const timeSeriesData = {
+                    symbol: symbol,
+                    timeframe: timeframe,
+                    bars: bars,
+                    data: historicalResult.data || historicalResult || [],
+                    startDate: startDate,
+                    endDate: endDate
+                  };
+
+                  node.fetchedData = JSON.stringify(timeSeriesData);
+
+                  if (window.showMessage) {
+                    window.showMessage(`MT5 historical data: ${symbol} ${timeframe} - ${timeSeriesData.data.length || 0} bars`, 'success');
+                  }
+
+                  result = true; // Continue trigger flow
+                } else {
+                  console.error('✗ MT5 historical data fetch failed:', historicalResult?.error || 'Unknown error');
+                  if (window.showMessage) {
+                    window.showMessage(`MT5 historical fetch failed: ${historicalResult?.error || 'Unknown error'}`, 'error');
+                  }
+                  node.fetchedData = `Error: ${historicalResult?.error || 'Failed to fetch historical data'}`;
+                  result = false; // Stop trigger flow on error
+                }
+              } else {
+                console.error('MT5 getHistoricalData API not available');
+                if (window.showMessage) {
+                  window.showMessage('MT5 historical data API not available - check connection', 'error');
+                }
+                node.fetchedData = 'API not available';
+                result = false; // Stop trigger flow on error
+              }
+            } else {
+              // Fetch current market data
+              if (window.mt5API && window.mt5API.getMarketData) {
+                const mt5Result = await window.mt5API.getMarketData(symbol);
+
+                if (mt5Result && !mt5Result.error) {
+                  console.log('✓ MT5 market data fetched successfully:', mt5Result);
+
+                  // Format the market data as JSON string
+                  const marketData = {
+                    symbol: symbol,
+                    bid: mt5Result.bid || 0,
+                    ask: mt5Result.ask || 0,
+                    spread: mt5Result.spread || 0,
+                    volume: mt5Result.volume || 0,
+                    time: mt5Result.time || new Date().toISOString()
+                  };
+
+                  node.fetchedData = JSON.stringify(marketData);
+
+                  if (window.showMessage) {
+                    window.showMessage(`MT5 market data: ${symbol} - Bid: ${marketData.bid}, Ask: ${marketData.ask}`, 'success');
+                  }
+
+                  result = true; // Continue trigger flow
+                } else {
+                  console.error('✗ MT5 market data fetch failed:', mt5Result?.error || 'Unknown error');
+                  if (window.showMessage) {
+                    window.showMessage(`MT5 fetch failed: ${mt5Result?.error || 'Unknown error'}`, 'error');
+                  }
+                  node.fetchedData = `Error: ${mt5Result?.error || 'Failed to fetch data'}`;
+                  result = false; // Stop trigger flow on error
+                }
+              } else {
+                console.error('MT5 API not available');
+                if (window.showMessage) {
+                  window.showMessage('MT5 API not available - check connection', 'error');
+                }
+                node.fetchedData = 'API not available';
+                result = false; // Stop trigger flow on error
+              }
+            }
+          } catch (error) {
+            console.error('Error fetching MT5 data:', error);
+            if (window.showMessage) {
+              window.showMessage(`MT5 error: ${error.message}`, 'error');
+            }
+            node.fetchedData = 'Error: ' + error.message;
+            result = false; // Stop trigger flow on error
+          }
+          break;
+
         case 'llm-node':
           console.log('Processing LLM node with model:', node.params.model);
 
@@ -2462,6 +2628,9 @@ class NodeEditor {
                 } else if (stringConnection.from.type === 'alphavantage-data') {
                   targetUrl = stringConnection.from.fetchedData || node.params.url;
                   console.log('Using Alpha Vantage data URL for Firecrawl:', targetUrl);
+                } else if (stringConnection.from.type === 'mt5-data') {
+                  targetUrl = stringConnection.from.fetchedData || node.params.url;
+                  console.log('Using MT5 data URL for Firecrawl:', targetUrl);
                 }
               }
             }
@@ -2572,6 +2741,8 @@ class NodeEditor {
                 displayText = stringConnection.from.fetchedData || 'No yfinance data';
               } else if (stringConnection.from.type === 'alphavantage-data') {
                 displayText = stringConnection.from.fetchedData || 'No Alpha Vantage data';
+              } else if (stringConnection.from.type === 'mt5-data') {
+                displayText = stringConnection.from.fetchedData || 'No MT5 data';
               } else if (stringConnection.from.type === 'firecrawl-node') {
                 displayText = stringConnection.from.firecrawlData || 'No Firecrawl data';
               } else if (stringConnection.from.type === 'python-script') {
@@ -2630,6 +2801,8 @@ class NodeEditor {
               } else if (stringInputConn.from.type === 'yfinance-data') {
                 inputText = stringInputConn.from.fetchedData || '';
               } else if (stringInputConn.from.type === 'alphavantage-data') {
+                inputText = stringInputConn.from.fetchedData || '';
+              } else if (stringInputConn.from.type === 'mt5-data') {
                 inputText = stringInputConn.from.fetchedData || '';
               } else if (stringInputConn.from.type === 'firecrawl-node') {
                 inputText = stringInputConn.from.firecrawlData || '';
@@ -2736,6 +2909,8 @@ class NodeEditor {
                   inputData = stringConnection.from.fetchedData || '';
                 } else if (stringConnection.from.type === 'alphavantage-data') {
                   inputData = stringConnection.from.fetchedData || '';
+                } else if (stringConnection.from.type === 'mt5-data') {
+                  inputData = stringConnection.from.fetchedData || '';
                 } else if (stringConnection.from.type === 'firecrawl-node') {
                   inputData = stringConnection.from.firecrawlData || '';
                 } else if (stringConnection.from.type === 'python-script') {
@@ -2835,6 +3010,14 @@ class NodeEditor {
           outputValue = result;
         }
       } else if (node.type === 'alphavantage-data') {
+        if (fromOutput === 0) {
+          // String output - pass the fetched data
+          outputValue = node.fetchedData || 'No data';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
+      } else if (node.type === 'mt5-data') {
         if (fromOutput === 0) {
           // String output - pass the fetched data
           outputValue = node.fetchedData || 'No data';

@@ -1883,9 +1883,15 @@ function updatePropertiesPanel(node) {
   
   // Filter out percentage parameters as they're handled within their main parameter UI
   // Also filter out apiKey for alphavantage-data nodes as it comes from settings
-  const paramEntries = Object.entries(node.params).filter(([key]) => 
-    !key.endsWith('Percent') && !(key === 'apiKey' && node.type === 'alphavantage-data')
-  );
+  // Filter out time series params for mt5-data when dataType is 'market'
+  const paramEntries = Object.entries(node.params).filter(([key]) => {
+    if (key.endsWith('Percent')) return false;
+    if (key === 'apiKey' && node.type === 'alphavantage-data') return false;
+    if (node.type === 'mt5-data' && node.params.dataType === 'market') {
+      if (['timeframe', 'bars', 'startDate', 'endDate'].includes(key)) return false;
+    }
+    return true;
+  });
   
   if (paramEntries.length === 0) {
     panel.innerHTML = `
@@ -2260,6 +2266,116 @@ function updatePropertiesPanel(node) {
       } else if (key === 'apiKey' && node.type === 'alphavantage-data') {
         // API key comes from settings, don't show input field
         return '';
+      } else if (key === 'dataType' && node.type === 'mt5-data') {
+        return `
+          <div class="property-item">
+            <label>Data Type:</label>
+            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value); updatePropertiesPanel(nodeEditor.selectedNode)">
+              <option value="market" ${value === 'market' ? 'selected' : ''}>Market Data (Current)</option>
+              <option value="historical" ${value === 'historical' ? 'selected' : ''}>Historical/Time Series</option>
+              <option value="timeseries" ${value === 'timeseries' ? 'selected' : ''}>Time Series (alias)</option>
+            </select>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Select market data (current prices) or historical time series data
+            </small>
+          </div>
+        `;
+      } else if (key === 'timeframe' && node.type === 'mt5-data' && (node.params.dataType === 'historical' || node.params.dataType === 'timeseries')) {
+        return `
+          <div class="property-item">
+            <label>Timeframe:</label>
+            <select data-param="${key}" onchange="updateNodeParam('${key}', this.value)">
+              <option value="M1" ${value === 'M1' ? 'selected' : ''}>M1 - 1 Minute</option>
+              <option value="M5" ${value === 'M5' ? 'selected' : ''}>M5 - 5 Minutes</option>
+              <option value="M15" ${value === 'M15' ? 'selected' : ''}>M15 - 15 Minutes</option>
+              <option value="M30" ${value === 'M30' ? 'selected' : ''}>M30 - 30 Minutes</option>
+              <option value="H1" ${value === 'H1' ? 'selected' : ''}>H1 - 1 Hour</option>
+              <option value="H4" ${value === 'H4' ? 'selected' : ''}>H4 - 4 Hours</option>
+              <option value="D1" ${value === 'D1' ? 'selected' : ''}>D1 - Daily</option>
+              <option value="W1" ${value === 'W1' ? 'selected' : ''}>W1 - Weekly</option>
+              <option value="MN1" ${value === 'MN1' ? 'selected' : ''}>MN1 - Monthly</option>
+            </select>
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Timeframe for historical data bars
+            </small>
+          </div>
+        `;
+      } else if (key === 'bars' && node.type === 'mt5-data' && (node.params.dataType === 'historical' || node.params.dataType === 'timeseries')) {
+        return `
+          <div class="property-item">
+            <label>Number of Bars:</label>
+            <input type="number" 
+                   value="${value}" 
+                   min="1"
+                   max="10000"
+                   step="1"
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseInt(this.value) || 100)">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Number of historical bars to fetch (1-10000)
+            </small>
+          </div>
+        `;
+      } else if (key === 'startDate' && node.type === 'mt5-data' && (node.params.dataType === 'historical' || node.params.dataType === 'timeseries')) {
+        let dateValue = '';
+        if (value) {
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              // Convert to local datetime-local format (YYYY-MM-DDTHH:mm)
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hours = String(date.getHours()).padStart(2, '0');
+              const minutes = String(date.getMinutes()).padStart(2, '0');
+              dateValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+          } catch (e) {
+            console.warn('Error parsing startDate:', e);
+          }
+        }
+        return `
+          <div class="property-item">
+            <label>Start Date (Optional):</label>
+            <input type="datetime-local" 
+                   value="${dateValue}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', this.value ? new Date(this.value + ':00').toISOString() : '')">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Optional: Start date for historical data. Leave empty to use number of bars from current time.
+            </small>
+          </div>
+        `;
+      } else if (key === 'endDate' && node.type === 'mt5-data' && (node.params.dataType === 'historical' || node.params.dataType === 'timeseries')) {
+        let dateValue = '';
+        if (value) {
+          try {
+            const date = new Date(value);
+            if (!isNaN(date.getTime())) {
+              // Convert to local datetime-local format (YYYY-MM-DDTHH:mm)
+              const year = date.getFullYear();
+              const month = String(date.getMonth() + 1).padStart(2, '0');
+              const day = String(date.getDate()).padStart(2, '0');
+              const hours = String(date.getHours()).padStart(2, '0');
+              const minutes = String(date.getMinutes()).padStart(2, '0');
+              dateValue = `${year}-${month}-${day}T${hours}:${minutes}`;
+            }
+          } catch (e) {
+            console.warn('Error parsing endDate:', e);
+          }
+        }
+        return `
+          <div class="property-item">
+            <label>End Date (Optional):</label>
+            <input type="datetime-local" 
+                   value="${dateValue}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', this.value ? new Date(this.value + ':00').toISOString() : '')">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Optional: End date for historical data. Leave empty to use current time.
+            </small>
+          </div>
+        `;
       } else if (key === 'interval' && node.type === 'alphavantage-data') {
         const isTechnicalIndicator = node.params.function === 'MACD' || node.params.function === 'RSI';
         return `
