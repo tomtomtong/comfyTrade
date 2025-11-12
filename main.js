@@ -289,6 +289,52 @@ ipcMain.handle('electron:openExternal', async (event, url) => {
     }
 });
 
+// Handler for saving chart image
+ipcMain.handle('chart:saveImage', async (event, { imageData, ticket, symbol }) => {
+    try {
+        // Create charts directory if it doesn't exist
+        const chartsDir = path.join(__dirname, 'charts');
+        await fs.mkdir(chartsDir, { recursive: true });
+        
+        // Generate filename with ticket and timestamp
+        const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+        const filename = `chart_${symbol}_${ticket}_${timestamp}.png`;
+        const filePath = path.join(chartsDir, filename);
+        
+        // Convert base64 data to buffer and save
+        const base64Data = imageData.replace(/^data:image\/png;base64,/, '');
+        const buffer = Buffer.from(base64Data, 'base64');
+        await fs.writeFile(filePath, buffer);
+        
+        return { success: true, filePath: filePath };
+    } catch (error) {
+        console.error('Error saving chart image:', error);
+        return { success: false, error: error.message };
+    }
+});
+
+// Handler for opening file
+ipcMain.handle('electron:openPath', async (event, filePath) => {
+    try {
+        await shell.openPath(filePath);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// Handler for reading image file as base64
+ipcMain.handle('chart:readImage', async (event, filePath) => {
+    try {
+        const imageBuffer = await fs.readFile(filePath);
+        const base64 = imageBuffer.toString('base64');
+        return { success: true, data: `data:image/png;base64,${base64}` };
+    } catch (error) {
+        console.error('Error reading image file:', error);
+        return { success: false, error: error.message };
+    }
+});
+
 // Settings file handlers with comprehensive JSON error logging
 ipcMain.handle('settings:load', async (event, filename) => {
     try {

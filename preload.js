@@ -31,6 +31,9 @@ contextBridge.exposeInMainWorld('mt5API', {
 
 contextBridge.exposeInMainWorld('electronAPI', {
   openExternal: (url) => ipcRenderer.invoke('electron:openExternal', url),
+  openPath: (filePath) => ipcRenderer.invoke('electron:openPath', filePath),
   loadSettings: (filename) => ipcRenderer.invoke('settings:load', filename),
-  saveSettings: (filename, settings) => ipcRenderer.invoke('settings:save', filename, settings)
+  saveSettings: (filename, settings) => ipcRenderer.invoke('settings:save', filename, settings),
+  saveChartImage: (imageData, ticket, symbol) => ipcRenderer.invoke('chart:saveImage', { imageData, ticket, symbol }),
+  readChartImage: (filePath) => ipcRenderer.invoke('chart:readImage', filePath)
 });

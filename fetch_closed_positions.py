@@ -121,7 +121,7 @@ def fetch_closed_positions(start_date: datetime, end_date: datetime, symbol: Opt
 
 	# Sort by close time desc
 	closed_positions.sort(key=lambda x: x["close_time"], reverse=True)
-	return closed_positions
+	return closed_positions[:3]
 
 
 def print_pretty(rows: List[Dict[str, Any]]) -> None:
@@ -149,12 +149,12 @@ def main() -> None:
 	args = parse_args()
 
 	# Determine date range
-	if args.from_date:
-		start_date = parse_date(args.from_date)
-		end_date = parse_date(args.to_date) if args.to_date else datetime.now()
-	else:
-		end_date = datetime.now()
-		start_date = end_date - timedelta(days=args.days)
+	# Always use a long period (365 days) to ensure we get the true latest 3 positions
+	# without missing any due to date range restrictions
+	end_date = datetime.now()
+	if args.to_date:
+		end_date = parse_date(args.to_date)
+	start_date = end_date - timedelta(days=365)
 
 	# Connect and fetch
 	try:

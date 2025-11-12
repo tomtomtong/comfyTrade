@@ -67,11 +67,6 @@
   },
   "overtradeControl": {
     "enabled": true,
-    "maxTradesPerHour": 10,
-    "maxTradesPerDay": 50,
-    "cooldownMinutes": 5,
-    "warningEnabled": true,
-    "blockTrading": false,
     "maxTrades": 5,
     "timePeriod": "hour",
     "reminderFrequency": "first",
@@ -83,28 +78,14 @@
   },
   "overtradeHistory": [
     {
-      "timestamp": 1762905362809,
+      "timestamp": 1762930218864,
       "type": "manual",
       "data": {
-        "symbol": "EURUSD",
+        "symbol": "JP225.cash",
         "type": "BUY",
-        "volume": 0.1,
-        "stopLoss": 1.12391,
-        "takeProfit": 1.19343,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1762905363819,
-      "type": "manual",
-      "data": {
-        "symbol": "EURUSD",
-        "type": "BUY",
-        "volume": 0.1,
-        "stopLoss": 1.12391,
-        "takeProfit": 1.19343,
+        "volume": 0.5,
+        "stopLoss": 49551.6449,
+        "takeProfit": 52616.6951,
         "action": "executeOrder"
       },
       "action": "executeOrder",
@@ -152,10 +133,10 @@
         "type": "BUY",
         "volume": 0.1,
         "open_price": 1.15484,
-        "current_price": 1.15828,
+        "current_price": 1.15863,
         "sl": 1.1,
         "tp": 0,
-        "profit": 34.399999999998876,
+        "profit": 37.8999999999996,
         "open_time": "2025-11-10T07:29:07.601815",
         "comment": "SIMULATOR"
       },
@@ -165,10 +146,10 @@
         "type": "SELL",
         "volume": 0.1,
         "open_price": 1.40151,
-        "current_price": 1.40155,
+        "current_price": 1.40126,
         "sl": 1.44356,
         "tp": 1.35946,
-        "profit": -0.40000000000040004,
+        "profit": 2.500000000000835,
         "open_time": "2025-11-12T07:13:14.693007",
         "comment": "SIMULATOR"
       },
@@ -265,7 +246,6 @@
     ],
     "next_ticket": 1000008,
     "initial_balance": 10000,
-    "last_updated": "2025-11-12T08:47:48.394335"
-  },
-  "simulatorMode": true
+    "last_updated": "2025-11-12T07:55:23.482991"
+  }
 }

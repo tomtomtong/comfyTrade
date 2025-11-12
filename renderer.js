@@ -116,6 +116,9 @@ async function loadAllSettingsOnStartup() {
       // Check simulator mode from settings and show UI if enabled
       checkAndShowSimulatorModeFromSettings();
       
+      // Load chart image paths
+      await loadChartImagePaths();
+      
     } else {
       setTimeout(loadAllSettingsOnStartup, 500);
     }
@@ -196,6 +199,7 @@ function setupEventListeners() {
   document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
   document.getElementById('showLogBtn').addEventListener('click', showLogModal);
   document.getElementById('showAIMemoryBtn').addEventListener('click', showAIMemoryModal);
+  document.getElementById('showTradeJournalBtn').addEventListener('click', showTradeJournalModal);
   document.getElementById('toggleBottomPanelBtn').addEventListener('click', toggleBottomPanel);
   document.getElementById('runStrategyBtn').addEventListener('click', showRunStrategyModal);
   document.getElementById('stopStrategyBtn').addEventListener('click', stopNodeStrategy);
@@ -265,6 +269,10 @@ function setupEventListeners() {
   document.getElementById('refreshAIMemoryBtn').addEventListener('click', updateAIMemoryDisplay);
   document.getElementById('clearAllAIMemoryBtn').addEventListener('click', clearAllAIMemory);
   
+  // Trade Journal Modal buttons
+  document.getElementById('closeTradeJournalBtn').addEventListener('click', hideTradeJournalModal);
+  document.getElementById('refreshTradeJournalBtn').addEventListener('click', updateTradeJournalDisplay);
+  
   // Stop strategy modal
   document.getElementById('confirmStopBtn').addEventListener('click', handleStopStrategy);
   document.getElementById('cancelStopBtn').addEventListener('click', hideStopStrategyModal);
@@ -315,6 +323,26 @@ function setupEventListeners() {
       }
     });
   }
+
+  // Global hotkey for toggling simulator mode (Ctrl+Shift+S)
+  // This is registered globally so it works at any time, not just when settings modal is open
+  document.addEventListener('keydown', (e) => {
+    // Check for Ctrl+Shift+S (or Cmd+Shift+S on Mac)
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
+      // Prevent default browser behavior
+      e.preventDefault();
+      // Don't trigger if user is typing in an input field
+      const activeElement = document.activeElement;
+      const isInputFocused = activeElement && (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.isContentEditable
+      );
+      if (!isInputFocused) {
+        toggleSimulatorModeHotkey();
+      }
+    }
+  });
 }
 
 // Connection Toggle
@@ -1201,6 +1229,84 @@ async function handleExecuteTradeWithVolume(symbol, type, volume, stopLoss, take
 // Store trade data for confirmation
 let pendingTradeData = null;
 let tradeChartInstance = null;
+let modifyChartInstance = null;
+// Store chart image paths and trade details mapped by ticket
+let chartImagePaths = {};
+let tradeJournal = {}; // Stores full trade details: { ticket: { imagePath, symbol, type, volume, stopLoss, takeProfit, timestamp, ticket } }
+
+// Load chart image paths and trade journal from storage
+async function loadChartImagePaths() {
+  try {
+    if (window.electronAPI && window.electronAPI.loadSettings) {
+      // Load legacy chart_images.json for backward compatibility
+      const legacyData = await window.electronAPI.loadSettings('chart_images.json');
+      if (legacyData) {
+        chartImagePaths = legacyData;
+        // Migrate legacy data to new format
+        for (const [ticket, imagePath] of Object.entries(legacyData)) {
+          if (!tradeJournal[ticket]) {
+            tradeJournal[ticket] = { imagePath, ticket: parseInt(ticket) };
+          }
+        }
+      }
+      
+      // Load trade journal
+      const journalData = await window.electronAPI.loadSettings('trade_journal.json');
+      if (journalData) {
+        tradeJournal = journalData;
+        // Update chartImagePaths from journal
+        for (const [ticket, trade] of Object.entries(tradeJournal)) {
+          if (trade.imagePath) {
+            chartImagePaths[ticket] = trade.imagePath;
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error loading chart image paths:', error);
+    chartImagePaths = {};
+    tradeJournal = {};
+  }
+}
+
+// Save trade journal to storage
+async function saveTradeJournal() {
+  try {
+    if (window.electronAPI && window.electronAPI.saveSettings) {
+      await window.electronAPI.saveSettings('trade_journal.json', tradeJournal);
+      // Also save legacy format for backward compatibility
+      await window.electronAPI.saveSettings('chart_images.json', chartImagePaths);
+    }
+  } catch (error) {
+    console.error('Error saving trade journal:', error);
+  }
+}
+
+// Open chart image for a position
+async function openChartImage(ticket) {
+  const imagePath = chartImagePaths[ticket];
+  if (!imagePath) {
+    showMessage('No chart image found for this position', 'warning');
+    return;
+  }
+  
+  try {
+    if (window.electronAPI && window.electronAPI.openPath) {
+      const result = await window.electronAPI.openPath(imagePath);
+      if (!result.success) {
+        showMessage('Failed to open chart image: ' + result.error, 'error');
+      }
+    } else {
+      showMessage('Unable to open chart image - API not available', 'error');
+    }
+  } catch (error) {
+    console.error('Error opening chart image:', error);
+    showMessage('Error opening chart image: ' + error.message, 'error');
+  }
+}
+
+// Make openChartImage globally accessible
+window.openChartImage = openChartImage;
 
 // Function to fetch 3 months of daily data from MT5
 async function fetchThreeMonthDailyData(symbol) {
@@ -1477,6 +1583,16 @@ async function confirmTradeExecution() {
   // Store the data before hiding modal (in case hideTradeConfirmationModal clears it)
   const tradeDataToExecute = { ...pendingTradeData };
   
+  // Save chart image BEFORE hiding modal (which destroys the chart)
+  let savedChartImageData = null;
+  if (tradeChartInstance && window.electronAPI && window.electronAPI.saveChartImage) {
+    try {
+      savedChartImageData = tradeChartInstance.toBase64Image();
+    } catch (error) {
+      console.error('Error capturing chart image:', error);
+    }
+  }
+  
   hideTradeConfirmationModal();
   
   // Check overtrade control again before executing (conditions may have changed)
@@ -1507,6 +1623,46 @@ async function confirmTradeExecution() {
     
     if (result.success && result.data.success) {
       showMessage(`Trade executed successfully! Ticket: ${result.data.ticket}`, 'success');
+      
+      // Save chart image if we captured it earlier
+      if (savedChartImageData && window.electronAPI && window.electronAPI.saveChartImage) {
+        try {
+          const saveResult = await window.electronAPI.saveChartImage(
+            savedChartImageData,
+            result.data.ticket,
+            symbol
+          );
+          
+          if (saveResult.success) {
+            const ticket = result.data.ticket;
+            // Store the image path mapped to the ticket
+            chartImagePaths[ticket] = saveResult.filePath;
+            
+            // Store full trade details in journal
+            tradeJournal[ticket] = {
+              imagePath: saveResult.filePath,
+              ticket: ticket,
+              symbol: symbol,
+              type: type,
+              volume: volume,
+              stopLoss: stopLoss || 0,
+              takeProfit: takeProfit || 0,
+              timestamp: new Date().toISOString(),
+              openPrice: null, // Will be updated when position is fetched
+              currentPrice: null,
+              profit: null
+            };
+            
+            // Save the journal to persistent storage
+            await saveTradeJournal();
+            console.log(`Chart image and trade details saved for ticket ${ticket}: ${saveResult.filePath}`);
+          } else {
+            console.error('Failed to save chart image:', saveResult.error);
+          }
+        } catch (error) {
+          console.error('Error saving chart image:', error);
+        }
+      }
       
       handleRefreshAccount();
       handleRefreshPositions();
@@ -1610,6 +1766,47 @@ async function handleRefreshPositions() {
         </div>
       `).join('');
     }
+    
+    // Update trade journal with current position data
+    updateTradeJournalWithPositions(positions);
+  }
+}
+
+// Update trade journal with position data
+function updateTradeJournalWithPositions(positions = []) {
+  let updated = false;
+  
+  // Create a map of positions by ticket for quick lookup
+  const positionMap = {};
+  positions.forEach(pos => {
+    positionMap[pos.ticket] = pos;
+  });
+  
+  // Update journal entries with position data
+  for (const ticket in tradeJournal) {
+    const trade = tradeJournal[ticket];
+    const position = positionMap[ticket];
+    
+    if (position) {
+      // Update with current position data
+      if (trade.openPrice !== position.open_price) {
+        trade.openPrice = position.open_price;
+        updated = true;
+      }
+      if (trade.currentPrice !== position.current_price) {
+        trade.currentPrice = position.current_price;
+        updated = true;
+      }
+      if (trade.profit !== position.profit) {
+        trade.profit = position.profit;
+        updated = true;
+      }
+    }
+  }
+  
+  // Save if any updates were made
+  if (updated) {
+    saveTradeJournal();
   }
 }
 
@@ -1663,13 +1860,243 @@ function showModifyModal(ticket, currentSL, currentTP) {
     document.getElementById('modifyModal').dataset.currentPrice = position.current_price;
     document.getElementById('modifyModal').dataset.entryPrice = position.open_price;
     document.getElementById('modifyModal').dataset.positionType = position.type;
+    document.getElementById('modifyModal').dataset.symbol = position.symbol;
   }
   
   document.getElementById('modifyModal').classList.add('show');
+  
+  // Load and display the 3-month daily chart for the position's symbol
+  // Use setTimeout to ensure modal is fully rendered before loading chart
+  if (position && position.symbol) {
+    setTimeout(() => {
+      loadModifyChart(position.symbol);
+    }, 100);
+  }
 }
 
 function hideModifyModal() {
   document.getElementById('modifyModal').classList.remove('show');
+  
+  // Destroy chart instance when modal is closed
+  if (modifyChartInstance) {
+    modifyChartInstance.destroy();
+    modifyChartInstance = null;
+  }
+  
+  // Reset chart UI elements
+  const chartLoading = document.getElementById('modifyChartLoading');
+  const chartError = document.getElementById('modifyChartError');
+  const chartCanvas = document.getElementById('modifyChart');
+  
+  if (chartLoading) chartLoading.style.display = 'block';
+  if (chartError) chartError.style.display = 'none';
+  if (chartCanvas) chartCanvas.style.display = 'none';
+}
+
+// Function to load and display the 3-month chart for modify modal
+async function loadModifyChart(symbol) {
+  // Show loading state
+  const chartLoading = document.getElementById('modifyChartLoading');
+  const chartError = document.getElementById('modifyChartError');
+  const chartCanvas = document.getElementById('modifyChart');
+  
+  if (!chartLoading || !chartError || !chartCanvas) {
+    console.error('Modify chart elements not found');
+    return;
+  }
+  
+  chartLoading.style.display = 'block';
+  chartError.style.display = 'none';
+  chartCanvas.style.display = 'none';
+
+  try {
+    console.log(`Loading modify chart for symbol: ${symbol}`);
+    const data = await fetchThreeMonthDailyData(symbol);
+    
+    if (data && data.length > 0) {
+      console.log(`Received ${data.length} data points for modify chart`);
+      plotModifyChart(symbol, data);
+    } else {
+      throw new Error('No data received');
+    }
+  } catch (error) {
+    console.error('Error loading modify chart:', error);
+    chartLoading.style.display = 'none';
+    chartError.style.display = 'block';
+    chartError.textContent = `Failed to load chart: ${error.message}`;
+    chartCanvas.style.display = 'none';
+  }
+}
+
+// Function to plot the 3-month daily chart for modify modal
+function plotModifyChart(symbol, data) {
+  try {
+    // Destroy existing chart if it exists
+    if (modifyChartInstance) {
+      modifyChartInstance.destroy();
+      modifyChartInstance = null;
+    }
+
+    // Hide loading and error, show chart
+    const chartLoading = document.getElementById('modifyChartLoading');
+    const chartError = document.getElementById('modifyChartError');
+    const chartCanvas = document.getElementById('modifyChart');
+    
+    if (!chartCanvas) {
+      console.error('Modify chart canvas not found');
+      return;
+    }
+    
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) chartError.style.display = 'none';
+    chartCanvas.style.display = 'block';
+    
+    // Ensure canvas has proper dimensions - Chart.js needs explicit width/height
+    const container = chartCanvas.parentElement;
+    if (container) {
+      const containerWidth = container.clientWidth || 800;
+      chartCanvas.width = containerWidth;
+      chartCanvas.height = 400;
+      // Also set CSS to maintain aspect ratio
+      chartCanvas.style.width = containerWidth + 'px';
+      chartCanvas.style.height = '400px';
+    }
+
+    // Prepare data for Chart.js
+    const labels = data.map(item => {
+      const date = new Date(item.time);
+      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    });
+
+    const closePrices = data.map(item => parseFloat(item.close));
+    const highPrices = data.map(item => parseFloat(item.high));
+    const lowPrices = data.map(item => parseFloat(item.low));
+
+    // Get current price for reference line
+    const currentPrice = closePrices[closePrices.length - 1];
+
+    // Create chart
+    const ctx = chartCanvas.getContext('2d');
+    modifyChartInstance = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Close Price',
+            data: closePrices,
+            borderColor: '#4CAF50',
+            backgroundColor: 'rgba(76, 175, 80, 0.1)',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.1,
+            pointRadius: 0,
+            pointHoverRadius: 4
+          },
+          {
+            label: 'High',
+            data: highPrices,
+            borderColor: 'rgba(76, 175, 80, 0.3)',
+            borderWidth: 1,
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderDash: [5, 5]
+          },
+          {
+            label: 'Low',
+            data: lowPrices,
+            borderColor: 'rgba(244, 67, 54, 0.3)',
+            borderWidth: 1,
+            fill: false,
+            pointRadius: 0,
+            pointHoverRadius: 0,
+            borderDash: [5, 5]
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        aspectRatio: 2.5,
+        plugins: {
+          title: {
+            display: true,
+            text: `${symbol} - 3 Month Daily Chart`,
+            color: '#e0e0e0',
+            font: {
+              size: 16,
+              weight: 'bold'
+            }
+          },
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: '#e0e0e0',
+              usePointStyle: true
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(0, 0, 0, 0.8)',
+            titleColor: '#e0e0e0',
+            bodyColor: '#e0e0e0',
+            borderColor: '#444',
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                return `${context.dataset.label}: ${context.parsed.y.toFixed(5)}`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            ticks: {
+              color: '#888',
+              maxRotation: 45,
+              minRotation: 45,
+              maxTicksLimit: 15
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          },
+          y: {
+            ticks: {
+              color: '#888',
+              callback: function(value) {
+                return value.toFixed(5);
+              }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)'
+            }
+          }
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        }
+      }
+    });
+
+    console.log(`Modify chart plotted successfully with ${data.length} data points`);
+  } catch (error) {
+    console.error('Error plotting modify chart:', error);
+    const chartLoading = document.getElementById('modifyChartLoading');
+    const chartError = document.getElementById('modifyChartError');
+    const chartCanvas = document.getElementById('modifyChart');
+    
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) {
+      chartError.style.display = 'block';
+      chartError.textContent = `Failed to plot chart: ${error.message}`;
+    }
+    if (chartCanvas) chartCanvas.style.display = 'none';
+  }
 }
 
 async function handleModifyPosition() {
@@ -1706,7 +2133,7 @@ async function handleModifyPosition() {
 function createModifyModal() {
   const modalHTML = `
     <div id="modifyModal" class="modal">
-      <div class="modal-content">
+      <div class="modal-content trade-confirmation-modal">
         <h2>Modify Position</h2>
         <input type="hidden" id="modifyTicket">
         
@@ -1728,6 +2155,18 @@ function createModifyModal() {
             <input type="number" id="modifyTakeProfitPercent" step="0.1" placeholder="% from current" oninput="updatePriceFromPercent('tp')">
             <span class="percent-symbol">%</span>
           </div>
+        </div>
+        
+        <!-- 3 Month Daily Chart -->
+        <div class="chart-container-wrapper">
+          <h3 style="margin-top: 20px; margin-bottom: 10px;">📊 3-Month Daily Chart</h3>
+          <div id="modifyChartLoading" class="chart-loading" style="text-align: center; padding: 20px; color: #888;">
+            Loading chart data...
+          </div>
+          <div id="modifyChartError" class="chart-error" style="display: none; text-align: center; padding: 20px; color: #f44336;">
+            Failed to load chart data
+          </div>
+          <canvas id="modifyChart" style="display: none; max-height: 400px; width: 100%; height: 400px;"></canvas>
         </div>
         
         <div class="modal-actions">
@@ -4508,6 +4947,157 @@ function hideAIMemoryModal() {
   document.getElementById('aiMemoryModal').classList.remove('show');
 }
 
+// Trade Journal Functions
+function showTradeJournalModal() {
+  document.getElementById('tradeJournalModal').classList.add('show');
+  updateTradeJournalDisplay();
+}
+
+function hideTradeJournalModal() {
+  document.getElementById('tradeJournalModal').classList.remove('show');
+}
+
+function filterTradeJournal() {
+  updateTradeJournalDisplay();
+}
+
+async function updateTradeJournalDisplay() {
+  const journalContent = document.getElementById('tradeJournalContent');
+  const filterInput = document.getElementById('tradeJournalFilter');
+  const filterValue = filterInput ? filterInput.value.toLowerCase().trim() : '';
+  
+  if (!journalContent) {
+    console.error('Trade journal content element not found');
+    return;
+  }
+  
+  // Get all trades from journal
+  const trades = Object.values(tradeJournal).filter(trade => trade && trade.imagePath);
+  
+  if (trades.length === 0) {
+    journalContent.innerHTML = '<p class="no-log">No trades with charts found yet. Charts will appear here after executing trades.</p>';
+    return;
+  }
+  
+  // Filter trades if filter is provided
+  let filteredTrades = trades;
+  if (filterValue) {
+    filteredTrades = trades.filter(trade => {
+      const symbol = (trade.symbol || '').toLowerCase();
+      const type = (trade.type || '').toLowerCase();
+      const ticket = String(trade.ticket || '').toLowerCase();
+      return symbol.includes(filterValue) || type.includes(filterValue) || ticket.includes(filterValue);
+    });
+  }
+  
+  if (filteredTrades.length === 0) {
+    journalContent.innerHTML = '<p class="no-log">No trades match the filter criteria.</p>';
+    return;
+  }
+  
+  // Sort by timestamp (newest first)
+  filteredTrades.sort((a, b) => {
+    const timeA = new Date(a.timestamp || 0).getTime();
+    const timeB = new Date(b.timestamp || 0).getTime();
+    return timeB - timeA;
+  });
+  
+  // Build HTML for each trade (async image loading)
+  const tradeEntries = await Promise.all(filteredTrades.map(async (trade) => {
+    const date = trade.timestamp ? new Date(trade.timestamp).toLocaleString() : 'Unknown date';
+    const typeClass = trade.type && trade.type.toLowerCase() === 'buy' ? 'buy' : 'sell';
+    const typeColor = trade.type && trade.type.toLowerCase() === 'buy' ? '#4CAF50' : '#f44336';
+    
+    // Load image as base64
+    let imageSrc = '';
+    if (trade.imagePath && window.electronAPI && window.electronAPI.readChartImage) {
+      try {
+        const imageResult = await window.electronAPI.readChartImage(trade.imagePath);
+        if (imageResult.success) {
+          imageSrc = imageResult.data;
+        }
+      } catch (error) {
+        console.error('Error loading chart image:', error);
+      }
+    }
+    
+    const escapedImagePath = (trade.imagePath || '').replace(/'/g, "\\'");
+    
+    return `
+      <div class="trade-journal-entry" style="margin-bottom: 20px; padding: 15px; border: 1px solid #444; border-radius: 8px; background: #1e1e1e;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+          <div>
+            <h3 style="margin: 0; color: #e0e0e0;">
+              ${trade.symbol || 'Unknown'} 
+              <span style="background-color: ${typeColor}; color: white; padding: 2px 8px; border-radius: 4px; font-size: 12px; margin-left: 8px;">
+                ${(trade.type || 'N/A').toUpperCase()}
+              </span>
+            </h3>
+            <p style="margin: 5px 0; color: #888; font-size: 12px;">Ticket: ${trade.ticket || 'N/A'} | ${date}</p>
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 10px;">
+          <div>
+            <div style="color: #888; font-size: 12px; margin-bottom: 5px;">Trade Details</div>
+            <div style="color: #e0e0e0; font-size: 13px;">
+              <div>Volume: <strong>${trade.volume || 'N/A'}</strong></div>
+              <div>Stop Loss: <strong>${trade.stopLoss ? trade.stopLoss.toFixed(5) : 'None'}</strong></div>
+              <div>Take Profit: <strong>${trade.takeProfit ? trade.takeProfit.toFixed(5) : 'None'}</strong></div>
+              ${trade.openPrice ? `<div>Open Price: <strong>${trade.openPrice.toFixed(5)}</strong></div>` : ''}
+              ${trade.currentPrice ? `<div>Current Price: <strong>${trade.currentPrice.toFixed(5)}</strong></div>` : ''}
+              ${trade.profit !== null && trade.profit !== undefined ? `<div>Profit: <strong style="color: ${trade.profit >= 0 ? '#4CAF50' : '#f44336'}">$${trade.profit.toFixed(2)}</strong></div>` : ''}
+            </div>
+          </div>
+          <div>
+            <div style="color: #888; font-size: 12px; margin-bottom: 5px;">Chart</div>
+            ${imageSrc ? `
+              <img 
+                src="${imageSrc}" 
+                alt="Trade Chart" 
+                style="max-width: 100%; max-height: 300px; border: 1px solid #444; border-radius: 4px; cursor: pointer;"
+                onclick="openChartImageFromJournal('${escapedImagePath}')"
+                title="Click to open full size"
+              />
+            ` : `
+              <div style="padding: 20px; text-align: center; color: #888; border: 1px solid #444; border-radius: 4px;">
+                Chart image not available
+              </div>
+            `}
+          </div>
+        </div>
+        <div style="margin-top: 10px;">
+          <button class="btn btn-small btn-info" onclick="openChartImageFromJournal('${escapedImagePath}')" style="margin-right: 8px;">
+            📊 Open Chart
+          </button>
+        </div>
+      </div>
+    `;
+  }));
+  
+  journalContent.innerHTML = tradeEntries.join('');
+}
+
+// Open chart image from journal
+async function openChartImageFromJournal(imagePath) {
+  try {
+    if (window.electronAPI && window.electronAPI.openPath) {
+      const result = await window.electronAPI.openPath(imagePath);
+      if (!result.success) {
+        showMessage('Failed to open chart image: ' + result.error, 'error');
+      }
+    } else {
+      showMessage('Unable to open chart image - API not available', 'error');
+    }
+  } catch (error) {
+    console.error('Error opening chart image:', error);
+    showMessage('Error opening chart image: ' + error.message, 'error');
+  }
+}
+
+// Make functions globally accessible
+window.openChartImageFromJournal = openChartImageFromJournal;
+window.filterTradeJournal = filterTradeJournal;
+
 // Bottom Panel Toggle functionality
 function toggleBottomPanel() {
   const bottomPanel = document.querySelector('.bottom-panel');
@@ -4877,24 +5467,8 @@ async function showSettingsModal() {
   };
   document.getElementById('resetSimulatorBtn').onclick = resetSimulator;
   
-  // Hotkey for toggling simulator mode (Ctrl+Shift+S)
-  document.addEventListener('keydown', (e) => {
-    // Check for Ctrl+Shift+S (or Cmd+Shift+S on Mac)
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'S') {
-      // Prevent default browser behavior
-      e.preventDefault();
-      // Don't trigger if user is typing in an input field
-      const activeElement = document.activeElement;
-      const isInputFocused = activeElement && (
-        activeElement.tagName === 'INPUT' ||
-        activeElement.tagName === 'TEXTAREA' ||
-        activeElement.isContentEditable
-      );
-      if (!isInputFocused) {
-        toggleSimulatorModeHotkey();
-      }
-    }
-  });
+  // Note: Hotkey for simulator mode (Ctrl+Shift+S) is registered globally in setupEventListeners()
+  // so it works at any time, not just when settings modal is open
   
   // Track changes in settings form
   setupSettingsChangeTracking();

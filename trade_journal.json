@@ -1,0 +1,15 @@
+{
+  "50958313": {
+    "imagePath": "C:\\Users\\kwun_\\Downloads\\MetaTraderAssistant\\charts\\chart_USDJPY_50958313_2025-11-12T01-36-26-539Z.png",
+    "ticket": 50958313,
+    "symbol": "USDJPY",
+    "type": "BUY",
+    "volume": 0.05,
+    "stopLoss": 149.69137,
+    "takeProfit": 158.95063,
+    "timestamp": "2025-11-12T01:36:26.540Z",
+    "openPrice": 154.321,
+    "currentPrice": 154.302,
+    "profit": -0.62
+  }
+}
