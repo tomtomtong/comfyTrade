@@ -1926,6 +1926,12 @@ function showModifyModal(ticket, currentSL, currentTP) {
     document.getElementById('modifyModal').dataset.entryPrice = position.open_price;
     document.getElementById('modifyModal').dataset.positionType = position.type;
     document.getElementById('modifyModal').dataset.symbol = position.symbol;
+    
+    // Display current price
+    const currentPriceElement = document.getElementById('modifyCurrentPriceValue');
+    if (currentPriceElement && position.current_price) {
+      currentPriceElement.textContent = parseFloat(position.current_price).toFixed(5);
+    }
   }
   
   document.getElementById('modifyModal').classList.add('show');
@@ -2201,6 +2207,10 @@ function createModifyModal() {
       <div class="modal-content trade-confirmation-modal">
         <h2>Modify Position</h2>
         <input type="hidden" id="modifyTicket">
+        
+        <div id="modifyCurrentPrice" style="margin-bottom: 15px; padding: 10px; background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 4px;">
+          <strong style="color: #4CAF50;">Current Price:</strong> <span id="modifyCurrentPriceValue" style="color: #e0e0e0; font-size: 16px; font-weight: bold;">-</span>
+        </div>
         
         <div class="form-group">
           <label>Stop Loss:</label>

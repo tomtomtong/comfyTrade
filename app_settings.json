@@ -177,24 +177,10 @@
   "overtradeHistoryReal": [],
   "overtradeHistorySimulator": [
     {
-      "timestamp": 1762990155549,
+      "timestamp": 1762997718206,
       "type": "manual",
       "data": {
-        "symbol": "BTCUSD",
-        "type": "BUY",
-        "volume": 0.01,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1762990157905,
-      "type": "manual",
-      "data": {
-        "symbol": "BTCUSD",
+        "symbol": "XAUUSD",
         "type": "BUY",
         "volume": 0.01,
         "stopLoss": 0,
