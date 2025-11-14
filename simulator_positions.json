@@ -2,20 +2,20 @@
   "positions": [
     {
       "ticket": 1000000,
-      "symbol": "USDJPY",
+      "symbol": "BTCUSD",
       "type": "SELL",
-      "volume": 0.5,
-      "open_price": 154.726,
-      "current_price": 154.727,
-      "sl": 155,
-      "tp": 154,
-      "profit": -0.3231498057885097,
-      "open_time": "2025-11-13T07:25:31.680715",
+      "volume": 0.01,
+      "open_price": 99123.61,
+      "current_price": 99123.76,
+      "sl": 110000,
+      "tp": 90000,
+      "profit": -0.0014999999999417925,
+      "open_time": "2025-11-14T09:22:32.744507",
       "comment": "SIMULATOR"
     }
   ],
   "closed_positions": [],
   "next_ticket": 1000001,
   "initial_balance": 10000,
-  "last_updated": "2025-11-13T07:29:25.088495"
+  "last_updated": "2025-11-14T09:22:33.886065"
 }

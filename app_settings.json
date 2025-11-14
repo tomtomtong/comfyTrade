@@ -175,7 +175,92 @@
     "applyToClosePositions": false
   },
   "overtradeHistoryReal": [],
-  "overtradeHistorySimulator": [],
+  "overtradeHistorySimulator": [
+    {
+      "timestamp": 1763083538698,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "SELL",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1763083546321,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1763083555628,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 90000,
+        "takeProfit": 110000,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1763084212791,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1763084216117,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1763084232374,
+      "type": "manual",
+      "data": {
+        "symbol": "BTCUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    }
+  ],
   "overtradeLastWarningReal": 0,
   "overtradeLastWarningSimulator": 0,
   "overtradeWarningCountReal": 0,
