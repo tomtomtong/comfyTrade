@@ -174,66 +174,8 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistoryReal": [
-    {
-      "timestamp": 1763076281281,
-      "type": "manual",
-      "data": {
-        "symbol": "XAUUSD",
-        "type": "BUY",
-        "volume": 0.01,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1763076324738,
-      "type": "manual",
-      "data": {
-        "symbol": "HK50.cash",
-        "type": "BUY",
-        "volume": 0.5,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1763076339052,
-      "type": "manual",
-      "data": {
-        "symbol": "HK50.cash",
-        "type": "BUY",
-        "volume": 0.5,
-        "stopLoss": 25900,
-        "takeProfit": 26900,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    }
-  ],
-  "overtradeHistorySimulator": [
-    {
-      "timestamp": 1763075419797,
-      "type": "manual",
-      "data": {
-        "symbol": "XAUUSD",
-        "type": "BUY",
-        "volume": 0.01,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    }
-  ],
+  "overtradeHistoryReal": [],
+  "overtradeHistorySimulator": [],
   "overtradeLastWarningReal": 0,
   "overtradeLastWarningSimulator": 0,
   "overtradeWarningCountReal": 0,

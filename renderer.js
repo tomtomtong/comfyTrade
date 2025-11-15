@@ -252,7 +252,7 @@ function setupEventListeners() {
   document.getElementById('tradeVolume').addEventListener('input', calculateVolumeLoss);
   document.getElementById('tradeType').addEventListener('change', () => {
     calculateVolumeLoss();
-    // Note: TP/SL are now required - no default values are set when trade type changes
+    // Note: TP/SL are optional - no default values are set when trade type changes
   });
   
   // Volume loss reminder modal
@@ -463,7 +463,7 @@ function showTradeModal() {
     updateCurrentPrice(currentSymbol);
     // Also set default volume for already selected symbol
     setDefaultVolumeForSymbol(currentSymbol);
-    // Note: TP/SL are now required - no default values will be set
+    // Note: TP/SL are optional - no default values will be set
   }
   
   // Note: Removed automatic volume loss calculation to prevent immediate popup
@@ -627,7 +627,7 @@ function initializeSymbolInput() {
       
       // Set default volume from volume limit configuration
       setDefaultVolumeForSymbol(symbol);
-      // Note: TP/SL are now required - no default values are set when price updates
+      // Note: TP/SL are optional - no default values are set when price updates
     },
     onSymbolChange: (symbol) => {
       // Update market data display if needed
@@ -704,8 +704,8 @@ async function updateCurrentPrice(symbol) {
       const now = new Date();
       document.getElementById('priceUpdateTime').textContent = now.toLocaleTimeString();
       
-      // Note: TP/SL are now required fields - no default values are set
-      // Users must manually enter both Stop Loss and Take Profit before executing trade
+      // Note: TP/SL are optional fields - no default values are set
+      // Users can enter Stop Loss and Take Profit if desired, or leave them empty
       
       // Start auto-refresh if not already running
       startPriceAutoRefresh(symbol);
@@ -913,6 +913,15 @@ async function handleRefreshClosedPositions() {
       }).join('');
       
       container.innerHTML = summaryHtml + '<div class="positions-list">' + positionsHtml + '</div>';
+      
+      // Record balance snapshots for closed positions with profit
+      const accountResult = await window.mt5API.getAccountInfo();
+      if (accountResult.success && accountResult.data) {
+        // Record balance for each closed position
+        for (const pos of closedPositions) {
+          await recordBalanceSnapshot(accountResult.data.balance, pos.ticket, pos.profit);
+        }
+      }
       
     } else {
       container.innerHTML = `<p class="no-data">Error loading closed positions: ${result.error}</p>`;
@@ -1225,6 +1234,7 @@ let modifyChartInstance = null;
 // Store chart image paths and trade details mapped by ticket
 let chartImagePaths = {};
 let tradeJournal = {}; // Stores full trade details: { ticket: { imagePath, symbol, type, volume, stopLoss, takeProfit, timestamp, ticket } }
+let balanceHistory = []; // Stores balance over time: [{ timestamp, balance, ticket?, profit? }]
 
 // Load chart image paths and trade journal from storage
 async function loadChartImagePaths() {
@@ -1253,11 +1263,18 @@ async function loadChartImagePaths() {
           }
         }
       }
+      
+      // Load balance history
+      const balanceData = await window.electronAPI.loadSettings('balance_history.json');
+      if (balanceData && Array.isArray(balanceData)) {
+        balanceHistory = balanceData;
+      }
     }
   } catch (error) {
     console.error('Error loading chart image paths:', error);
     chartImagePaths = {};
     tradeJournal = {};
+    balanceHistory = [];
   }
 }
 
@@ -1272,6 +1289,33 @@ async function saveTradeJournal() {
   } catch (error) {
     console.error('Error saving trade journal:', error);
   }
+}
+
+// Save balance history to storage
+async function saveBalanceHistory() {
+  try {
+    if (window.electronAPI && window.electronAPI.saveSettings) {
+      await window.electronAPI.saveSettings('balance_history.json', balanceHistory);
+    }
+  } catch (error) {
+    console.error('Error saving balance history:', error);
+  }
+}
+
+// Record balance snapshot
+async function recordBalanceSnapshot(balance, ticket = null, profit = null) {
+  const snapshot = {
+    timestamp: new Date().toISOString(),
+    balance: balance,
+    ticket: ticket,
+    profit: profit
+  };
+  balanceHistory.push(snapshot);
+  // Keep only last 1000 entries to prevent excessive storage
+  if (balanceHistory.length > 1000) {
+    balanceHistory = balanceHistory.slice(-1000);
+  }
+  await saveBalanceHistory();
 }
 
 // Open chart image for a position
@@ -1627,37 +1671,15 @@ async function confirmTradeExecution() {
   }
   
   // Read Stop Loss and Take Profit from confirmation modal input fields
+  // Allow empty values - they will be treated as 0 (no SL/TP)
   const confirmStopLossInput = document.getElementById('confirmTradeStopLoss').value.trim();
   const confirmTakeProfitInput = document.getElementById('confirmTradeTakeProfit').value.trim();
-  const stopLoss = parseFloat(confirmStopLossInput);
-  const takeProfit = parseFloat(confirmTakeProfitInput);
-  
-  // Validate that both Stop Loss and Take Profit are entered
-  if (!confirmStopLossInput || confirmStopLossInput === '' || isNaN(stopLoss) || stopLoss <= 0) {
-    showMessage('Please enter a valid Stop Loss before executing the trade', 'error');
-    document.getElementById('confirmTradeStopLoss').focus();
-    return;
-  }
-  
-  if (!confirmTakeProfitInput || confirmTakeProfitInput === '' || isNaN(takeProfit) || takeProfit <= 0) {
-    showMessage('Please enter a valid Take Profit before executing the trade', 'error');
-    document.getElementById('confirmTradeTakeProfit').focus();
-    return;
-  }
+  const stopLoss = confirmStopLossInput === '' ? 0 : (parseFloat(confirmStopLossInput) || 0);
+  const takeProfit = confirmTakeProfitInput === '' ? 0 : (parseFloat(confirmTakeProfitInput) || 0);
   
   // Update pendingTradeData with the values from confirmation modal
   const { symbol, type, volume } = pendingTradeData;
   const tradeDataToExecute = { symbol, type, volume, stopLoss, takeProfit };
-  
-  // Save chart image BEFORE hiding modal (which destroys the chart)
-  let savedChartImageData = null;
-  if (tradeChartInstance && window.electronAPI && window.electronAPI.saveChartImage) {
-    try {
-      savedChartImageData = tradeChartInstance.toBase64Image();
-    } catch (error) {
-      console.error('Error capturing chart image:', error);
-    }
-  }
   
   hideTradeConfirmationModal();
   
@@ -1689,44 +1711,10 @@ async function confirmTradeExecution() {
     if (result.success && result.data.success) {
       showMessage(`Trade executed successfully! Ticket: ${result.data.ticket}`, 'success');
       
-      // Save chart image if we captured it earlier
-      if (savedChartImageData && window.electronAPI && window.electronAPI.saveChartImage) {
-        try {
-          const saveResult = await window.electronAPI.saveChartImage(
-            savedChartImageData,
-            result.data.ticket,
-            symbol
-          );
-          
-          if (saveResult.success) {
-            const ticket = result.data.ticket;
-            // Store the image path mapped to the ticket
-            chartImagePaths[ticket] = saveResult.filePath;
-            
-            // Store full trade details in journal
-            tradeJournal[ticket] = {
-              imagePath: saveResult.filePath,
-              ticket: ticket,
-              symbol: symbol,
-              type: type,
-              volume: volume,
-              stopLoss: stopLoss || 0,
-              takeProfit: takeProfit || 0,
-              timestamp: new Date().toISOString(),
-              openPrice: null, // Will be updated when position is fetched
-              currentPrice: null,
-              profit: null
-            };
-            
-            // Save the journal to persistent storage
-            await saveTradeJournal();
-            console.log(`Chart image and trade details saved for ticket ${ticket}: ${saveResult.filePath}`);
-          } else {
-            console.error('Failed to save chart image:', saveResult.error);
-          }
-        } catch (error) {
-          console.error('Error saving chart image:', error);
-        }
+      // Record balance after trade execution
+      const accountResult = await window.mt5API.getAccountInfo();
+      if (accountResult.success && accountResult.data) {
+        await recordBalanceSnapshot(accountResult.data.balance, result.data.ticket, null);
       }
       
       handleRefreshAccount();
@@ -1758,6 +1746,12 @@ async function handleConnect() {
     document.getElementById('connectBtn').textContent = 'Disconnect MT5';
     document.getElementById('connectBtn').className = 'btn btn-danger';
     showMessage('Connected to MT5 successfully!', 'success');
+    
+    // Record initial balance snapshot
+    const accountResult = await window.mt5API.getAccountInfo();
+    if (accountResult.success && accountResult.data) {
+      await recordBalanceSnapshot(accountResult.data.balance);
+    }
     
     handleRefreshAccount();
     handleRefreshPositions();
@@ -1794,6 +1788,9 @@ async function handleRefreshAccount() {
     const profitEl = document.getElementById('profit');
     profitEl.textContent = '$' + data.profit.toFixed(2);
     profitEl.className = 'profit ' + (data.profit >= 0 ? 'positive' : 'negative');
+    
+    // Record balance snapshot periodically
+    await recordBalanceSnapshot(data.balance);
   }
 }
 
@@ -1896,6 +1893,24 @@ async function executeClosePosition(ticket) {
 
   if (result.success && result.data.success) {
     showMessage('Position closed successfully!', 'success');
+    
+    // Record balance after closing position
+    const accountResult = await window.mt5API.getAccountInfo();
+    if (accountResult.success && accountResult.data) {
+      // Try to get profit from the closed position if available
+      const positionsResult = await window.mt5API.getClosedPositions(1);
+      if (positionsResult.success && positionsResult.data) {
+        const closedPos = positionsResult.data.find(p => p.ticket === ticket);
+        if (closedPos) {
+          await recordBalanceSnapshot(accountResult.data.balance, ticket, closedPos.profit);
+        } else {
+          await recordBalanceSnapshot(accountResult.data.balance, ticket, null);
+        }
+      } else {
+        await recordBalanceSnapshot(accountResult.data.balance, ticket, null);
+      }
+    }
+    
     handleRefreshAccount();
     handleRefreshPositions();
   } else {
@@ -5036,6 +5051,157 @@ function filterTradeJournal() {
   updateTradeJournalDisplay();
 }
 
+// Draw balance graph
+function drawBalanceGraph(canvasId) {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  
+  // Make canvas responsive
+  const container = canvas.parentElement;
+  const containerWidth = container ? container.clientWidth - 40 : 800;
+  canvas.width = Math.max(containerWidth, 400);
+  canvas.height = 300;
+  
+  const ctx = canvas.getContext('2d');
+  const width = canvas.width;
+  const height = canvas.height;
+  const padding = 40;
+  const graphWidth = width - padding * 2;
+  const graphHeight = height - padding * 2;
+  
+  // Clear canvas
+  ctx.clearRect(0, 0, width, height);
+  
+  if (balanceHistory.length === 0) {
+    ctx.fillStyle = '#888';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText('No balance history available', width / 2, height / 2);
+    return;
+  }
+  
+  // Sort by timestamp
+  const sortedHistory = [...balanceHistory].sort((a, b) => 
+    new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime()
+  );
+  
+  // Find min and max balance
+  const balances = sortedHistory.map(h => h.balance);
+  const minBalance = Math.min(...balances);
+  const maxBalance = Math.max(...balances);
+  const balanceRange = maxBalance - minBalance || 1; // Avoid division by zero
+  
+  // Find significant losses (more than 2% of current balance or $100)
+  const currentBalance = balances[balances.length - 1] || 10000;
+  const lossThreshold = Math.max(currentBalance * 0.02, 100);
+  const losingTrades = sortedHistory.filter(h => 
+    h.profit !== null && h.profit !== undefined && h.profit < -lossThreshold
+  );
+  
+  // Draw grid lines
+  ctx.strokeStyle = '#333';
+  ctx.lineWidth = 1;
+  for (let i = 0; i <= 5; i++) {
+    const y = padding + (graphHeight / 5) * i;
+    ctx.beginPath();
+    ctx.moveTo(padding, y);
+    ctx.lineTo(width - padding, y);
+    ctx.stroke();
+  }
+  
+  // Draw balance line
+  ctx.strokeStyle = '#4CAF50';
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  
+  sortedHistory.forEach((point, index) => {
+    const divisor = sortedHistory.length > 1 ? sortedHistory.length - 1 : 1;
+    const x = padding + (graphWidth / divisor) * index;
+    const normalizedBalance = (point.balance - minBalance) / balanceRange;
+    const y = padding + graphHeight - (normalizedBalance * graphHeight);
+    
+    if (index === 0) {
+      ctx.moveTo(x, y);
+    } else {
+      ctx.lineTo(x, y);
+    }
+  });
+  
+  ctx.stroke();
+  
+  // Draw losing trade markers
+  losingTrades.forEach(loss => {
+    const index = sortedHistory.findIndex(h => 
+      h.timestamp === loss.timestamp && h.ticket === loss.ticket
+    );
+    if (index >= 0) {
+      const divisor = sortedHistory.length > 1 ? sortedHistory.length - 1 : 1;
+      const x = padding + (graphWidth / divisor) * index;
+      const normalizedBalance = (loss.balance - minBalance) / balanceRange;
+      const y = padding + graphHeight - (normalizedBalance * graphHeight);
+      
+      // Draw red marker
+      ctx.fillStyle = '#f44336';
+      ctx.beginPath();
+      ctx.arc(x, y, 6, 0, Math.PI * 2);
+      ctx.fill();
+      
+      // Draw marker outline
+      ctx.strokeStyle = '#fff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      
+      // Draw loss amount label
+      ctx.fillStyle = '#f44336';
+      ctx.font = '11px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText(`-$${Math.abs(loss.profit).toFixed(0)}`, x, y - 10);
+    }
+  });
+  
+  // Draw Y-axis labels (balance values)
+  ctx.fillStyle = '#888';
+  ctx.font = '11px Arial';
+  ctx.textAlign = 'right';
+  for (let i = 0; i <= 5; i++) {
+    const value = minBalance + (balanceRange / 5) * (5 - i);
+    const y = padding + (graphHeight / 5) * i;
+    ctx.fillText('$' + value.toFixed(0), padding - 10, y + 4);
+  }
+  
+  // Draw X-axis labels (time)
+  ctx.textAlign = 'center';
+  const timeLabels = [];
+  const labelCount = Math.min(5, sortedHistory.length);
+  for (let i = 0; i < labelCount; i++) {
+    const index = Math.floor((sortedHistory.length - 1) * (i / (labelCount - 1 || 1)));
+    const point = sortedHistory[index];
+    if (point) {
+      const date = new Date(point.timestamp);
+      const label = date.toLocaleDateString() + ' ' + date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      timeLabels.push({ index, label });
+    }
+  }
+  
+  timeLabels.forEach(({ index, label }) => {
+    const divisor = sortedHistory.length > 1 ? sortedHistory.length - 1 : 1;
+    const x = padding + (graphWidth / divisor) * index;
+    ctx.fillText(label, x, height - padding + 20);
+  });
+  
+  // Draw title
+  ctx.fillStyle = '#e0e0e0';
+  ctx.font = 'bold 14px Arial';
+  ctx.textAlign = 'center';
+  ctx.fillText('Balance Over Time', width / 2, 20);
+  
+  // Draw legend
+  ctx.fillStyle = '#888';
+  ctx.font = '11px Arial';
+  ctx.textAlign = 'left';
+  ctx.fillText('Red markers indicate significant losses', padding, height - 5);
+}
+
 async function updateTradeJournalDisplay() {
   const journalContent = document.getElementById('tradeJournalContent');
   const filterInput = document.getElementById('tradeJournalFilter');
@@ -5046,11 +5212,24 @@ async function updateTradeJournalDisplay() {
     return;
   }
   
+  // Create balance graph HTML
+  const graphHtml = `
+    <div style="margin-bottom: 30px; padding: 20px; background: #1e1e1e; border: 1px solid #444; border-radius: 8px;">
+      <canvas id="balanceGraph" width="800" height="300" style="width: 100%; max-width: 100%; height: auto; background: #0f0f0f; border-radius: 4px;"></canvas>
+    </div>
+  `;
+  
   // Get all trades from journal
   const trades = Object.values(tradeJournal).filter(trade => trade && trade.imagePath);
   
+  // Build content with graph
+  let contentHtml = graphHtml;
+  
   if (trades.length === 0) {
-    journalContent.innerHTML = '<p class="no-log">No trades with charts found yet. Charts will appear here after executing trades.</p>';
+    contentHtml += '<p class="no-log">No trades with charts found yet. Charts will appear here after executing trades.</p>';
+    journalContent.innerHTML = contentHtml;
+    // Draw graph even if no trades
+    setTimeout(() => drawBalanceGraph('balanceGraph'), 100);
     return;
   }
   
@@ -5149,7 +5328,11 @@ async function updateTradeJournalDisplay() {
     `;
   }));
   
-  journalContent.innerHTML = tradeEntries.join('');
+  contentHtml += tradeEntries.join('');
+  journalContent.innerHTML = contentHtml;
+  
+  // Draw balance graph after content is rendered
+  setTimeout(() => drawBalanceGraph('balanceGraph'), 100);
 }
 
 // Open chart image from journal
