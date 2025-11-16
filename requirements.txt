@@ -4,3 +4,4 @@ twilio>=8.0.0
 yfinance>=0.2.18
 requests>=2.25.0
 firecrawl-py>=0.0.16
+matplotlib>=3.5.0

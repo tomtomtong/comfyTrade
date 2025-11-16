@@ -915,9 +915,10 @@ async function handleRefreshClosedPositions() {
       container.innerHTML = summaryHtml + '<div class="positions-list">' + positionsHtml + '</div>';
       
       // Record balance snapshots for closed positions with profit
+      // Only record if we don't already have recent entries for these tickets
       const accountResult = await window.mt5API.getAccountInfo();
       if (accountResult.success && accountResult.data) {
-        // Record balance for each closed position
+        // Record balance for each closed position (will skip duplicates)
         for (const pos of closedPositions) {
           await recordBalanceSnapshot(accountResult.data.balance, pos.ticket, pos.profit);
         }
@@ -1304,6 +1305,23 @@ async function saveBalanceHistory() {
 
 // Record balance snapshot
 async function recordBalanceSnapshot(balance, ticket = null, profit = null) {
+  // Prevent duplicates: if we have a recent entry with the same ticket and similar timestamp, skip
+  if (ticket !== null) {
+    const recentEntry = balanceHistory.find(h => 
+      h.ticket === ticket && 
+      Math.abs(new Date(h.timestamp).getTime() - Date.now()) < 60000 // Within 1 minute
+    );
+    if (recentEntry) {
+      // Update existing entry with profit if we have it
+      if (profit !== null && recentEntry.profit === null) {
+        recentEntry.profit = profit;
+        recentEntry.balance = balance; // Update balance too
+        await saveBalanceHistory();
+      }
+      return; // Skip duplicate
+    }
+  }
+  
   const snapshot = {
     timestamp: new Date().toISOString(),
     balance: balance,
@@ -1391,33 +1409,87 @@ async function fetchThreeMonthDailyData(symbol) {
 // Function to plot the 6-month daily chart
 function plotThreeMonthChart(symbol, data) {
   try {
+    // Check if Chart.js is available
+    if (typeof Chart === 'undefined') {
+      throw new Error('Chart.js library is not loaded');
+    }
+
     // Destroy existing chart if it exists
     if (tradeChartInstance) {
-      tradeChartInstance.destroy();
+      try {
+        tradeChartInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying existing chart:', e);
+      }
       tradeChartInstance = null;
     }
 
-    // Hide loading and error, show chart
-    document.getElementById('chartLoading').style.display = 'none';
-    document.getElementById('chartError').style.display = 'none';
+    // Get chart elements
+    const chartLoading = document.getElementById('chartLoading');
+    const chartError = document.getElementById('chartError');
     const chartCanvas = document.getElementById('tradeChart');
+    
+    if (!chartCanvas) {
+      throw new Error('Chart canvas element not found');
+    }
+
+    // Hide loading and error, show chart
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) chartError.style.display = 'none';
     chartCanvas.style.display = 'block';
+
+    // Ensure canvas has proper dimensions
+    // The canvas is wrapped in a div container
+    const canvasContainer = chartCanvas.parentElement;
+    if (canvasContainer) {
+      const containerWidth = canvasContainer.clientWidth || 800;
+      const containerHeight = canvasContainer.clientHeight || 400;
+      // Set canvas dimensions to match container
+      chartCanvas.width = containerWidth;
+      chartCanvas.height = containerHeight;
+    } else {
+      // Fallback dimensions
+      chartCanvas.width = 800;
+      chartCanvas.height = 400;
+    }
+
+    // Validate data
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      throw new Error('No chart data available');
+    }
 
     // Prepare data for Chart.js
     const labels = data.map(item => {
-      const date = new Date(item.time);
-      return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      try {
+        const date = new Date(item.time);
+        return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      } catch (e) {
+        return '';
+      }
+    }).filter(label => label !== '');
+
+    const closePrices = data.map(item => {
+      const price = parseFloat(item.close);
+      return isNaN(price) ? 0 : price;
+    });
+    const highPrices = data.map(item => {
+      const price = parseFloat(item.high);
+      return isNaN(price) ? 0 : price;
+    });
+    const lowPrices = data.map(item => {
+      const price = parseFloat(item.low);
+      return isNaN(price) ? 0 : price;
     });
 
-    const closePrices = data.map(item => parseFloat(item.close));
-    const highPrices = data.map(item => parseFloat(item.high));
-    const lowPrices = data.map(item => parseFloat(item.low));
-
-    // Get current price for reference line
-    const currentPrice = closePrices[closePrices.length - 1];
+    // Get current price for reference
+    const currentPrice = closePrices.length > 0 ? closePrices[closePrices.length - 1] : 0;
 
     // Create chart
     const ctx = chartCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not get canvas context');
+    }
+
     tradeChartInstance = new Chart(ctx, {
       type: 'line',
       data: {
@@ -1458,8 +1530,7 @@ function plotThreeMonthChart(symbol, data) {
       },
       options: {
         responsive: true,
-        maintainAspectRatio: true,
-        aspectRatio: 2.5,
+        maintainAspectRatio: false,
         plugins: {
           title: {
             display: true,
@@ -1468,6 +1539,10 @@ function plotThreeMonthChart(symbol, data) {
             font: {
               size: 16,
               weight: 'bold'
+            },
+            padding: {
+              top: 10,
+              bottom: 20
             }
           },
           legend: {
@@ -1475,7 +1550,8 @@ function plotThreeMonthChart(symbol, data) {
             position: 'top',
             labels: {
               color: '#e0e0e0',
-              usePointStyle: true
+              usePointStyle: true,
+              padding: 15
             }
           },
           tooltip: {
@@ -1486,9 +1562,12 @@ function plotThreeMonthChart(symbol, data) {
             bodyColor: '#e0e0e0',
             borderColor: '#444',
             borderWidth: 1,
+            padding: 12,
             callbacks: {
               label: function(context) {
-                return `${context.dataset.label}: ${context.parsed.y.toFixed(5)}`;
+                const value = context.parsed.y;
+                const decimals = value >= 1000 ? 2 : 5;
+                return `${context.dataset.label}: ${value.toFixed(decimals)}`;
               }
             }
           }
@@ -1499,62 +1578,109 @@ function plotThreeMonthChart(symbol, data) {
               color: '#888',
               maxRotation: 45,
               minRotation: 45,
-              maxTicksLimit: 15
+              maxTicksLimit: 15,
+              font: {
+                size: 10
+              }
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: true,
+              borderColor: '#444'
             }
           },
           y: {
             ticks: {
               color: '#888',
+              font: {
+                size: 10
+              },
               callback: function(value) {
-                return value.toFixed(5);
+                const decimals = value >= 1000 ? 2 : 5;
+                return value.toFixed(decimals);
               }
             },
             grid: {
-              color: 'rgba(255, 255, 255, 0.1)'
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: true,
+              borderColor: '#444'
             }
           }
         },
         interaction: {
           mode: 'index',
           intersect: false
+        },
+        animation: {
+          duration: 750
         }
       }
     });
 
-    console.log(`Chart plotted successfully with ${data.length} data points`);
+    console.log(`Chart plotted successfully with ${data.length} data points for ${symbol}`);
   } catch (error) {
     console.error('Error plotting chart:', error);
-    document.getElementById('chartLoading').style.display = 'none';
-    document.getElementById('chartError').style.display = 'block';
-    document.getElementById('chartError').textContent = `Failed to plot chart: ${error.message}`;
-    document.getElementById('tradeChart').style.display = 'none';
+    const chartLoading = document.getElementById('chartLoading');
+    const chartError = document.getElementById('chartError');
+    const chartCanvas = document.getElementById('tradeChart');
+    
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) {
+      chartError.style.display = 'block';
+      chartError.textContent = `Failed to plot chart: ${error.message}`;
+    }
+    if (chartCanvas) chartCanvas.style.display = 'none';
   }
 }
 
 // Function to load and display the 6-month chart
 async function loadThreeMonthChart(symbol) {
+  const chartLoading = document.getElementById('chartLoading');
+  const chartError = document.getElementById('chartError');
+  const chartCanvas = document.getElementById('tradeChart');
+
+  // Validate elements exist
+  if (!chartLoading || !chartError || !chartCanvas) {
+    console.error('Chart elements not found in DOM');
+    return;
+  }
+
   // Show loading state
-  document.getElementById('chartLoading').style.display = 'block';
-  document.getElementById('chartError').style.display = 'none';
-  document.getElementById('tradeChart').style.display = 'none';
+  chartLoading.style.display = 'block';
+  chartError.style.display = 'none';
+  chartCanvas.style.display = 'none';
+
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    chartLoading.style.display = 'none';
+    chartError.style.display = 'block';
+    chartError.textContent = 'Chart.js library is not loaded. Please refresh the page.';
+    return;
+  }
 
   try {
+    // Validate symbol
+    if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
+      throw new Error('Invalid symbol');
+    }
+
+    // Fetch chart data
     const data = await fetchThreeMonthDailyData(symbol);
     
-    if (data && data.length > 0) {
-      plotThreeMonthChart(symbol, data);
+    if (data && Array.isArray(data) && data.length > 0) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        plotThreeMonthChart(symbol, data);
+      }, 100);
     } else {
-      throw new Error('No data received');
+      throw new Error('No chart data received from MT5');
     }
   } catch (error) {
     console.error('Error loading chart:', error);
-    document.getElementById('chartLoading').style.display = 'none';
-    document.getElementById('chartError').style.display = 'block';
-    document.getElementById('chartError').textContent = `Failed to load chart: ${error.message}`;
-    document.getElementById('tradeChart').style.display = 'none';
+    chartLoading.style.display = 'none';
+    chartError.style.display = 'block';
+    chartError.textContent = `Failed to load chart: ${error.message}`;
+    chartCanvas.style.display = 'none';
   }
 }
 
@@ -1897,18 +2023,25 @@ async function executeClosePosition(ticket) {
     // Record balance after closing position
     const accountResult = await window.mt5API.getAccountInfo();
     if (accountResult.success && accountResult.data) {
-      // Try to get profit from the closed position if available
-      const positionsResult = await window.mt5API.getClosedPositions(1);
-      if (positionsResult.success && positionsResult.data) {
-        const closedPos = positionsResult.data.find(p => p.ticket === ticket);
-        if (closedPos) {
-          await recordBalanceSnapshot(accountResult.data.balance, ticket, closedPos.profit);
-        } else {
-          await recordBalanceSnapshot(accountResult.data.balance, ticket, null);
+      // Record balance immediately (profit will be updated later if available)
+      await recordBalanceSnapshot(accountResult.data.balance, ticket, null);
+      
+      // Try to get profit from the closed position after a short delay
+      // (closed positions might not be immediately available)
+      setTimeout(async () => {
+        try {
+          const positionsResult = await window.mt5API.getClosedPositions(1);
+          if (positionsResult.success && positionsResult.data) {
+            const closedPos = positionsResult.data.find(p => p.ticket === ticket);
+            if (closedPos && closedPos.profit !== undefined) {
+              // Update the balance snapshot with profit information
+              await recordBalanceSnapshot(accountResult.data.balance, ticket, closedPos.profit);
+            }
+          }
+        } catch (error) {
+          console.error('Error fetching closed position profit:', error);
         }
-      } else {
-        await recordBalanceSnapshot(accountResult.data.balance, ticket, null);
-      }
+      }, 1000); // Wait 1 second for closed position to appear
     }
     
     handleRefreshAccount();

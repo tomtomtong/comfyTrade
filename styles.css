@@ -3178,10 +3178,15 @@ ter scrollbar for settings modal */
 
 #tradeChart {
   width: 100% !important;
-  height: auto !important;
+  height: 100% !important;
   max-height: 400px;
   background: #1a1a1a;
   border-radius: 4px;
+  display: block;
+}
+
+#tradeChart:not([style*="display: none"]) {
+  display: block !important;
 }
 
 #tradeConfirmationModal .modal-buttons {

@@ -23,6 +23,9 @@
     "electron-builder": "^24.13.3"
   },
   "dependencies": {
+    "chartjs-adapter-date-fns": "^3.0.0",
+    "chartjs-chart-financial": "^0.2.1",
+    "date-fns": "^4.1.0",
     "ws": "^8.18.3"
   },
   "build": {

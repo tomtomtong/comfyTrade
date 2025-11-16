@@ -174,7 +174,22 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistoryReal": [],
+  "overtradeHistoryReal": [
+    {
+      "timestamp": 1763260504828,
+      "type": "manual",
+      "data": {
+        "symbol": "XAUUSD",
+        "type": "BUY",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    }
+  ],
   "overtradeHistorySimulator": [],
   "overtradeLastWarningReal": 0,
   "overtradeLastWarningSimulator": 0,
