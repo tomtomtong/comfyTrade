@@ -1,91 +1,103 @@
 [
   {
-    "timestamp": "2025-11-20T04:56:34.490Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:04:59.507Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:34.493Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:04:59.509Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:39.498Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:04.514Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:44.502Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:09.514Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:49.498Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:14.518Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:50.576Z",
-    "balance": 9281.32,
-    "ticket": 51734390,
-    "profit": null
-  },
-  {
-    "timestamp": "2025-11-20T04:56:50.577Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:19.519Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:54.496Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:24.522Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:56:59.498Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:29.524Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:04.496Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:34.512Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:09.498Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:39.514Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:14.500Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:44.516Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:19.495Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:49.518Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:24.504Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:54.520Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-20T04:57:29.501Z",
-    "balance": 9281.32,
+    "timestamp": "2025-11-20T06:05:59.518Z",
+    "balance": 9281.02,
+    "ticket": null,
+    "profit": null
+  },
+  {
+    "timestamp": "2025-11-20T06:06:04.510Z",
+    "balance": 9281.02,
+    "ticket": null,
+    "profit": null
+  },
+  {
+    "timestamp": "2025-11-20T06:06:09.511Z",
+    "balance": 9281.02,
+    "ticket": null,
+    "profit": null
+  },
+  {
+    "timestamp": "2025-11-20T06:06:14.511Z",
+    "balance": 9281.02,
     "ticket": null,
     "profit": null
   }

@@ -174,36 +174,7 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistoryReal": [
-    {
-      "timestamp": 1763614600394,
-      "type": "manual",
-      "data": {
-        "symbol": "UK100.cash",
-        "type": "BUY",
-        "volume": 0.1,
-        "stopLoss": 0,
-        "takeProfit": 0,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    },
-    {
-      "timestamp": 1763614610216,
-      "type": "manual",
-      "data": {
-        "symbol": "UK100.cash",
-        "type": "BUY",
-        "volume": 0.1,
-        "stopLoss": 9480,
-        "takeProfit": 9700,
-        "action": "executeOrder"
-      },
-      "action": "executeOrder",
-      "positionType": "open"
-    }
-  ],
+  "overtradeHistoryReal": [],
   "overtradeHistorySimulator": [],
   "overtradeLastWarningReal": 0,
   "overtradeLastWarningSimulator": 0,

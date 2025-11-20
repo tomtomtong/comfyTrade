@@ -2194,7 +2194,7 @@ async function handleRefreshPendingOrders() {
               Expires: ${expirationTime}
             </div>
             <div class="position-actions">
-              <button class="btn btn-small btn-primary" onclick="modifyPendingOrder(${order.ticket}, '${order.symbol}', ${order.price}, ${order.stop_loss || 0}, ${order.take_profit || 0})">Modify</button>
+              <button class="btn btn-small btn-primary" onclick="modifyPendingOrder(${order.ticket}, '${order.symbol}', '${order.type}', ${order.price}, ${order.stop_loss || 0}, ${order.take_profit || 0})">Modify</button>
               <button class="btn btn-small btn-danger" onclick="cancelPendingOrder(${order.ticket})">Cancel</button>
             </div>
           </div>
@@ -2243,24 +2243,26 @@ window.cancelPendingOrder = cancelPendingOrder;
 // Modify pending order modal state
 let modifyPendingOrderData = null;
 
-function modifyPendingOrder(ticket, symbol, currentPrice, currentSL, currentTP) {
-  modifyPendingOrderData = { ticket, symbol, currentPrice, currentSL, currentTP };
+function modifyPendingOrder(ticket, symbol, orderType, currentPrice, currentSL, currentTP) {
+  modifyPendingOrderData = { ticket, symbol, orderType, currentPrice, currentSL, currentTP };
   showModifyPendingOrderModal();
 }
 
 function showModifyPendingOrderModal() {
   if (!modifyPendingOrderData) return;
   
-  const { ticket, symbol, currentPrice, currentSL, currentTP } = modifyPendingOrderData;
+  const { ticket, symbol, orderType, currentPrice, currentSL, currentTP } = modifyPendingOrderData;
   
   // Set modal content
   document.getElementById('modifyPendingOrderSymbol').textContent = symbol;
   document.getElementById('modifyPendingOrderTicket').textContent = ticket;
   document.getElementById('modifyPendingOrderCurrentPrice').textContent = currentPrice.toFixed(5);
   
-  // Set current SL/TP values in inputs
+  // Set current values in inputs (leave empty to show placeholder)
+  const priceInput = document.getElementById('modifyPendingOrderLimitPrice');
   const slInput = document.getElementById('modifyPendingOrderStopLoss');
   const tpInput = document.getElementById('modifyPendingOrderTakeProfit');
+  if (priceInput) priceInput.value = '';
   if (slInput) slInput.value = (currentSL && currentSL > 0) ? currentSL.toFixed(5) : '';
   if (tpInput) tpInput.value = (currentTP && currentTP > 0) ? currentTP.toFixed(5) : '';
   
@@ -2279,21 +2281,50 @@ async function confirmModifyPendingOrder() {
     return;
   }
   
-  const { ticket, symbol } = modifyPendingOrderData;
+  const { ticket, symbol, orderType, currentPrice } = modifyPendingOrderData;
+  const priceInput = document.getElementById('modifyPendingOrderLimitPrice').value.trim();
   const slInput = document.getElementById('modifyPendingOrderStopLoss').value.trim();
   const tpInput = document.getElementById('modifyPendingOrderTakeProfit').value.trim();
   
-  // Parse values - empty means keep existing, 0 means remove
+  // Parse values - empty means keep existing, 0 means remove (for SL/TP only)
+  const limitPrice = priceInput === '' ? null : parseFloat(priceInput);
   const stopLoss = slInput === '' ? null : (slInput === '0' ? 0 : parseFloat(slInput));
   const takeProfit = tpInput === '' ? null : (tpInput === '0' ? 0 : parseFloat(tpInput));
   
   // Validate that at least one value is being modified
-  if (stopLoss === null && takeProfit === null) {
-    showMessage('Please enter at least one value to modify (SL or TP)', 'error');
+  if (limitPrice === null && stopLoss === null && takeProfit === null) {
+    showMessage('Please enter at least one value to modify (Limit Price, SL, or TP)', 'error');
     return;
   }
   
-  // Validate values
+  // Validate limit price if provided
+  if (limitPrice !== null) {
+    if (isNaN(limitPrice) || limitPrice <= 0) {
+      showMessage('Invalid limit price value', 'error');
+      return;
+    }
+    
+    // Validate limit price against current market prices
+    try {
+      const marketData = await window.mt5API.getMarketData(symbol);
+      if (marketData && marketData.bid && marketData.ask) {
+        const isBuyOrder = orderType.includes('BUY');
+        if (isBuyOrder && limitPrice >= marketData.ask) {
+          showMessage('For BUY limit orders, the limit price must be below the current ask price', 'error');
+          return;
+        }
+        if (!isBuyOrder && limitPrice <= marketData.bid) {
+          showMessage('For SELL limit orders, the limit price must be above the current bid price', 'error');
+          return;
+        }
+      }
+    } catch (error) {
+      console.error('Error validating limit price:', error);
+      // Continue anyway - backend will validate
+    }
+  }
+  
+  // Validate SL/TP values
   if (stopLoss !== null && (isNaN(stopLoss) || stopLoss < 0)) {
     showMessage('Invalid stop loss value', 'error');
     return;
@@ -2308,7 +2339,7 @@ async function confirmModifyPendingOrder() {
   showMessage('Modifying pending order...', 'info');
   
   try {
-    const result = await window.mt5API.modifyPendingOrder(ticket, stopLoss, takeProfit, null);
+    const result = await window.mt5API.modifyPendingOrder(ticket, stopLoss, takeProfit, limitPrice);
     
     if (result.success && result.data.success) {
       showMessage('Pending order modified successfully!', 'success');

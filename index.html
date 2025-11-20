@@ -1069,6 +1069,10 @@
             <span id="modifyPendingOrderCurrentPrice" class="value">-</span>
           </div>
           <div class="confirmation-item">
+            <span class="label">New Limit Price (optional):</span>
+            <input type="number" id="modifyPendingOrderLimitPrice" class="value confirmation-input" step="0.00001" placeholder="Enter new limit price (leave empty to keep current)">
+          </div>
+          <div class="confirmation-item">
             <span class="label">Stop Loss (optional):</span>
             <input type="number" id="modifyPendingOrderStopLoss" class="value confirmation-input" step="0.00001" placeholder="Enter stop loss (leave empty to keep current, 0 to remove)">
           </div>
@@ -1079,7 +1083,7 @@
         </div>
         
         <div class="confirmation-notice">
-          <p>⚠️ Leave fields empty to keep current values, or enter 0 to remove SL/TP</p>
+          <p>⚠️ Leave fields empty to keep current values, or enter 0 to remove SL/TP. For limit price, leave empty to keep current value.</p>
         </div>
       </div>
       
