@@ -524,8 +524,7 @@ class OvertradeControl {
         return;
       }
       
-      // Limit not exceeded, record and allow the trade
-      await this.recordTrade(tradeType, tradeData);
+      // Limit not exceeded, allow the trade (will be recorded after successful execution)
       resolve(true);
     });
   }

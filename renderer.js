@@ -1843,6 +1843,315 @@ async function loadThreeMonthChart(symbol) {
   }
 }
 
+// Function to load chart for modify pending order modal
+async function loadModifyPendingOrderChart(symbol) {
+  const chartLoading = document.getElementById('modifyPendingOrderChartLoading');
+  const chartError = document.getElementById('modifyPendingOrderChartError');
+  const chartCanvas = document.getElementById('modifyPendingOrderChart');
+
+  // Validate elements exist
+  if (!chartLoading || !chartError || !chartCanvas) {
+    console.error('Chart elements not found in DOM for modify pending order modal');
+    return;
+  }
+
+  // Show loading state
+  chartLoading.style.display = 'block';
+  chartError.style.display = 'none';
+  chartCanvas.style.display = 'none';
+
+  // Check if Chart.js is available
+  if (typeof Chart === 'undefined') {
+    chartLoading.style.display = 'none';
+    chartError.style.display = 'block';
+    chartError.textContent = 'Chart.js library is not loaded. Please refresh the page.';
+    return;
+  }
+
+  try {
+    // Validate symbol
+    if (!symbol || typeof symbol !== 'string' || symbol.trim() === '') {
+      throw new Error('Invalid symbol');
+    }
+
+    // Fetch chart data
+    const data = await fetchThreeMonthDailyData(symbol);
+    
+    if (data && Array.isArray(data) && data.length > 0) {
+      // Small delay to ensure DOM is ready
+      setTimeout(() => {
+        plotModifyPendingOrderChart(symbol, data);
+      }, 100);
+    } else {
+      throw new Error('No chart data received from MT5');
+    }
+  } catch (error) {
+    console.error('Error loading chart for modify pending order:', error);
+    chartLoading.style.display = 'none';
+    chartError.style.display = 'block';
+    chartError.textContent = `Failed to load chart: ${error.message}`;
+    chartCanvas.style.display = 'none';
+  }
+}
+
+// Function to plot the chart for modify pending order modal
+function plotModifyPendingOrderChart(symbol, data) {
+  try {
+    // Check if Chart.js and financial chart plugin are available
+    if (typeof Chart === 'undefined') {
+      throw new Error('Chart.js library is not loaded');
+    }
+    if (typeof Chart.controllers.candlestick === 'undefined') {
+      console.warn('Financial chart plugin not loaded, falling back to basic chart');
+    }
+
+    // Destroy existing chart if it exists
+    if (modifyChartInstance) {
+      try {
+        modifyChartInstance.destroy();
+      } catch (e) {
+        console.warn('Error destroying existing modify chart:', e);
+      }
+      modifyChartInstance = null;
+    }
+
+    // Get chart elements
+    const chartLoading = document.getElementById('modifyPendingOrderChartLoading');
+    const chartError = document.getElementById('modifyPendingOrderChartError');
+    const chartCanvas = document.getElementById('modifyPendingOrderChart');
+    
+    if (!chartCanvas) {
+      throw new Error('Chart canvas element not found');
+    }
+
+    // Hide loading and error, show chart
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) chartError.style.display = 'none';
+    chartCanvas.style.display = 'block';
+
+    // Ensure canvas has proper dimensions
+    const canvasContainer = chartCanvas.parentElement;
+    if (canvasContainer) {
+      const containerWidth = canvasContainer.clientWidth || 800;
+      const containerHeight = canvasContainer.clientHeight || 500;
+      chartCanvas.width = containerWidth;
+      chartCanvas.height = containerHeight;
+    } else {
+      chartCanvas.width = 800;
+      chartCanvas.height = 500;
+    }
+
+    // Validate data
+    if (!data || !Array.isArray(data) || data.length === 0) {
+      throw new Error('No chart data available');
+    }
+
+    // Prepare OHLC data for candlestick chart
+    const candlestickData = data.map(item => {
+      const time = new Date(item.time).getTime();
+      return {
+        x: time,
+        o: parseFloat(item.open),
+        h: parseFloat(item.high),
+        l: parseFloat(item.low),
+        c: parseFloat(item.close)
+      };
+    }).filter(item => !isNaN(item.o) && !isNaN(item.h) && !isNaN(item.l) && !isNaN(item.c));
+
+    // Prepare volume data
+    const volumeData = data.map(item => {
+      const time = new Date(item.time).getTime();
+      const volume = parseFloat(item.tick_volume || 0);
+      return {
+        x: time,
+        y: volume
+      };
+    }).filter(item => !isNaN(item.y));
+
+    // Calculate max volume for scaling
+    const maxVolume = Math.max(...volumeData.map(v => v.y));
+
+    // Get current price for reference
+    const currentPrice = candlestickData.length > 0 ? candlestickData[candlestickData.length - 1].c : 0;
+
+    // Create chart
+    const ctx = chartCanvas.getContext('2d');
+    if (!ctx) {
+      throw new Error('Could not get canvas context');
+    }
+
+    // Determine price decimals
+    const avgPrice = candlestickData.reduce((sum, d) => sum + d.c, 0) / candlestickData.length;
+    const priceDecimals = avgPrice >= 1000 ? 2 : avgPrice >= 10 ? 3 : 5;
+
+    modifyChartInstance = new Chart(ctx, {
+      type: 'candlestick',
+      data: {
+        datasets: [
+          {
+            label: symbol,
+            data: candlestickData,
+            borderColor: 'rgba(255, 255, 255, 0.8)',
+            color: {
+              up: 'rgba(38, 166, 154, 0.9)',    // Teal/green for bullish
+              down: 'rgba(239, 83, 80, 0.9)',   // Red for bearish
+              unchanged: 'rgba(158, 158, 158, 0.9)'
+            },
+            borderWidth: 1.5,
+            barThickness: 'flex',
+            maxBarThickness: 8,
+            yAxisID: 'y-price'
+          },
+          {
+            label: 'Volume',
+            data: volumeData,
+            type: 'bar',
+            backgroundColor: volumeData.map((v, i) => {
+              if (i === 0) return 'rgba(158, 158, 158, 0.3)';
+              const prevClose = candlestickData[i - 1]?.c;
+              const currClose = candlestickData[i]?.c;
+              if (currClose > prevClose) {
+                return 'rgba(38, 166, 154, 0.3)'; // Green volume
+              } else if (currClose < prevClose) {
+                return 'rgba(239, 83, 80, 0.3)'; // Red volume
+              } else {
+                return 'rgba(158, 158, 158, 0.3)'; // Gray volume
+              }
+            }),
+            borderColor: 'rgba(158, 158, 158, 0.5)',
+            borderWidth: 0.5,
+            yAxisID: 'y-volume'
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        plugins: {
+          legend: {
+            display: true,
+            position: 'top',
+            labels: {
+              color: '#e0e0e0',
+              font: {
+                size: 12
+              }
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: 'rgba(30, 30, 30, 0.95)',
+            titleColor: '#e0e0e0',
+            bodyColor: '#e0e0e0',
+            borderColor: '#555',
+            borderWidth: 1,
+            callbacks: {
+              label: function(context) {
+                if (context.datasetIndex === 0) {
+                  // Candlestick data
+                  const point = context.raw;
+                  return [
+                    `Open: ${point.o.toFixed(priceDecimals)}`,
+                    `High: ${point.h.toFixed(priceDecimals)}`,
+                    `Low: ${point.l.toFixed(priceDecimals)}`,
+                    `Close: ${point.c.toFixed(priceDecimals)}`
+                  ];
+                } else {
+                  // Volume data
+                  return `Volume: ${context.parsed.y.toLocaleString()}`;
+                }
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            type: 'time',
+            time: {
+              unit: 'day',
+              displayFormats: {
+                day: 'MMM dd'
+              }
+            },
+            ticks: {
+              color: '#999',
+              maxRotation: 45,
+              minRotation: 45
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: false
+            }
+          },
+          'y-price': {
+            type: 'linear',
+            position: 'left',
+            ticks: {
+              color: '#e0e0e0',
+              callback: function(value) {
+                return value.toFixed(priceDecimals);
+              }
+            },
+            grid: {
+              color: 'rgba(255, 255, 255, 0.1)',
+              drawBorder: false
+            },
+            title: {
+              display: true,
+              text: 'Price',
+              color: '#e0e0e0'
+            }
+          },
+          'y-volume': {
+            type: 'linear',
+            position: 'right',
+            ticks: {
+              color: '#999',
+              callback: function(value) {
+                if (value >= 1000000) {
+                  return (value / 1000000).toFixed(1) + 'M';
+                } else if (value >= 1000) {
+                  return (value / 1000).toFixed(1) + 'K';
+                }
+                return value.toLocaleString();
+              },
+              max: maxVolume * 3 // Scale volume axis
+            },
+            grid: {
+              display: false,
+              drawBorder: false
+            },
+            title: {
+              display: true,
+              text: 'Volume',
+              color: '#999'
+            }
+          }
+        },
+        interaction: {
+          mode: 'index',
+          intersect: false
+        }
+      }
+    });
+
+    console.log('Modify pending order chart created successfully');
+  } catch (error) {
+    console.error('Error plotting modify pending order chart:', error);
+    const chartLoading = document.getElementById('modifyPendingOrderChartLoading');
+    const chartError = document.getElementById('modifyPendingOrderChartError');
+    const chartCanvas = document.getElementById('modifyPendingOrderChart');
+    
+    if (chartLoading) chartLoading.style.display = 'none';
+    if (chartError) {
+      chartError.style.display = 'block';
+      chartError.textContent = `Chart error: ${error.message}`;
+    }
+    if (chartCanvas) chartCanvas.style.display = 'none';
+  }
+}
+
 async function updateConfirmationModalPrice(symbol, type) {
   const priceElement = document.getElementById('confirmTradeCurrentPrice');
   if (!priceElement) return;
@@ -2020,6 +2329,10 @@ async function confirmTradeExecution() {
     
     if (result.success && result.data.success) {
       showMessage(`Trade executed successfully! Ticket: ${result.data.ticket}`, 'success');
+      
+      // Record the trade in overtrade control after successful execution
+      const tradeDataToRecord = { symbol, type, volume, stopLoss, takeProfit, action: 'executeOrder' };
+      await window.overtradeControl.recordTrade('manual', tradeDataToRecord);
       
       // Record balance after trade execution
       const accountResult = await window.mt5API.getAccountInfo();
@@ -2289,11 +2602,28 @@ async function showModifyPendingOrderModal() {
   
   // Show modal
   document.getElementById('modifyPendingOrderModal').classList.add('show');
+  
+  // Load and display the 6-month daily chart
+  loadModifyPendingOrderChart(symbol);
 }
 
 function hideModifyPendingOrderModal() {
   document.getElementById('modifyPendingOrderModal').classList.remove('show');
   modifyPendingOrderData = null;
+  
+  // Destroy chart instance when modal is closed
+  if (modifyChartInstance) {
+    modifyChartInstance.destroy();
+    modifyChartInstance = null;
+  }
+  
+  // Reset chart UI elements
+  const chartLoading = document.getElementById('modifyPendingOrderChartLoading');
+  const chartError = document.getElementById('modifyPendingOrderChartError');
+  const chartCanvas = document.getElementById('modifyPendingOrderChart');
+  if (chartLoading) chartLoading.style.display = 'block';
+  if (chartError) chartError.style.display = 'none';
+  if (chartCanvas) chartCanvas.style.display = 'none';
 }
 
 async function confirmModifyPendingOrder() {

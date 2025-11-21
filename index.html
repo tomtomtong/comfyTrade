@@ -1089,6 +1089,20 @@
         <div class="confirmation-notice">
           <p>⚠️ Leave fields empty to keep current values, or enter 0 to remove SL/TP. For limit price, leave empty to keep current value.</p>
         </div>
+        
+        <!-- 6 Month Daily Chart -->
+        <div class="chart-container-wrapper">
+          <h3 style="margin-top: 20px; margin-bottom: 10px;">📊 6-Month Daily Chart</h3>
+          <div id="modifyPendingOrderChartLoading" class="chart-loading" style="text-align: center; padding: 20px; color: #888;">
+            Loading chart data...
+          </div>
+          <div id="modifyPendingOrderChartError" class="chart-error" style="display: none; text-align: center; padding: 20px; color: #f44336;">
+            Failed to load chart data
+          </div>
+          <div style="position: relative; width: 100%; height: 500px;">
+            <canvas id="modifyPendingOrderChart" style="display: none; width: 100%; height: 100%;"></canvas>
+          </div>
+        </div>
       </div>
       
       <div class="modal-buttons">
