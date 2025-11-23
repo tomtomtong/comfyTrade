@@ -264,7 +264,9 @@ class NodePluginManager {
     } else if (node.type === 'yfinance-data') {
       return node.fetchedData || '';
     } else if (node.type === 'alphavantage-data') {
-      return node.fetchedData || '';
+      return node.fetchedData || node.outputData || '';
+    } else if (node.type === 'alphavantage-sentiment') {
+      return node.sentimentData || node.outputData || '';
     } else if (node.type === 'firecrawl-node') {
       return node.firecrawlData || '';
     } else if (node.type === 'python-script') {

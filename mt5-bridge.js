@@ -4,6 +4,7 @@ const { spawn, exec } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const TwilioAlerts = require('./twilio-alerts');
+const SentimentAnalyzer = require('./sentiment-analyzer');
 
 class MT5Bridge {
   constructor() {
@@ -632,6 +633,61 @@ class MT5Bridge {
     console.log('Executing Python script');
     const response = await this.sendMessage('executePythonScript', params);
     return response.data;
+  }
+
+  async getSentimentAnalysis(params) {
+    // Sentiment analysis now works directly in JavaScript using Alpha Vantage - no MT5 connection needed
+    try {
+      const keywords = params.keywords || params.symbol || '';
+      
+      // Validate that keywords are provided
+      if (!keywords || (typeof keywords === 'string' && keywords.trim() === '') || 
+          (Array.isArray(keywords) && keywords.length === 0)) {
+        throw new Error('No keywords or symbols provided. Please specify keywords or symbols for sentiment analysis.');
+      }
+      const daysBack = params.daysBack || params.days_back || 7;
+      const maxResults = params.maxResults || params.max_results || 30;
+      
+      // Always use Alpha Vantage settings from app_settings.json
+      let apiKey = '';
+      let baseUrl = 'https://www.alphavantage.co/query';
+      
+      try {
+        const fs = require('fs');
+        const path = require('path');
+        const settingsPath = path.join(__dirname, 'app_settings.json');
+        if (fs.existsSync(settingsPath)) {
+          const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf8'));
+          const avSettings = settings.ai?.alphavantage;
+          if (avSettings && avSettings.enabled && avSettings.apiKey) {
+            apiKey = avSettings.apiKey;
+            baseUrl = avSettings.baseUrl || baseUrl;
+            console.log('Using Alpha Vantage API key from settings');
+          } else {
+            console.warn('Alpha Vantage is not enabled or API key not found in settings');
+          }
+        }
+      } catch (error) {
+        console.warn('Could not read Alpha Vantage settings from file:', error.message);
+      }
+
+      console.log(`Getting sentiment analysis for keywords: ${keywords} using Alpha Vantage`);
+
+      const analyzer = new SentimentAnalyzer(apiKey || null, baseUrl);
+      const result = await analyzer.getSentimentAnalysis(keywords, daysBack, maxResults);
+
+      // Format result to match expected structure
+      return {
+        symbol: Array.isArray(keywords) ? keywords.join(', ') : keywords,
+        keywords: Array.isArray(keywords) ? keywords : [keywords],
+        ...result
+      };
+    } catch (error) {
+      console.error('Error in sentiment analysis:', error);
+      // Return error in a format that can be handled by the caller
+      // The IPC handler will wrap this in { success: false, error: ... }
+      throw error;
+    }
   }
 
   isConnected() {

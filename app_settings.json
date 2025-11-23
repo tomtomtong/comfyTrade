@@ -10,7 +10,7 @@
     "openRouter": {
       "enabled": true,
       "apiKey": "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",
-      "model": "openai/gpt-4o-mini",
+      "model": "anthropic/claude-3.5-sonnet",
       "baseUrl": "https://openrouter.ai/api/v1"
     },
     "alphavantage": {
@@ -24,7 +24,10 @@
       "strategyOptimization": false,
       "riskAssessment": true
     },
-    "savedPrompts": {}
+    "savedPrompts": {
+      "bitcoin": "Should I buy or sell bitcoin now?",
+      "default": "You are an investment assistant. Please analyse the data and make guide to me."
+    }
   },
   "twilio": {
     "enabled": true,

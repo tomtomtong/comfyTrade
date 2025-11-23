@@ -103,12 +103,14 @@ h4 {
   flex-direction: column;
   flex: 1;
   overflow: hidden;
+  position: relative;
 }
 
 .top-section {
   display: flex;
   flex: 1;
   overflow: hidden;
+  min-height: 0; /* Ensure it can shrink if needed */
 }
 
 /* Sidebars */
@@ -329,8 +331,13 @@ h4 {
   min-height: 100px;
   max-height: 500px;
   overflow: hidden;
-  position: relative;
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 1000;
   display: none; /* Hidden by default */
+  box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.3);
 }
 
 .bottom-panel.visible {
@@ -3036,6 +3043,22 @@ ter scrollbar for settings modal */
 
 .settings-tab::-webkit-scrollbar-thumb:hover {
   background: #666;
+}
+
+/* Show/Hide Key Button */
+.show-key-btn {
+  padding: 4px 8px !important;
+  min-width: 36px !important;
+  width: auto !important;
+  font-size: 14px !important;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.show-key-btn:hover {
+  opacity: 0.8;
 }
 
 /* Settings modal improvements */

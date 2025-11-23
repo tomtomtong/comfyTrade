@@ -1,354 +1,114 @@
 [
   {
-    "timestamp": "2025-11-22T04:33:46.451Z",
+    "timestamp": "2025-11-23T01:29:07.798Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:33:46.456Z",
+    "timestamp": "2025-11-23T01:29:07.800Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:33:51.776Z",
+    "timestamp": "2025-11-23T01:29:12.810Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:33:56.777Z",
+    "timestamp": "2025-11-23T01:29:17.803Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:01.468Z",
+    "timestamp": "2025-11-23T01:29:22.810Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:06.459Z",
+    "timestamp": "2025-11-23T01:29:27.802Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:11.465Z",
+    "timestamp": "2025-11-23T01:29:32.805Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:16.460Z",
+    "timestamp": "2025-11-23T01:29:37.807Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:21.462Z",
+    "timestamp": "2025-11-23T01:29:42.808Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:26.460Z",
+    "timestamp": "2025-11-23T01:29:47.809Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:31.465Z",
+    "timestamp": "2025-11-23T01:29:52.802Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:36.466Z",
+    "timestamp": "2025-11-23T01:29:57.801Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:41.468Z",
+    "timestamp": "2025-11-23T01:30:02.803Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:46.458Z",
+    "timestamp": "2025-11-23T01:30:07.804Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:49.066Z",
-    "balance": 9191.23,
-    "ticket": 51857557,
-    "profit": -19.82
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.067Z",
-    "balance": 9191.23,
-    "ticket": 51866911,
-    "profit": -15.44
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.068Z",
-    "balance": 9191.23,
-    "ticket": 51677147,
-    "profit": -20.02
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.090Z",
-    "balance": 9191.23,
-    "ticket": 51781781,
-    "profit": -21.16
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.091Z",
-    "balance": 9191.23,
-    "ticket": 51871737,
-    "profit": -0.42
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.092Z",
-    "balance": 9191.23,
-    "ticket": 51857635,
-    "profit": 0.08
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.099Z",
-    "balance": 9191.23,
-    "ticket": 51866108,
-    "profit": -13.89
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.105Z",
-    "balance": 9191.23,
-    "ticket": 51864513,
-    "profit": 18.37
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.110Z",
-    "balance": 9191.23,
-    "ticket": 51862211,
-    "profit": -8.39
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.115Z",
-    "balance": 9191.23,
-    "ticket": 51854825,
-    "profit": 0.29
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.120Z",
-    "balance": 9191.23,
-    "ticket": 51860692,
-    "profit": -35.78
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.124Z",
-    "balance": 9191.23,
-    "ticket": 51818668,
-    "profit": 40.18
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.129Z",
-    "balance": 9191.23,
-    "ticket": 51725591,
-    "profit": -2.56
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.134Z",
-    "balance": 9191.23,
-    "ticket": 51776617,
-    "profit": -18.52
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.138Z",
-    "balance": 9191.23,
-    "ticket": 51733158,
-    "profit": -9.3
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.143Z",
-    "balance": 9191.23,
-    "ticket": 51746463,
-    "profit": 13.61
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.147Z",
-    "balance": 9191.23,
-    "ticket": 51776095,
-    "profit": 10.11
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.153Z",
-    "balance": 9191.23,
-    "ticket": 51734390,
-    "profit": -0.38
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.159Z",
-    "balance": 9191.23,
-    "ticket": 51722396,
-    "profit": -0.01
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.166Z",
-    "balance": 9191.23,
-    "ticket": 51722390,
-    "profit": 20.11
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.171Z",
-    "balance": 9191.23,
-    "ticket": 51508604,
-    "profit": -2.56
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.180Z",
-    "balance": 9191.23,
-    "ticket": 51734204,
-    "profit": -1.01
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.187Z",
-    "balance": 9191.23,
-    "ticket": 51634540,
-    "profit": 30.45
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.193Z",
-    "balance": 9191.23,
-    "ticket": 51634506,
-    "profit": 15.23
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.199Z",
-    "balance": 9191.23,
-    "ticket": 51660128,
-    "profit": -18.48
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.205Z",
-    "balance": 9191.23,
-    "ticket": 51461424,
-    "profit": -1.5
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.210Z",
-    "balance": 9191.23,
-    "ticket": 51614397,
-    "profit": -1.27
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.216Z",
-    "balance": 9191.23,
-    "ticket": 51511310,
-    "profit": 40.23
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.222Z",
-    "balance": 9191.23,
-    "ticket": 51539574,
-    "profit": 10.1
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.228Z",
-    "balance": 9191.23,
-    "ticket": 51398511,
-    "profit": -8.68
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.234Z",
-    "balance": 9191.23,
-    "ticket": 51519869,
-    "profit": -15
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.239Z",
-    "balance": 9191.23,
-    "ticket": 51413858,
-    "profit": 34.98
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.245Z",
-    "balance": 9191.23,
-    "ticket": 51396882,
-    "profit": 8.23
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.251Z",
-    "balance": 9191.23,
-    "ticket": 51512830,
-    "profit": -0.95
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.256Z",
-    "balance": 9191.23,
-    "ticket": 51446626,
-    "profit": -17.65
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.262Z",
-    "balance": 9191.23,
-    "ticket": 51508107,
-    "profit": 0.6
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.268Z",
-    "balance": 9191.23,
-    "ticket": 51510510,
-    "profit": -2.88
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.274Z",
-    "balance": 9191.23,
-    "ticket": 51404609,
-    "profit": -8.18
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.280Z",
-    "balance": 9191.23,
-    "ticket": 51401841,
-    "profit": -18.02
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.286Z",
-    "balance": 9191.23,
-    "ticket": 51404583,
-    "profit": -2.54
-  },
-  {
-    "timestamp": "2025-11-22T04:34:49.291Z",
-    "balance": 9191.23,
-    "ticket": 51397178,
-    "profit": 0.08
-  },
-  {
-    "timestamp": "2025-11-22T04:34:51.459Z",
+    "timestamp": "2025-11-23T01:30:12.806Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:34:56.461Z",
+    "timestamp": "2025-11-23T01:33:34.343Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:35:01.459Z",
+    "timestamp": "2025-11-23T01:33:34.344Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null
   },
   {
-    "timestamp": "2025-11-22T04:35:06.461Z",
+    "timestamp": "2025-11-23T01:33:48.517Z",
+    "balance": 9191.23,
+    "ticket": null,
+    "profit": null
+  },
+  {
+    "timestamp": "2025-11-23T01:33:48.518Z",
     "balance": 9191.23,
     "ticket": null,
     "profit": null

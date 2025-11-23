@@ -29,7 +29,8 @@ contextBridge.exposeInMainWorld('mt5API', {
   getAlphaVantageData: (params) => ipcRenderer.invoke('mt5:getAlphaVantageData', params),
   callLLM: (params) => ipcRenderer.invoke('mt5:callLLM', params),
   firecrawlScrape: (params) => ipcRenderer.invoke('mt5:firecrawlScrape', params),
-  executePythonScript: (params) => ipcRenderer.invoke('mt5:executePythonScript', params)
+  executePythonScript: (params) => ipcRenderer.invoke('mt5:executePythonScript', params),
+  getSentimentAnalysis: (params) => ipcRenderer.invoke('mt5:getSentimentAnalysis', params)
 });
 
 contextBridge.exposeInMainWorld('electronAPI', {

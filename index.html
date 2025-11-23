@@ -65,6 +65,7 @@
             <h4>AI</h4>
             <button class="node-btn signal-btn" data-type="llm-node">🤖 LLM Node</button>
             <button class="node-btn signal-btn" data-type="python-script">🐍 Python Script</button>
+            <button class="node-btn signal-btn" data-type="sentiment-node">📰 Sentiment Analysis</button>
           </div>
 
           <div class="node-category">
@@ -826,7 +827,10 @@
             </div>
             <div class="form-group">
               <label>Auth Token:</label>
-              <input type="password" id="settingsTwilioAuthToken" placeholder="Your token">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="password" id="settingsTwilioAuthToken" placeholder="Your token" style="flex: 1;">
+                <button type="button" class="btn btn-small btn-secondary show-key-btn" data-target="settingsTwilioAuthToken" title="Show/Hide Key">👁️</button>
+              </div>
               <small>From Twilio Console</small>
             </div>
           </div>
@@ -871,7 +875,10 @@
           <div class="twilio-grid">
             <div class="form-group">
               <label>Bot Token:</label>
-              <input type="password" id="settingsTelegramBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="password" id="settingsTelegramBotToken" placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz" style="flex: 1;">
+                <button type="button" class="btn btn-small btn-secondary show-key-btn" data-target="settingsTelegramBotToken" title="Show/Hide Key">👁️</button>
+              </div>
               <small>From @BotFather on Telegram</small>
             </div>
             <div class="form-group">
@@ -891,7 +898,10 @@
           <div class="twilio-grid">
             <div class="form-group">
               <label>API Key:</label>
-              <input type="password" id="settingsFirecrawlApiKey" placeholder="fc-xxxxxxxxxxxxxxxx">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="password" id="settingsFirecrawlApiKey" placeholder="fc-xxxxxxxxxxxxxxxx" style="flex: 1;">
+                <button type="button" class="btn btn-small btn-secondary show-key-btn" data-target="settingsFirecrawlApiKey" title="Show/Hide Key">👁️</button>
+              </div>
               <small>Your Firecrawl API key</small>
             </div>
             <div class="form-group">
@@ -914,7 +924,10 @@
           <div class="twilio-grid">
             <div class="form-group">
               <label>API Key:</label>
-              <input type="password" id="settingsOpenRouterApiKey" placeholder="sk-or-v1-xxxxxxxxxxxxxxxx">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="password" id="settingsOpenRouterApiKey" placeholder="sk-or-v1-xxxxxxxxxxxxxxxx" style="flex: 1;">
+                <button type="button" class="btn btn-small btn-secondary show-key-btn" data-target="settingsOpenRouterApiKey" title="Show/Hide Key">👁️</button>
+              </div>
               <small>Your OpenRouter API key</small>
             </div>
             <div class="form-group">
@@ -928,15 +941,33 @@
           <div class="twilio-grid">
             <div class="form-group">
               <label>Default Model:</label>
-              <select id="settingsOpenRouterModel">
+              <input 
+                type="text" 
+                id="settingsOpenRouterModel" 
+                placeholder="Enter model name (e.g., anthropic/claude-3.5-sonnet)"
+                list="llm-model-suggestions-settings"
+                style="width: 100%; padding: 6px; margin-top: 4px;"
+              />
+              <datalist id="llm-model-suggestions-settings">
                 <option value="anthropic/claude-3.5-sonnet">Claude 3.5 Sonnet</option>
                 <option value="openai/gpt-4o">GPT-4o</option>
                 <option value="openai/gpt-4o-mini">GPT-4o Mini</option>
+                <option value="openai/gpt-4-turbo">GPT-4 Turbo</option>
+                <option value="openai/gpt-3.5-turbo">GPT-3.5 Turbo</option>
+                <option value="openai/o1-preview">O1 Preview</option>
+                <option value="openai/o1-mini">O1 Mini</option>
+                <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
+                <option value="anthropic/claude-3-sonnet">Claude 3 Sonnet</option>
+                <option value="anthropic/claude-3-haiku">Claude 3 Haiku</option>
                 <option value="google/gemini-pro-1.5">Gemini Pro 1.5</option>
+                <option value="google/gemini-pro">Gemini Pro</option>
                 <option value="meta-llama/llama-3.1-8b-instruct">Llama 3.1 8B</option>
                 <option value="meta-llama/llama-3.1-70b-instruct">Llama 3.1 70B</option>
-              </select>
-              <small>AI model for analysis</small>
+                <option value="mistralai/mistral-large">Mistral Large</option>
+                <option value="mistralai/mixtral-8x7b-instruct">Mistral Mixtral 8x7B</option>
+                <option value="perplexity/llama-3.1-sonar-large-128k-online">Perplexity Llama 3.1 Sonar Large</option>
+              </datalist>
+              <small>Enter any OpenRouter model name (e.g., openai/gpt-4o-mini)</small>
             </div>
             <div class="form-group">
               <label>Base URL:</label>
@@ -961,7 +992,10 @@
           <div class="twilio-grid">
             <div class="form-group">
               <label>API Key:</label>
-              <input type="password" id="settingsAlphaVantageApiKey" placeholder="Your Alpha Vantage API key">
+              <div style="display: flex; gap: 5px; align-items: center;">
+                <input type="password" id="settingsAlphaVantageApiKey" placeholder="Your Alpha Vantage API key" style="flex: 1;">
+                <button type="button" class="btn btn-small btn-secondary show-key-btn" data-target="settingsAlphaVantageApiKey" title="Show/Hide Key">👁️</button>
+              </div>
               <small>Your Alpha Vantage API key for market data</small>
             </div>
             <div class="form-group">

@@ -306,6 +306,27 @@ ipcMain.handle('mt5:executePythonScript', async (event, params) => {
     }
 });
 
+ipcMain.handle('mt5:getSentimentAnalysis', async (event, params) => {
+    try {
+        if (!mt5Bridge) {
+            return { success: false, error: 'MT5Bridge not initialized' };
+        }
+        if (typeof mt5Bridge.getSentimentAnalysis !== 'function') {
+            return { success: false, error: 'getSentimentAnalysis is not a function on mt5Bridge' };
+        }
+        const result = await mt5Bridge.getSentimentAnalysis(params);
+        // If result already has success/data structure, return it as-is
+        if (result && typeof result === 'object' && 'success' in result) {
+            return result;
+        }
+        // Otherwise wrap it
+        return { success: true, data: result };
+    } catch (error) {
+        console.error('Error in mt5:getSentimentAnalysis handler:', error);
+        return { success: false, error: error.message || 'Unknown error' };
+    }
+});
+
 // Handler for opening external URLs
 ipcMain.handle('electron:openExternal', async (event, url) => {
     try {

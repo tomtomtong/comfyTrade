@@ -185,11 +185,50 @@ async function initializeNodeEditor() {
     } else {
       console.error('Failed to parse HTTP Request plugin');
     }
+
+    // Load Alpha Vantage Data plugin
+    try {
+      const avDataResponse = await fetch('./plugins/examples/alphavantage-data.js');
+      const avDataText = await avDataResponse.text();
+      const avDataModuleExports = {};
+      const avDataModule = { exports: avDataModuleExports };
+      eval(avDataText);
+      const avDataPlugin = avDataModule.exports;
+      
+      if (avDataPlugin && typeof avDataPlugin === 'object') {
+        window.nodePluginManager.loadPlugin(avDataPlugin);
+        console.log('✓ Alpha Vantage Data plugin loaded successfully');
+      }
+    } catch (e) {
+      console.error('Failed to load Alpha Vantage Data plugin:', e);
+    }
+
+    // Load Alpha Vantage Sentiment plugin
+    try {
+      const avSentimentResponse = await fetch('./plugins/examples/alphavantage-sentiment.js');
+      const avSentimentText = await avSentimentResponse.text();
+      const avSentimentModuleExports = {};
+      const avSentimentModule = { exports: avSentimentModuleExports };
+      eval(avSentimentText);
+      const avSentimentPlugin = avSentimentModule.exports;
+      
+      if (avSentimentPlugin && typeof avSentimentPlugin === 'object') {
+        window.nodePluginManager.loadPlugin(avSentimentPlugin);
+        console.log('✓ Alpha Vantage Sentiment plugin loaded successfully');
+      }
+    } catch (e) {
+      console.error('Failed to load Alpha Vantage Sentiment plugin:', e);
+    }
   } catch (e) {
     console.error('Failed to auto-load built-in plugins:', e);
   }
   
-  // Canvas starts empty - users can add nodes from the palette
+  // Add default trigger node at center of canvas
+  const centerX = canvas.width / 2;
+  const centerY = canvas.height / 2;
+  const canvasPos = nodeEditor.screenToCanvas(centerX, centerY);
+  const defaultTrigger = nodeEditor.addNode('trigger', canvasPos.x, canvasPos.y);
+  console.log('✓ Default trigger node added to canvas');
 }
 
 function setupEventListeners() {
@@ -4002,7 +4041,6 @@ function updatePropertiesPanel(node) {
               <option value="TIME_SERIES_WEEKLY" ${value === 'TIME_SERIES_WEEKLY' ? 'selected' : ''}>Time Series Weekly</option>
               <option value="TIME_SERIES_MONTHLY" ${value === 'TIME_SERIES_MONTHLY' ? 'selected' : ''}>Time Series Monthly</option>
               <option value="OVERVIEW" ${value === 'OVERVIEW' ? 'selected' : ''}>Company Overview</option>
-              <option value="NEWS_SENTIMENT" ${value === 'NEWS_SENTIMENT' ? 'selected' : ''}>News & Sentiment</option>
               <option value="MACD" ${value === 'MACD' ? 'selected' : ''}>MACD (Technical Indicator)</option>
               <option value="RSI" ${value === 'RSI' ? 'selected' : ''}>RSI (Technical Indicator)</option>
             </select>
@@ -4534,6 +4572,66 @@ function updatePropertiesPanel(node) {
                    placeholder="input_data">
             <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
               Name of the variable containing input string data in your script
+            </small>
+          </div>
+        `;
+      } else if (key === 'keywords' && node.type === 'sentiment-node') {
+        return `
+          <div class="property-item">
+            <label>Keywords:</label>
+            <input type="text" 
+                   value="${value}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', this.value)"
+                   placeholder="BTC, Bitcoin, cryptocurrency">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Enter keywords to analyze (comma-separated or single keyword). Examples: "BTC", "Bitcoin, cryptocurrency", "Apple, stock"
+            </small>
+          </div>
+        `;
+      } else if (key === 'symbol' && node.type === 'sentiment-node') {
+        return `
+          <div class="property-item">
+            <label>Symbol/Keyword (Legacy):</label>
+            <input type="text" 
+                   value="${value}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', this.value)"
+                   placeholder="BTC">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Legacy field - use "keywords" parameter instead for better results
+            </small>
+          </div>
+        `;
+      } else if (key === 'daysBack' && node.type === 'sentiment-node') {
+        return `
+          <div class="property-item">
+            <label>Days Back:</label>
+            <input type="number" 
+                   value="${value}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseInt(this.value))"
+                   min="1"
+                   max="30"
+                   placeholder="7">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Number of days to look back for news articles (1-30)
+            </small>
+          </div>
+        `;
+      } else if (key === 'maxResults' && node.type === 'sentiment-node') {
+        return `
+          <div class="property-item">
+            <label>Max Results:</label>
+            <input type="number" 
+                   value="${value}" 
+                   data-param="${key}"
+                   onchange="updateNodeParam('${key}', parseInt(this.value))"
+                   min="1"
+                   max="100"
+                   placeholder="30">
+            <small style="color: #888; font-size: 10px; display: block; margin-top: 4px;">
+              Maximum number of articles to analyze (1-100)
             </small>
           </div>
         `;
@@ -5259,6 +5357,14 @@ function clearGraph() {
     'Clear all nodes? This cannot be undone.',
     () => {
       nodeEditor.clear();
+      
+      // Add default trigger node at center of canvas after clearing
+      const canvas = document.getElementById('nodeCanvas');
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      const canvasPos = nodeEditor.screenToCanvas(centerX, centerY);
+      nodeEditor.addNode('trigger', canvasPos.x, canvasPos.y);
+      
       document.getElementById('nodeProperties').innerHTML = 
         '<p class="no-selection">Select a node to edit properties</p>';
       showMessage('Canvas cleared', 'info');
@@ -6327,6 +6433,25 @@ async function showSettingsModal() {
     }
   };
   document.getElementById('resetSimulatorBtn').onclick = resetSimulator;
+  
+  // Setup show/hide key buttons
+  document.querySelectorAll('.show-key-btn').forEach(btn => {
+    btn.onclick = (e) => {
+      const targetId = e.target.dataset.target;
+      const input = document.getElementById(targetId);
+      if (input) {
+        if (input.type === 'password') {
+          input.type = 'text';
+          e.target.textContent = '🙈';
+          e.target.title = 'Hide Key';
+        } else {
+          input.type = 'password';
+          e.target.textContent = '👁️';
+          e.target.title = 'Show Key';
+        }
+      }
+    };
+  });
   
   // Note: Hotkey for simulator mode (Ctrl+Shift+S) is registered globally in setupEventListeners()
   // so it works at any time, not just when settings modal is open

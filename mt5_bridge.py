@@ -1167,11 +1167,84 @@ class MT5Bridge:
             logger.error(f"Error fetching yFinance data for {symbol}: {e}")
             return {"error": str(e)}
     
+    def convert_symbol_to_alpha_vantage(self, mt5_symbol):
+        """
+        Convert MetaTrader 5 symbol format to Alpha Vantage compatible format.
+        
+        Common conversions:
+        - HK50.cash -> HK50
+        - JP225.cash -> JP225
+        - US30.cash -> US30
+        - UK100.cash -> UK100
+        - Standard forex pairs (EURUSD, GBPUSD, etc.) remain unchanged
+        - Crypto symbols (BTCUSD, ETHUSD, etc.) remain unchanged
+        
+        Args:
+            mt5_symbol: MetaTrader 5 symbol (e.g., 'HK50.cash', 'EURUSD')
+            
+        Returns:
+            Alpha Vantage compatible symbol (e.g., 'HK50', 'EURUSD')
+        """
+        if not mt5_symbol:
+            return mt5_symbol
+        
+        symbol = str(mt5_symbol).strip()
+        original_symbol = symbol
+        
+        # Remove common MetaTrader suffixes (case-insensitive)
+        # .cash, .CASH, .m, .M, etc.
+        suffixes_to_remove = ['.cash', '.CASH', '.m', '.M', '.x', '.X']
+        for suffix in suffixes_to_remove:
+            if symbol.lower().endswith(suffix.lower()):
+                symbol = symbol[:-len(suffix)]
+                break
+        
+        # Special symbol mappings for indices and other instruments
+        # These are common MetaTrader to Alpha Vantage mappings
+        symbol_mappings = {
+            # Indices - remove .cash suffix already handled above
+            'HK50': 'HK50',  # Hang Seng Index
+            'JP225': 'JP225',  # Nikkei 225
+            'US30': 'DJI',  # Dow Jones - Alpha Vantage uses DJI
+            'UK100': 'FTSE',  # FTSE 100 - Alpha Vantage uses FTSE
+            'GER40': 'GDAXI',  # DAX - Alpha Vantage uses GDAXI
+            'FRA40': 'FCHI',  # CAC 40 - Alpha Vantage uses FCHI
+            'AUS200': 'AORD',  # ASX 200 - Alpha Vantage uses AORD
+            'SPX500': 'SPY',  # S&P 500 - Alpha Vantage uses SPY (ETF) or ^GSPC
+            'NAS100': 'QQQ',  # NASDAQ 100 - Alpha Vantage uses QQQ (ETF) or ^IXIC
+            
+            # Crypto - usually match but ensure uppercase
+            'BTCUSD': 'BTCUSD',
+            'ETHUSD': 'ETHUSD',
+            
+            # Forex pairs - usually match, keep as-is
+            # EURUSD, GBPUSD, USDJPY, etc. remain unchanged
+        }
+        
+        # Check if we have a direct mapping
+        symbol_upper = symbol.upper()
+        if symbol_upper in symbol_mappings:
+            mapped_symbol = symbol_mappings[symbol_upper]
+            if mapped_symbol != original_symbol:
+                logger.info(f"Symbol mapping: {original_symbol} -> {mapped_symbol}")
+            return mapped_symbol
+        
+        # For forex pairs and other symbols, return cleaned symbol (uppercase)
+        # Alpha Vantage typically expects uppercase symbols
+        result = symbol.upper()
+        
+        if result != original_symbol:
+            logger.info(f"Symbol conversion: {original_symbol} -> {result}")
+        
+        return result
+    
     def get_alpha_vantage_data(self, symbol, function='GLOBAL_QUOTE', api_key='', interval='1min', outputsize='compact', 
                                series_type='close', time_period=14, fastperiod=12, slowperiod=26, signalperiod=9):
         """Get data from Alpha Vantage API for the specified symbol"""
         try:
-            logger.info(f"Fetching Alpha Vantage data for {symbol}: function={function}, interval={interval}")
+            # Convert MetaTrader symbol to Alpha Vantage format
+            av_symbol = self.convert_symbol_to_alpha_vantage(symbol)
+            logger.info(f"Fetching Alpha Vantage data for {symbol} (mapped to {av_symbol}): function={function}, interval={interval}")
             
             if not api_key:
                 return {"error": "Alpha Vantage API key is required"}
@@ -1185,11 +1258,7 @@ class MT5Bridge:
                 'apikey': api_key
             }
             
-            # NEWS_SENTIMENT uses 'tickers' parameter instead of 'symbol'
-            if function == 'NEWS_SENTIMENT':
-                params['tickers'] = symbol
-            else:
-                params['symbol'] = symbol
+            params['symbol'] = av_symbol
             
             # Add interval for intraday functions and technical indicators
             if function in ['TIME_SERIES_INTRADAY', 'TIME_SERIES_INTRADAY_EXTENDED']:
@@ -1229,7 +1298,7 @@ class MT5Bridge:
             # Parse response based on function type
             if function == 'GLOBAL_QUOTE':
                 if 'Global Quote' not in data or not data['Global Quote']:
-                    return {"error": f"No quote data available for symbol {symbol}"}
+                    return {"error": f"No quote data available for symbol {av_symbol} (original: {symbol})"}
                 
                 quote = data['Global Quote']
                 result_value = f"Price: {quote.get('05. price', 'N/A')}, " \
@@ -1239,7 +1308,8 @@ class MT5Bridge:
                 
                 return {
                     "success": True,
-                    "symbol": symbol,
+                    "symbol": symbol,  # Return original symbol for user reference
+                    "av_symbol": av_symbol,  # Include mapped symbol for debugging
                     "function": function,
                     "value": result_value,
                     "timestamp": datetime.now().isoformat()
@@ -1247,7 +1317,7 @@ class MT5Bridge:
             
             elif function == 'TIME_SERIES_INTRADAY':
                 if 'Time Series' not in data or not data.get('Time Series'):
-                    return {"error": f"No intraday data available for symbol {symbol}"}
+                    return {"error": f"No intraday data available for symbol {av_symbol} (original: {symbol})"}
                 
                 time_series = data['Time Series']
                 # Get the most recent data point
@@ -1271,7 +1341,7 @@ class MT5Bridge:
             
             elif function == 'TIME_SERIES_DAILY':
                 if 'Time Series (Daily)' not in data or not data.get('Time Series (Daily)'):
-                    return {"error": f"No daily data available for symbol {symbol}"}
+                    return {"error": f"No daily data available for symbol {av_symbol} (original: {symbol})"}
                 
                 time_series = data['Time Series (Daily)']
                 latest_date = max(time_series.keys())
@@ -1343,48 +1413,6 @@ class MT5Bridge:
                 
                 rsi_value = latest_rsi.get('RSI', 'N/A')
                 result_value = f"Date: {latest_date}, RSI: {rsi_value}"
-                
-                return {
-                    "success": True,
-                    "symbol": symbol,
-                    "function": function,
-                    "value": result_value,
-                    "timestamp": datetime.now().isoformat()
-                }
-            
-            elif function == 'NEWS_SENTIMENT':
-                if 'feed' not in data or not data.get('feed'):
-                    return {"error": f"No news sentiment data available for symbol {symbol}"}
-                
-                feed = data['feed']
-                if not feed or len(feed) == 0:
-                    return {"error": f"No news articles found for symbol {symbol}"}
-                
-                # Get the most recent news items (up to 5)
-                recent_items = feed[:5] if len(feed) > 5 else feed
-                
-                sentiment_summary = []
-                for item in recent_items:
-                    title = item.get('title', 'N/A')
-                    time_published = item.get('time_published', 'N/A')
-                    overall_sentiment = item.get('overall_sentiment_label', 'N/A')
-                    sentiment_score = item.get('overall_sentiment_score', 'N/A')
-                    
-                    # Get ticker-specific sentiment if available
-                    ticker_sentiment = item.get('ticker_sentiment', [])
-                    ticker_info = ""
-                    if ticker_sentiment:
-                        for ticker_data in ticker_sentiment[:1]:  # Show first ticker
-                            ticker_info = f" (Ticker: {ticker_data.get('ticker', 'N/A')}, " \
-                                        f"Relevance: {ticker_data.get('relevance_score', 'N/A')}, " \
-                                        f"Sentiment: {ticker_data.get('ticker_sentiment_label', 'N/A')})"
-                    
-                    sentiment_summary.append(
-                        f"[{time_published}] {title[:60]}... | "
-                        f"Overall: {overall_sentiment} ({sentiment_score}){ticker_info}"
-                    )
-                
-                result_value = f"News Sentiment for {symbol}:\n" + "\n".join(sentiment_summary)
                 
                 return {
                     "success": True,
@@ -1698,6 +1726,13 @@ class MT5Bridge:
             logger.error(error_msg)
             return {"error": error_msg}
     
+    def get_sentiment_analysis(self, symbol='BTC', days_back=7, max_results=30, newsapi_key=''):
+        """Sentiment analysis is now handled in JavaScript - this method is deprecated"""
+        logger.warning("Sentiment analysis is now handled in JavaScript. This Python method is deprecated.")
+        return {
+            "error": "Sentiment analysis is now handled in JavaScript. Please use the JavaScript implementation."
+        }
+    
     async def handle_message(self, websocket, message):
         """Handle incoming WebSocket messages from Electron"""
         try:
@@ -1898,6 +1933,12 @@ class MT5Bridge:
                 input_var_name = data.get('inputVarName', 'input_data')
                 result = self.execute_python_script(script, input_data, input_var_name)
                 response['data'] = result
+            
+            elif action == 'getSentimentAnalysis':
+                # Sentiment analysis is now handled in JavaScript - no longer processed here
+                response['data'] = {
+                    "error": "Sentiment analysis is now handled in JavaScript. This action should not be sent to Python bridge."
+                }
             
             else:
                 response['error'] = f"Unknown action: {action}"

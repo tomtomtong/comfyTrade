@@ -471,13 +471,14 @@ class NodeEditor {
       // Get the previous node (the one before the current node)
       const previousNode = this.nodes[this.nodes.length - 2];
       
-      // Find compatible trigger output/input pair (only trigger-to-trigger)
       if (previousNode && previousNode.outputs && previousNode.outputs.length > 0) {
-        // Try to find a trigger output
+        let triggerConnected = false;
+        let stringConnected = false;
+        
+        // First, try to connect trigger outputs to trigger inputs
         for (let outputIndex = 0; outputIndex < previousNode.outputs.length; outputIndex++) {
           const outputType = previousNode.outputs[outputIndex];
           
-          // Only connect trigger outputs
           if (outputType !== 'trigger') continue;
           
           // Check if this output is already connected
@@ -492,7 +493,6 @@ class NodeEditor {
             for (let inputIndex = 0; inputIndex < node.inputs.length; inputIndex++) {
               const inputType = node.inputs[inputIndex];
               
-              // Only connect trigger-to-trigger
               if (inputType === 'trigger') {
                 // Check if this input is already connected
                 const inputConnected = this.connections.some(
@@ -502,7 +502,43 @@ class NodeEditor {
                 if (!inputConnected) {
                   // Found compatible trigger connection, create it
                   this.addConnection(previousNode, node, inputIndex, outputIndex);
-                  return node; // Exit early after first successful connection
+                  triggerConnected = true;
+                  break; // Found trigger connection, move to string
+                }
+              }
+            }
+          }
+        }
+        
+        // Then, try to connect string outputs to string inputs
+        for (let outputIndex = 0; outputIndex < previousNode.outputs.length; outputIndex++) {
+          const outputType = previousNode.outputs[outputIndex];
+          
+          if (outputType !== 'string') continue;
+          
+          // Check if this output is already connected
+          const outputConnected = this.connections.some(
+            conn => conn.from === previousNode && conn.fromOutput === outputIndex
+          );
+          
+          if (outputConnected) continue;
+          
+          // Find matching string input in the new node
+          if (node.inputs && node.inputs.length > 0) {
+            for (let inputIndex = 0; inputIndex < node.inputs.length; inputIndex++) {
+              const inputType = node.inputs[inputIndex];
+              
+              if (inputType === 'string') {
+                // Check if this input is already connected
+                const inputConnected = this.connections.some(
+                  conn => conn.to === node && conn.toInput === inputIndex
+                );
+                
+                if (!inputConnected) {
+                  // Found compatible string connection, create it
+                  this.addConnection(previousNode, node, inputIndex, outputIndex);
+                  stringConnected = true;
+                  break; // Found string connection
                 }
               }
             }
@@ -748,6 +784,18 @@ class NodeEditor {
           script: 'result = "Hello from Python"',
           useStringInput: false,
           inputVarName: 'input_data'
+        }
+      },
+
+      'sentiment-node': {
+        title: 'Sentiment Analysis',
+        inputs: ['trigger', 'string'],
+        outputs: ['string', 'trigger'],
+        params: {
+          keywords: '', // Can be comma-separated keywords or single keyword
+          symbol: '', // Legacy support
+          daysBack: 7,
+          maxResults: 30
         }
       },
 
@@ -1699,7 +1747,9 @@ class NodeEditor {
               } else if (stringConnection.from.type === 'yfinance-data') {
                 stringInput = stringConnection.from.fetchedData || '';
               } else if (stringConnection.from.type === 'alphavantage-data') {
-                stringInput = stringConnection.from.fetchedData || '';
+                stringInput = stringConnection.from.fetchedData || stringConnection.from.outputData || '';
+              } else if (stringConnection.from.type === 'alphavantage-sentiment') {
+                stringInput = stringConnection.from.sentimentData || stringConnection.from.outputData || '';
               } else if (stringConnection.from.type === 'mt5-data') {
                 stringInput = stringConnection.from.fetchedData || '';
               } else if (stringConnection.from.type === 'llm-node') {
@@ -1708,6 +1758,8 @@ class NodeEditor {
                 stringInput = stringConnection.from.firecrawlData || '';
               } else if (stringConnection.from.type === 'python-script') {
                 stringInput = stringConnection.from.pythonOutput || '';
+              } else if (stringConnection.from.type === 'sentiment-node') {
+                stringInput = stringConnection.from.sentimentOutput || '';
               }
             }
           }
@@ -1921,7 +1973,11 @@ class NodeEditor {
                   alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
                 } else if (stringConnection.from.type === 'alphavantage-data') {
                   // Get the fetched data from Alpha Vantage node
-                  alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
+                  alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || stringConnection.from.outputData || 'No data'}`;
+                } else if (stringConnection.from.type === 'alphavantage-sentiment') {
+                  // Get the sentiment analysis data from Alpha Vantage sentiment node
+                  const sentimentData = stringConnection.from.sentimentData || stringConnection.from.outputData || 'No sentiment data';
+                  alertMessage = `${node.params.message}\n\nSentiment Analysis:\n${sentimentData}`;
                 } else if (stringConnection.from.type === 'mt5-data') {
                   // Get the fetched data from MT5 node
                   alertMessage = `${node.params.message}\n\n${stringConnection.from.params.symbol}: ${stringConnection.from.fetchedData || 'No data'}`;
@@ -2048,6 +2104,8 @@ class NodeEditor {
                   stringInput = stringConnection.from.firecrawlData || '';
                 } else if (stringConnection.from.type === 'python-script') {
                   stringInput = stringConnection.from.pythonOutput || '';
+                } else if (stringConnection.from.type === 'sentiment-node') {
+                  stringInput = stringConnection.from.sentimentOutput || '';
                 }
               }
             }
@@ -2125,6 +2183,8 @@ class NodeEditor {
                   stringInput = stringConnection.from.firecrawlData || '';
                 } else if (stringConnection.from.type === 'python-script') {
                   stringInput = stringConnection.from.pythonOutput || '';
+                } else if (stringConnection.from.type === 'sentiment-node') {
+                  stringInput = stringConnection.from.sentimentOutput || '';
                 }
               }
             }
@@ -2745,13 +2805,17 @@ class NodeEditor {
               } else if (stringConnection.from.type === 'yfinance-data') {
                 displayText = stringConnection.from.fetchedData || 'No yfinance data';
               } else if (stringConnection.from.type === 'alphavantage-data') {
-                displayText = stringConnection.from.fetchedData || 'No Alpha Vantage data';
+                displayText = stringConnection.from.fetchedData || stringConnection.from.outputData || 'No Alpha Vantage data';
+              } else if (stringConnection.from.type === 'alphavantage-sentiment') {
+                displayText = stringConnection.from.sentimentData || stringConnection.from.outputData || 'No sentiment analysis data';
               } else if (stringConnection.from.type === 'mt5-data') {
                 displayText = stringConnection.from.fetchedData || 'No MT5 data';
               } else if (stringConnection.from.type === 'firecrawl-node') {
                 displayText = stringConnection.from.firecrawlData || 'No Firecrawl data';
               } else if (stringConnection.from.type === 'python-script') {
                 displayText = stringConnection.from.pythonOutput || 'No Python output';
+              } else if (stringConnection.from.type === 'sentiment-node') {
+                displayText = stringConnection.from.sentimentOutput || 'No sentiment output';
               } else {
                 // For other nodes, try to get a string representation
                 displayText = inputResult ? inputResult.toString() : 'No data';
@@ -2920,6 +2984,8 @@ class NodeEditor {
                   inputData = stringConnection.from.firecrawlData || '';
                 } else if (stringConnection.from.type === 'python-script') {
                   inputData = stringConnection.from.pythonOutput || '';
+                } else if (stringConnection.from.type === 'sentiment-node') {
+                  inputData = stringConnection.from.sentimentOutput || '';
                 } else if (typeof inputResult === 'string') {
                   inputData = inputResult;
                 } else {
@@ -2971,6 +3037,189 @@ class NodeEditor {
               window.showMessage(`Python script error: ${error.message}`, 'error');
             }
             node.pythonOutput = 'Error: ' + error.message;
+            result = false; // Stop trigger flow on error
+          }
+          break;
+
+        case 'sentiment-node':
+          console.log('Processing Sentiment Analysis node');
+
+          try {
+            // Get symbol from string input if connected
+            let symbolInput = node.params.symbol || '';
+            if (node.inputs.length > 1 && node.inputs[1] === 'string') {
+              const stringConnection = this.connections.find(c => c.to === node && c.toInput === 1);
+              if (stringConnection) {
+                if (stringConnection.from.type === 'string-input') {
+                  symbolInput = stringConnection.from.stringValue || stringConnection.from.params.value || symbolInput;
+                } else if (stringConnection.from.type === 'string-output') {
+                  symbolInput = stringConnection.from.stringValue || stringConnection.from.params.displayValue || symbolInput;
+                } else if (stringConnection.from.type === 'yfinance-data') {
+                  symbolInput = stringConnection.from.fetchedData || symbolInput;
+                } else if (stringConnection.from.type === 'alphavantage-data') {
+                  symbolInput = stringConnection.from.fetchedData || symbolInput;
+                } else if (stringConnection.from.type === 'mt5-data') {
+                  symbolInput = stringConnection.from.fetchedData || symbolInput;
+                } else if (stringConnection.from.type === 'llm-node') {
+                  symbolInput = stringConnection.from.llmResponse || symbolInput;
+                } else if (stringConnection.from.type === 'firecrawl-node') {
+                  symbolInput = stringConnection.from.firecrawlData || symbolInput;
+                } else if (stringConnection.from.type === 'python-script') {
+                  symbolInput = stringConnection.from.pythonOutput || symbolInput;
+                }
+              }
+            }
+
+            // Execute sentiment analysis (now in JavaScript, no MT5 connection needed)
+            if (window.mt5API && window.mt5API.getSentimentAnalysis) {
+              // Support both 'symbol' (legacy) and 'keywords' (new) parameters
+              // Combine both for better results - Alpha Vantage can handle multiple keywords
+              const symbolParam = (node.params.symbol || symbolInput.trim() || '').toUpperCase().trim();
+              const keywordsParam = (node.params.keywords || '').trim();
+              
+              let keywords = [];
+              
+              // Collect all keywords from both fields
+              if (symbolParam) {
+                // Add symbol if it looks like a ticker
+                if (/^[A-Z0-9]{2,10}$/.test(symbolParam)) {
+                  keywords.push(symbolParam);
+                } else {
+                  // If symbol doesn't look like a ticker, treat it as a keyword
+                  keywords.push(symbolParam);
+                }
+              }
+              
+              if (keywordsParam) {
+                // Split keywords by comma and add each one
+                const keywordList = keywordsParam.split(',').map(k => k.trim()).filter(k => k.length > 0);
+                keywords.push(...keywordList);
+              }
+              
+              // Remove duplicates while preserving order
+              const uniqueKeywords = [];
+              const seen = new Set();
+              for (const kw of keywords) {
+                const lowerKw = kw.toLowerCase();
+                if (!seen.has(lowerKw)) {
+                  seen.add(lowerKw);
+                  uniqueKeywords.push(kw);
+                }
+              }
+              
+              // If no keywords collected, show error
+              if (uniqueKeywords.length === 0) {
+                const errorMsg = 'No keywords or symbols provided. Please enter keywords or symbols in the node parameters.';
+                console.error('✗ Sentiment analysis failed:', errorMsg);
+                if (window.showMessage) {
+                  window.showMessage(errorMsg, 'error');
+                }
+                node.sentimentOutput = 'Error: ' + errorMsg;
+                result = false;
+                break;
+              }
+              
+              // Convert to string if single keyword, or keep as array
+              keywords = uniqueKeywords.length === 1 ? uniqueKeywords[0] : uniqueKeywords;
+              
+              console.log(`Sentiment analysis - Using keywords: ${Array.isArray(keywords) ? keywords.join(', ') : keywords} (combined from symbol and keywords fields)`);
+              
+              // Alpha Vantage settings are automatically loaded from app_settings.json in mt5-bridge.js
+              const sentimentResult = await window.mt5API.getSentimentAnalysis({
+                keywords: keywords, // Can be a string or array of keywords
+                symbol: Array.isArray(keywords) ? keywords.join(', ') : keywords, // Keep for backward compatibility
+                daysBack: node.params.daysBack || 7,
+                maxResults: node.params.maxResults || 30
+              });
+
+              if (sentimentResult.success && sentimentResult.data) {
+                // Check if there's an error in the data
+                if (sentimentResult.data.error) {
+                  console.error('✗ Sentiment analysis failed:', sentimentResult.data.error);
+                  if (window.showMessage) {
+                    window.showMessage(`Sentiment analysis failed: ${sentimentResult.data.error}`, 'error');
+                  }
+                  node.sentimentOutput = 'Error: ' + sentimentResult.data.error;
+                  result = false; // Stop trigger flow on error
+                } else {
+                  console.log('✓ Sentiment analysis completed successfully');
+
+                  // Format the sentiment result
+                  const sentimentData = sentimentResult.data;
+                  
+                  // Check if there's a warning (no articles found)
+                  if (sentimentData.warning) {
+                    let formattedOutput = `Sentiment Analysis for ${sentimentData.symbol || symbolInput || sentimentData.keywords?.join(', ') || 'keywords'}:\n\n`;
+                    formattedOutput += `⚠️ ${sentimentData.warning}\n\n`;
+                    formattedOutput += `Overall Sentiment: ${sentimentData.overall_sentiment || 'NO_DATA'}\n`;
+                    formattedOutput += `Total Articles: ${sentimentData.total_articles || 0}\n\n`;
+                    formattedOutput += `Tip: Add a NewsAPI key in the node properties for better results, or try different keywords.`;
+                    node.sentimentOutput = formattedOutput;
+                    
+                    // Store raw Alpha Vantage response even if there's a warning
+                    node.rawAlphaVantageResponse = sentimentData.raw_alpha_vantage_response || null;
+                    
+                    if (window.showMessage) {
+                      window.showMessage(sentimentData.warning, 'warning');
+                    }
+                    result = true;
+                    break;
+                  }
+                  
+                  let formattedOutput = `Sentiment Analysis for ${sentimentData.symbol || symbolInput || sentimentData.keywords?.join(', ') || 'keywords'}:\n\n`;
+                  formattedOutput += `Overall Sentiment: ${sentimentData.overall_sentiment || 'N/A'}\n`;
+                  formattedOutput += `Average Score: ${sentimentData.average_sentiment_score !== undefined ? sentimentData.average_sentiment_score : 'N/A'}\n`;
+                  formattedOutput += `Total Articles: ${sentimentData.total_articles || 0}\n\n`;
+                  
+                  const distribution = sentimentData.sentiment_distribution || {};
+                  formattedOutput += `Distribution:\n`;
+                  formattedOutput += `  Positive: ${distribution.positive || 0}\n`;
+                  formattedOutput += `  Neutral: ${distribution.neutral || 0}\n`;
+                  formattedOutput += `  Negative: ${distribution.negative || 0}\n`;
+
+                  // Store raw Alpha Vantage response in the node for access
+                  node.rawAlphaVantageResponse = sentimentData.raw_alpha_vantage_response || null;
+                  
+                  // Log raw response to console for debugging
+                  if (node.rawAlphaVantageResponse) {
+                    console.log('Raw Alpha Vantage API Response:', node.rawAlphaVantageResponse);
+                    
+                    // Add raw response to formatted output
+                    formattedOutput += `\n\n--- Raw Alpha Vantage API Response ---\n`;
+                    formattedOutput += JSON.stringify(node.rawAlphaVantageResponse, null, 2);
+                  }
+
+                  // Store the output in the node for string output connections
+                  node.sentimentOutput = formattedOutput;
+
+                  if (window.showMessage) {
+                    window.showMessage(`Sentiment: ${sentimentData.overall_sentiment || 'N/A'}`, 'success');
+                  }
+
+                  result = true; // Continue trigger flow
+                }
+              } else {
+                console.error('✗ Sentiment analysis failed:', sentimentResult.error);
+                if (window.showMessage) {
+                  window.showMessage(`Sentiment analysis failed: ${sentimentResult.error}`, 'error');
+                }
+                node.sentimentOutput = 'Error: ' + (sentimentResult.error || 'Unknown error');
+                result = false; // Stop trigger flow on error
+              }
+            } else {
+              console.error('Sentiment analysis API not available');
+              if (window.showMessage) {
+                window.showMessage('Sentiment analysis API not available - check Python bridge', 'error');
+              }
+              node.sentimentOutput = 'Error: API not available';
+              result = false; // Stop trigger flow on error
+            }
+          } catch (error) {
+            console.error('Error executing sentiment analysis:', error);
+            if (window.showMessage) {
+              window.showMessage(`Sentiment analysis error: ${error.message}`, 'error');
+            }
+            node.sentimentOutput = 'Error: ' + error.message;
             result = false; // Stop trigger flow on error
           }
           break;
@@ -3050,6 +3299,14 @@ class NodeEditor {
         if (fromOutput === 0) {
           // String output - pass the Python script output
           outputValue = node.pythonOutput || 'No output';
+        } else if (fromOutput === 1) {
+          // Trigger output - pass the boolean result
+          outputValue = result;
+        }
+      } else if (node.type === 'sentiment-node') {
+        if (fromOutput === 0) {
+          // String output - pass the sentiment analysis output
+          outputValue = node.sentimentOutput || 'No sentiment output';
         } else if (fromOutput === 1) {
           // Trigger output - pass the boolean result
           outputValue = result;

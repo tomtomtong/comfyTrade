@@ -5,3 +5,7 @@ yfinance>=0.2.18
 requests>=2.25.0
 firecrawl-py>=0.0.16
 matplotlib>=3.5.0
+feedparser>=6.0.10
+textblob>=0.17.1
+vaderSentiment>=3.3.2
+nltk>=3.8
