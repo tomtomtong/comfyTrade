@@ -191,7 +191,22 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistoryReal": [],
+  "overtradeHistoryReal": [
+    {
+      "timestamp": 1764553090925,
+      "type": "manual",
+      "data": {
+        "symbol": "ETHUSD",
+        "type": "SELL",
+        "volume": 0.01,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    }
+  ],
   "overtradeHistorySimulator": [],
   "overtradeLastWarningReal": 0,
   "overtradeLastWarningSimulator": 0,
