@@ -9,7 +9,7 @@
     },
     "openRouter": {
       "enabled": true,
-      "apiKey": "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",
+      "apiKey": "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",
       "model": "anthropic/claude-3.5-sonnet",
       "baseUrl": "https://openrouter.ai/api/v1"
     },

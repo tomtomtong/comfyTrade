@@ -1097,7 +1097,13 @@
             <strong style="color: #2196F3;">⏰ Schedule for Later</strong>
           </label>
           <div id="confirmTradeScheduleOptions" style="display: none; margin-top: 15px;">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="margin-bottom: 10px;">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="confirmTradeScheduleMarketOpen" style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;" onchange="toggleTradeMarketOpenSchedule()">
+                <span style="color: #b0b0b0; font-size: 13px;">🔄 Retry every hour until success</span>
+              </label>
+            </div>
+            <div id="confirmTradeScheduleManualOptions" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
               <div style="flex: 1; min-width: 200px;">
                 <label style="display: block; margin-bottom: 5px; color: #b0b0b0; font-size: 12px;">Date & Time:</label>
                 <input type="datetime-local" id="confirmTradeScheduleDateTime" style="width: 100%; padding: 8px; background-color: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 14px;">
@@ -1183,7 +1189,13 @@
             <strong style="color: #2196F3;">⏰ Schedule for Later</strong>
           </label>
           <div id="modifyPendingOrderScheduleOptions" style="display: none; margin-top: 15px;">
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="margin-bottom: 10px;">
+              <label style="display: flex; align-items: center; cursor: pointer;">
+                <input type="checkbox" id="modifyPendingOrderScheduleMarketOpen" style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;" onchange="toggleModifyPendingOrderMarketOpenSchedule()">
+                <span style="color: #b0b0b0; font-size: 13px;">🔄 Retry every hour until success</span>
+              </label>
+            </div>
+            <div id="modifyPendingOrderScheduleManualOptions" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
               <div style="flex: 1; min-width: 200px;">
                 <label style="display: block; margin-bottom: 5px; color: #b0b0b0; font-size: 12px;">Date & Time:</label>
                 <input type="datetime-local" id="modifyPendingOrderScheduleDateTime" style="width: 100%; padding: 8px; background-color: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 14px;">

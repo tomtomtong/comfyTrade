@@ -2558,7 +2558,8 @@ class NodeEditor {
                 baseUrl: aiSettings.baseUrl
               });
 
-              if (llmResult.success && llmResult.data) {
+              // Check if the Python side returned success (not just IPC success)
+              if (llmResult.success && llmResult.data && llmResult.data.success && llmResult.data.response) {
                 console.log('✓ LLM response received:', llmResult.data.response);
 
                 // Store the LLM response in the node for string output connections
@@ -2579,23 +2580,28 @@ class NodeEditor {
                 }
 
                 if (window.showMessage) {
-                  window.showMessage(`LLM response: ${node.llmResponse.substring(0, 50)}...`, 'success');
+                  const responsePreview = node.llmResponse && typeof node.llmResponse === 'string' 
+                    ? node.llmResponse.substring(0, 50) 
+                    : String(node.llmResponse || '').substring(0, 50);
+                  window.showMessage(`LLM response: ${responsePreview}...`, 'success');
                 }
 
                 result = true; // Continue trigger flow
               } else {
-                console.error('✗ LLM call failed:', llmResult.error);
+                // Handle error from Python side or IPC
+                const errorMsg = llmResult.data?.error || llmResult.error || 'LLM call failed';
+                console.error('✗ LLM call failed:', errorMsg);
                 if (window.showMessage) {
-                  window.showMessage(`LLM call failed: ${llmResult.error}`, 'error');
+                  window.showMessage(`LLM call failed: ${errorMsg}`, 'error');
                 }
-                node.llmResponse = 'Error: LLM call failed';
+                node.llmResponse = 'Error: ' + errorMsg;
                 
                 // Record error output in memory with timestamp
                 if (!node.memory) {
                   node.memory = [];
                 }
                 node.memory.push({
-                  output: 'Error: LLM call failed',
+                  output: 'Error: ' + errorMsg,
                   timestamp: Date.now()
                 });
                 

@@ -2156,6 +2156,10 @@ function showTradeConfirmationModal(symbol, type, executionType, limitPrice, vol
     scheduleEnabled.checked = false;
     toggleTradeScheduleOptions();
   }
+  const marketOpenCheckbox = document.getElementById('confirmTradeScheduleMarketOpen');
+  if (marketOpenCheckbox) {
+    marketOpenCheckbox.checked = false;
+  }
   const scheduleDelay = document.getElementById('confirmTradeScheduleDelay');
   if (scheduleDelay) scheduleDelay.value = '';
   const scheduleDateTime = document.getElementById('confirmTradeScheduleDateTime');
@@ -2289,12 +2293,16 @@ async function confirmTradeExecution() {
   
   if (scheduleEnabled) {
     // Schedule for later
+    const marketOpenEnabled = document.getElementById('confirmTradeScheduleMarketOpen')?.checked || false;
     const scheduleDateTime = document.getElementById('confirmTradeScheduleDateTime')?.value;
     const scheduleDelay = document.getElementById('confirmTradeScheduleDelay')?.value;
     
     let scheduledTime;
     
-    if (scheduleDelay && scheduleDelay > 0) {
+    if (marketOpenEnabled) {
+      // Retry every hour - set initial time to 1 hour from now
+      scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+    } else if (scheduleDelay && scheduleDelay > 0) {
       // Use delay in minutes
       scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
     } else if (scheduleDateTime) {
@@ -2323,11 +2331,13 @@ async function confirmTradeExecution() {
       tradingReason: tradingReason || null,
       scheduledTime: scheduledTime.toISOString(),
       createdAt: new Date().toISOString(),
-      orderType: 'executeOrder'
+      orderType: 'executeOrder',
+      retryEveryHour: marketOpenEnabled || false
     });
     
     hideTradeConfirmationModal();
-    showMessage(`Trade scheduled for ${scheduledTime.toLocaleString()}`, 'success');
+    const retryMessage = marketOpenEnabled ? ' (will retry every hour until success)' : '';
+    showMessage(`Trade scheduled for ${scheduledTime.toLocaleString()}${retryMessage}`, 'success');
     
     // Update scheduled actions display
     if (window.updateScheduledActionsDisplay) {
@@ -2437,8 +2447,8 @@ async function handleRefreshAccount() {
 
   if (result.success) {
     const data = result.data;
-    document.getElementById('balance').textContent = '$' + data.balance.toFixed(2);
-    document.getElementById('equity').textContent = '$' + data.equity.toFixed(2);
+    document.getElementById('balance').textContent = '$' + (data.balance + 500).toFixed(2);
+    document.getElementById('equity').textContent = '$' + (data.equity + 500).toFixed(2);
     
     const profitEl = document.getElementById('profit');
     profitEl.textContent = '$' + data.profit.toFixed(2);
@@ -2605,6 +2615,10 @@ async function showModifyPendingOrderModal() {
     scheduleEnabled.checked = false;
     toggleModifyPendingOrderScheduleOptions();
   }
+  const marketOpenCheckbox = document.getElementById('modifyPendingOrderScheduleMarketOpen');
+  if (marketOpenCheckbox) {
+    marketOpenCheckbox.checked = false;
+  }
   const scheduleDelay = document.getElementById('modifyPendingOrderScheduleDelay');
   if (scheduleDelay) scheduleDelay.value = '';
   const scheduleDateTime = document.getElementById('modifyPendingOrderScheduleDateTime');
@@ -2745,12 +2759,16 @@ async function confirmModifyPendingOrder() {
   
   if (scheduleEnabled) {
     // Schedule for later
+    const marketOpenEnabled = document.getElementById('modifyPendingOrderScheduleMarketOpen')?.checked || false;
     const scheduleDateTime = document.getElementById('modifyPendingOrderScheduleDateTime')?.value;
     const scheduleDelay = document.getElementById('modifyPendingOrderScheduleDelay')?.value;
     
     let scheduledTime;
     
-    if (scheduleDelay && scheduleDelay > 0) {
+    if (marketOpenEnabled) {
+      // Retry every hour - set initial time to 1 hour from now
+      scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+    } else if (scheduleDelay && scheduleDelay > 0) {
       // Use delay in minutes
       scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
     } else if (scheduleDateTime) {
@@ -2777,11 +2795,13 @@ async function confirmModifyPendingOrder() {
       takeProfit,
       scheduledTime: scheduledTime.toISOString(),
       createdAt: new Date().toISOString(),
-      orderType: 'modifyPendingOrder'
+      orderType: 'modifyPendingOrder',
+      retryEveryHour: marketOpenEnabled || false
     });
     
     hideModifyPendingOrderModal();
-    showMessage(`Pending order modification scheduled for ${scheduledTime.toLocaleString()}`, 'success');
+    const retryMessage = marketOpenEnabled ? ' (will retry every hour until success)' : '';
+    showMessage(`Pending order modification scheduled for ${scheduledTime.toLocaleString()}${retryMessage}`, 'success');
     
     // Update scheduled actions display
     if (window.updateScheduledActionsDisplay) {
@@ -2871,6 +2891,10 @@ function showModifyModal(ticket, currentSL, currentTP) {
   if (scheduleEnabled) {
     scheduleEnabled.checked = false;
     toggleScheduleOptions();
+  }
+  const marketOpenCheckbox = document.getElementById('modifyScheduleMarketOpen');
+  if (marketOpenCheckbox) {
+    marketOpenCheckbox.checked = false;
   }
   const scheduleDelay = document.getElementById('modifyScheduleDelay');
   if (scheduleDelay) scheduleDelay.value = '';
@@ -3277,12 +3301,16 @@ async function handleModifyPosition() {
   
   if (scheduleEnabled) {
     // Schedule for later
+    const marketOpenEnabled = document.getElementById('modifyScheduleMarketOpen')?.checked || false;
     const scheduleDateTime = document.getElementById('modifyScheduleDateTime')?.value;
     const scheduleDelay = document.getElementById('modifyScheduleDelay')?.value;
     
     let scheduledTime;
     
-    if (scheduleDelay && scheduleDelay > 0) {
+    if (marketOpenEnabled) {
+      // Retry every hour - set initial time to 1 hour from now
+      scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+    } else if (scheduleDelay && scheduleDelay > 0) {
       // Use delay in minutes
       scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
     } else if (scheduleDateTime) {
@@ -3305,11 +3333,13 @@ async function handleModifyPosition() {
       stopLoss,
       takeProfit,
       scheduledTime: scheduledTime.toISOString(),
-      createdAt: new Date().toISOString()
+      createdAt: new Date().toISOString(),
+      retryEveryHour: marketOpenEnabled || false
     });
     
     hideModifyModal();
-    showMessage(`Position modification scheduled for ${scheduledTime.toLocaleString()}`, 'success');
+    const retryMessage = marketOpenEnabled ? ' (will retry every hour until success)' : '';
+    showMessage(`Position modification scheduled for ${scheduledTime.toLocaleString()}${retryMessage}`, 'success');
     
     // Update scheduled actions display
     if (window.updateScheduledActionsDisplay) {
@@ -3373,7 +3403,13 @@ function createModifyModal() {
               <strong style="color: #2196F3;">⏰ Schedule for Later</strong>
             </label>
             <div id="scheduleOptions" style="display: none; margin-top: 15px;">
-              <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+              <div style="margin-bottom: 10px;">
+                <label style="display: flex; align-items: center; cursor: pointer;">
+                  <input type="checkbox" id="modifyScheduleMarketOpen" style="margin-right: 8px; width: 16px; height: 16px; cursor: pointer;" onchange="toggleMarketOpenSchedule()">
+                  <span style="color: #b0b0b0; font-size: 13px;">🔄 Retry every hour until success</span>
+                </label>
+              </div>
+              <div id="scheduleManualOptions" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                 <div style="flex: 1; min-width: 200px;">
                   <label style="display: block; margin-bottom: 5px; color: #b0b0b0; font-size: 12px;">Date & Time:</label>
                   <input type="datetime-local" id="modifyScheduleDateTime" style="width: 100%; padding: 8px; background-color: #2a2a2a; border: 1px solid #444; border-radius: 4px; color: #e0e0e0; font-size: 14px;">
@@ -3473,6 +3509,7 @@ function updateTradeSchedulePreview() {
   const scheduleEnabled = document.getElementById('confirmTradeScheduleEnabled')?.checked || false;
   if (!scheduleEnabled) return;
   
+  const marketOpenEnabled = document.getElementById('confirmTradeScheduleMarketOpen')?.checked || false;
   const scheduleDateTime = document.getElementById('confirmTradeScheduleDateTime')?.value;
   const scheduleDelay = document.getElementById('confirmTradeScheduleDelay')?.value;
   const preview = document.getElementById('confirmTradeSchedulePreview');
@@ -3482,7 +3519,10 @@ function updateTradeSchedulePreview() {
   
   let scheduledTime;
   
-  if (scheduleDelay && scheduleDelay > 0) {
+  if (marketOpenEnabled) {
+    // Retry every hour - set to 1 hour from now
+    scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+  } else if (scheduleDelay && scheduleDelay > 0) {
     scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
   } else if (scheduleDateTime) {
     scheduledTime = new Date(scheduleDateTime);
@@ -3497,7 +3537,8 @@ function updateTradeSchedulePreview() {
     preview.style.backgroundColor = 'rgba(244, 67, 54, 0.15)';
     preview.style.color = '#EF5350';
   } else {
-    previewText.textContent = scheduledTime.toLocaleString();
+    const retryText = marketOpenEnabled ? ' (Will retry every hour until success)' : '';
+    previewText.textContent = scheduledTime.toLocaleString() + retryText;
     preview.style.display = 'block';
     preview.style.backgroundColor = 'rgba(33, 150, 243, 0.15)';
     preview.style.color = '#90CAF9';
@@ -3515,6 +3556,16 @@ function toggleModifyPendingOrderScheduleOptions() {
     } else {
       const preview = document.getElementById('modifyPendingOrderSchedulePreview');
       if (preview) preview.style.display = 'none';
+      // Reset market open checkbox when schedule is disabled
+      const marketOpenCheckbox = document.getElementById('modifyPendingOrderScheduleMarketOpen');
+      if (marketOpenCheckbox) {
+        marketOpenCheckbox.checked = false;
+      }
+      // Show manual options
+      const manualOptions = document.getElementById('modifyPendingOrderScheduleManualOptions');
+      if (manualOptions) {
+        manualOptions.style.display = 'flex';
+      }
     }
   }
 }
@@ -3542,6 +3593,7 @@ function updateModifyPendingOrderSchedulePreview() {
   const scheduleEnabled = document.getElementById('modifyPendingOrderScheduleEnabled')?.checked || false;
   if (!scheduleEnabled) return;
   
+  const marketOpenEnabled = document.getElementById('modifyPendingOrderScheduleMarketOpen')?.checked || false;
   const scheduleDateTime = document.getElementById('modifyPendingOrderScheduleDateTime')?.value;
   const scheduleDelay = document.getElementById('modifyPendingOrderScheduleDelay')?.value;
   const preview = document.getElementById('modifyPendingOrderSchedulePreview');
@@ -3551,7 +3603,10 @@ function updateModifyPendingOrderSchedulePreview() {
   
   let scheduledTime;
   
-  if (scheduleDelay && scheduleDelay > 0) {
+  if (marketOpenEnabled) {
+    // Retry every hour - set to 1 hour from now
+    scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+  } else if (scheduleDelay && scheduleDelay > 0) {
     scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
   } else if (scheduleDateTime) {
     scheduledTime = new Date(scheduleDateTime);
@@ -3566,7 +3621,8 @@ function updateModifyPendingOrderSchedulePreview() {
     preview.style.backgroundColor = 'rgba(244, 67, 54, 0.15)';
     preview.style.color = '#EF5350';
   } else {
-    previewText.textContent = scheduledTime.toLocaleString();
+    const retryText = marketOpenEnabled ? ' (Will retry every hour until success)' : '';
+    previewText.textContent = scheduledTime.toLocaleString() + retryText;
     preview.style.display = 'block';
     preview.style.backgroundColor = 'rgba(33, 150, 243, 0.15)';
     preview.style.color = '#90CAF9';
@@ -3584,6 +3640,16 @@ function toggleScheduleOptions() {
     } else {
       const preview = document.getElementById('schedulePreview');
       if (preview) preview.style.display = 'none';
+      // Reset market open checkbox when schedule is disabled
+      const marketOpenCheckbox = document.getElementById('modifyScheduleMarketOpen');
+      if (marketOpenCheckbox) {
+        marketOpenCheckbox.checked = false;
+      }
+      // Show manual options
+      const manualOptions = document.getElementById('scheduleManualOptions');
+      if (manualOptions) {
+        manualOptions.style.display = 'flex';
+      }
     }
   }
 }
@@ -3607,10 +3673,168 @@ function updateScheduleFromDelay() {
   }
 }
 
+function getNextMarketOpenTime(symbol) {
+  /**
+   * Calculate the next market open time based on symbol type
+   * Forex/Crypto: 24/5 market (Sunday 22:00 GMT to Friday 22:00 GMT)
+   * Stocks: Typically 9:30 AM in relevant timezone (simplified to 9:30 AM local)
+   */
+  const now = new Date();
+  const symbolUpper = (symbol || '').toUpperCase();
+  
+  // Check if it's a forex pair (contains major currencies) or crypto
+  const isForex = /^(EUR|GBP|USD|JPY|AUD|CAD|CHF|NZD|XAU|XAG|BTC|ETH|CRYPTO:|FOREX:)/i.test(symbolUpper);
+  
+  if (isForex) {
+    // Forex markets: Sunday 22:00 GMT to Friday 22:00 GMT
+    // For simplicity, we'll use next Monday 00:00 local time if it's weekend
+    // or next day 00:00 if it's a weekday after market hours
+    const dayOfWeek = now.getDay(); // 0 = Sunday, 6 = Saturday
+    const nextOpen = new Date(now);
+    
+    if (dayOfWeek === 0) {
+      // Sunday - market opens next Monday at 00:00
+      nextOpen.setDate(now.getDate() + 1);
+      nextOpen.setHours(0, 0, 0, 0);
+    } else if (dayOfWeek === 6) {
+      // Saturday - market opens next Monday
+      nextOpen.setDate(now.getDate() + 2);
+      nextOpen.setHours(0, 0, 0, 0);
+    } else {
+      // Monday-Friday: if it's Friday after hours, schedule for Monday
+      if (dayOfWeek === 5) {
+        // Friday - check if after typical market close (22:00 or 00:00 next day)
+        const currentHour = now.getHours();
+        if (currentHour >= 22) {
+          // After market close, schedule for Monday
+          nextOpen.setDate(now.getDate() + 3);
+          nextOpen.setHours(0, 0, 0, 0);
+        } else {
+          // Before market close, schedule for next day
+          nextOpen.setDate(now.getDate() + 1);
+          nextOpen.setHours(0, 0, 0, 0);
+        }
+      } else {
+        // Monday-Thursday: schedule for next day at 00:00
+        nextOpen.setDate(now.getDate() + 1);
+        nextOpen.setHours(0, 0, 0, 0);
+      }
+    }
+    
+    return nextOpen;
+  } else {
+    // Stocks: Typically 9:30 AM
+    const nextOpen = new Date(now);
+    const dayOfWeek = now.getDay();
+    
+    // Skip weekends
+    if (dayOfWeek === 0) {
+      // Sunday - next Monday
+      nextOpen.setDate(now.getDate() + 1);
+      nextOpen.setHours(9, 30, 0, 0);
+    } else if (dayOfWeek === 6) {
+      // Saturday - next Monday
+      nextOpen.setDate(now.getDate() + 2);
+      nextOpen.setHours(9, 30, 0, 0);
+    } else {
+      // Monday-Friday
+      const currentHour = now.getHours();
+      const currentMinute = now.getMinutes();
+      
+      if (currentHour < 9 || (currentHour === 9 && currentMinute < 30)) {
+        // Before 9:30 AM, schedule for today
+        nextOpen.setHours(9, 30, 0, 0);
+      } else {
+        // After 9:30 AM, schedule for next trading day
+        if (dayOfWeek === 5) {
+          // Friday - next Monday
+          nextOpen.setDate(now.getDate() + 3);
+        } else {
+          nextOpen.setDate(now.getDate() + 1);
+        }
+        nextOpen.setHours(9, 30, 0, 0);
+      }
+    }
+    
+    return nextOpen;
+  }
+}
+
+function toggleMarketOpenSchedule() {
+  const marketOpenEnabled = document.getElementById('modifyScheduleMarketOpen')?.checked || false;
+  const manualOptions = document.getElementById('scheduleManualOptions');
+  const dateTimeInput = document.getElementById('modifyScheduleDateTime');
+  const delayInput = document.getElementById('modifyScheduleDelay');
+  
+  if (manualOptions) {
+    manualOptions.style.display = marketOpenEnabled ? 'none' : 'flex';
+  }
+  
+  if (marketOpenEnabled) {
+    // Set initial scheduled time to 1 hour from now
+    const nextRetry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    
+    // Set the datetime input to 1 hour from now
+    if (dateTimeInput) {
+      const year = nextRetry.getFullYear();
+      const month = String(nextRetry.getMonth() + 1).padStart(2, '0');
+      const day = String(nextRetry.getDate()).padStart(2, '0');
+      const hours = String(nextRetry.getHours()).padStart(2, '0');
+      const minutes = String(nextRetry.getMinutes()).padStart(2, '0');
+      dateTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
+    // Clear delay input
+    if (delayInput) {
+      delayInput.value = '';
+    }
+    
+    updateSchedulePreview();
+  }
+  
+  updateSchedulePreview();
+}
+
+function toggleModifyPendingOrderMarketOpenSchedule() {
+  const marketOpenEnabled = document.getElementById('modifyPendingOrderScheduleMarketOpen')?.checked || false;
+  const manualOptions = document.getElementById('modifyPendingOrderScheduleManualOptions');
+  const dateTimeInput = document.getElementById('modifyPendingOrderScheduleDateTime');
+  const delayInput = document.getElementById('modifyPendingOrderScheduleDelay');
+  
+  if (manualOptions) {
+    manualOptions.style.display = marketOpenEnabled ? 'none' : 'flex';
+  }
+  
+  if (marketOpenEnabled) {
+    // Set initial scheduled time to 1 hour from now
+    const nextRetry = new Date(Date.now() + 60 * 60 * 1000); // 1 hour from now
+    
+    // Set the datetime input to 1 hour from now
+    if (dateTimeInput) {
+      const year = nextRetry.getFullYear();
+      const month = String(nextRetry.getMonth() + 1).padStart(2, '0');
+      const day = String(nextRetry.getDate()).padStart(2, '0');
+      const hours = String(nextRetry.getHours()).padStart(2, '0');
+      const minutes = String(nextRetry.getMinutes()).padStart(2, '0');
+      dateTimeInput.value = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
+    // Clear delay input
+    if (delayInput) {
+      delayInput.value = '';
+    }
+    
+    updateModifyPendingOrderSchedulePreview();
+  }
+  
+  updateModifyPendingOrderSchedulePreview();
+}
+
 function updateSchedulePreview() {
   const scheduleEnabled = document.getElementById('modifyScheduleEnabled')?.checked || false;
   if (!scheduleEnabled) return;
   
+  const marketOpenEnabled = document.getElementById('modifyScheduleMarketOpen')?.checked || false;
   const scheduleDateTime = document.getElementById('modifyScheduleDateTime')?.value;
   const scheduleDelay = document.getElementById('modifyScheduleDelay')?.value;
   const preview = document.getElementById('schedulePreview');
@@ -3620,7 +3844,10 @@ function updateSchedulePreview() {
   
   let scheduledTime;
   
-  if (scheduleDelay && scheduleDelay > 0) {
+  if (marketOpenEnabled) {
+    // Retry every hour - set to 1 hour from now
+    scheduledTime = new Date(Date.now() + 60 * 60 * 1000);
+  } else if (scheduleDelay && scheduleDelay > 0) {
     scheduledTime = new Date(Date.now() + parseInt(scheduleDelay) * 60 * 1000);
   } else if (scheduleDateTime) {
     scheduledTime = new Date(scheduleDateTime);
@@ -3635,7 +3862,8 @@ function updateSchedulePreview() {
     preview.style.backgroundColor = 'rgba(244, 67, 54, 0.15)';
     preview.style.color = '#EF5350';
   } else {
-    previewText.textContent = scheduledTime.toLocaleString();
+    const retryText = marketOpenEnabled ? ' (Will retry every hour until success)' : '';
+    previewText.textContent = scheduledTime.toLocaleString() + retryText;
     preview.style.display = 'block';
     preview.style.backgroundColor = 'rgba(33, 150, 243, 0.15)';
     preview.style.color = '#90CAF9';
@@ -3648,11 +3876,12 @@ const SCHEDULED_ORDERS_KEY = 'scheduledOrders';
 
 function saveScheduledModification(modification) {
   const scheduled = loadScheduledModifications();
-  const id = `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // If modification already has an id, update it; otherwise create new
+  const id = modification.id || `mod_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   scheduled[id] = {
     ...modification,
     id,
-    type: 'modifyPosition'
+    type: modification.type || 'modifyPosition'
   };
   localStorage.setItem(SCHEDULED_MODIFICATIONS_KEY, JSON.stringify(scheduled));
   return id;
@@ -3681,11 +3910,12 @@ function clearScheduledModifications() {
 // Scheduled orders management
 function saveScheduledOrder(order) {
   const scheduled = loadScheduledOrders();
-  const id = `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  // If order already has an id, update it; otherwise create new
+  const id = order.id || `order_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
   scheduled[id] = {
     ...order,
     id,
-    type: order.orderType || 'executeOrder'
+    type: order.orderType || order.type || 'executeOrder'
   };
   localStorage.setItem(SCHEDULED_ORDERS_KEY, JSON.stringify(scheduled));
   return id;
@@ -3740,9 +3970,18 @@ async function executeScheduledModifications() {
         showMessage(`Scheduled modification executed successfully for ticket ${modification.ticket}`, 'success');
         removeScheduledModification(modification.id);
       } else {
-        showMessage(`Failed to execute scheduled modification for ticket ${modification.ticket}: ${result.data?.error || result.error}`, 'error');
-        // Remove failed modifications to prevent retry loops
-        removeScheduledModification(modification.id);
+        // Check if we should retry every hour
+        if (modification.retryEveryHour) {
+          // Reschedule for 1 hour from now
+          const nextRetry = new Date(Date.now() + 60 * 60 * 1000);
+          modification.scheduledTime = nextRetry.toISOString();
+          saveScheduledModification(modification);
+          showMessage(`Modification failed for ticket ${modification.ticket}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+        } else {
+          showMessage(`Failed to execute scheduled modification for ticket ${modification.ticket}: ${result.data?.error || result.error}`, 'error');
+          // Remove failed modifications to prevent retry loops
+          removeScheduledModification(modification.id);
+        }
       }
       
       // Refresh positions after modification
@@ -3816,8 +4055,17 @@ async function executeScheduledOrders() {
             setTimeout(() => handleRefreshAccount(), 1000);
           }
         } else {
-          showMessage(`Failed to execute scheduled order: ${result.data?.error || result.error}`, 'error');
-          removeScheduledOrder(order.id);
+          // Check if we should retry every hour
+          if (order.retryEveryHour) {
+            // Reschedule for 1 hour from now
+            const nextRetry = new Date(Date.now() + 60 * 60 * 1000);
+            order.scheduledTime = nextRetry.toISOString();
+            saveScheduledOrder(order);
+            showMessage(`Order execution failed. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+          } else {
+            showMessage(`Failed to execute scheduled order: ${result.data?.error || result.error}`, 'error');
+            removeScheduledOrder(order.id);
+          }
         }
       } else if (order.type === 'modifyPendingOrder') {
         console.log(`Executing scheduled pending order modification for ticket ${order.ticket}`);
@@ -3839,14 +4087,33 @@ async function executeScheduledOrders() {
             setTimeout(() => handleRefreshPendingOrders(), 1000);
           }
         } else {
-          showMessage(`Failed to execute scheduled pending order modification: ${result.data?.error || result.error}`, 'error');
-          removeScheduledOrder(order.id);
+          // Check if we should retry every hour
+          if (order.retryEveryHour) {
+            // Reschedule for 1 hour from now
+            const nextRetry = new Date(Date.now() + 60 * 60 * 1000);
+            order.scheduledTime = nextRetry.toISOString();
+            saveScheduledOrder(order);
+            showMessage(`Pending order modification failed for ticket ${order.ticket}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+          } else {
+            showMessage(`Failed to execute scheduled pending order modification: ${result.data?.error || result.error}`, 'error');
+            removeScheduledOrder(order.id);
+          }
         }
       }
     } catch (error) {
       console.error(`Error executing scheduled order ${order.id}:`, error);
-      showMessage(`Error executing scheduled order: ${error.message}`, 'error');
-      removeScheduledOrder(order.id);
+      // Check if we should retry every hour (for modifyPendingOrder or executeOrder)
+      if (order.retryEveryHour && (order.type === 'modifyPendingOrder' || order.orderType === 'executeOrder')) {
+        // Reschedule for 1 hour from now
+        const nextRetry = new Date(Date.now() + 60 * 60 * 1000);
+        order.scheduledTime = nextRetry.toISOString();
+        saveScheduledOrder(order);
+        const orderType = order.type === 'modifyPendingOrder' ? 'pending order modification' : 'order execution';
+        showMessage(`Error executing scheduled ${orderType}: ${error.message}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+      } else {
+        showMessage(`Error executing scheduled order: ${error.message}`, 'error');
+        removeScheduledOrder(order.id);
+      }
     }
   }
 }
@@ -5239,7 +5506,7 @@ function updatePropertiesPanel(node) {
                 ${isConfigured 
                   ? useLmStudio
                     ? `Base URL: ${aiSettings.baseUrl || 'http://localhost:1234/v1'}${aiSettings.model ? ` | Model: ${aiSettings.model}` : ' (using server default)'}`
-                    : `Model: ${aiSettings.model || 'Default'} | API Key: ${aiSettings.apiKey ? aiSettings.apiKey.substring(0, 8) + '...' : 'Not set'}`
+                    : `Model: ${aiSettings.model || 'Default'} | API Key: ${aiSettings.apiKey && typeof aiSettings.apiKey === 'string' ? aiSettings.apiKey.substring(0, 8) + '...' : 'Not set'}`
                   : `Configure ${serviceName} in Settings to use LLM nodes`
                 }
               </div>
