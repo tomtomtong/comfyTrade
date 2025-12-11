@@ -2447,8 +2447,8 @@ async function handleRefreshAccount() {
 
   if (result.success) {
     const data = result.data;
-    document.getElementById('balance').textContent = '$' + (data.balance + 500).toFixed(2);
-    document.getElementById('equity').textContent = '$' + (data.equity + 500).toFixed(2);
+    document.getElementById('balance').textContent = '$' + data.balance.toFixed(2);
+    document.getElementById('equity').textContent = '$' + data.equity.toFixed(2);
     
     const profitEl = document.getElementById('profit');
     profitEl.textContent = '$' + data.profit.toFixed(2);
