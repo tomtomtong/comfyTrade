@@ -1,5 +1,6 @@
 // Main UI Controller
 let isConnected = false;
+window.isConnected = false; // Expose globally for trailing manager
 let nodeEditor = null;
 let symbolInput = null;
 let logEntries = [];
@@ -335,6 +336,7 @@ function setupEventListeners() {
   document.getElementById('closedPositionsDays').addEventListener('change', handleRefreshClosedPositions);
   
   // Pending orders controls
+  document.getElementById('refreshPositionsBtn').addEventListener('click', handleRefreshPositions);
   document.getElementById('refreshPendingOrdersBtn').addEventListener('click', handleRefreshPendingOrders);
   document.getElementById('refreshScheduledActionsBtn').addEventListener('click', updateScheduledActionsDisplay);
   
@@ -479,6 +481,7 @@ async function handleDisconnect() {
         
         // Reset connection state
         isConnected = false;
+        window.isConnected = false; // Update global flag
         
 
         
@@ -532,6 +535,7 @@ async function handleDisconnect() {
         
         // Ensure we still reset the basic connection state even if other things fail
         isConnected = false;
+        window.isConnected = false; // Update global flag
         try {
           const connectBtn = document.getElementById('connectBtn');
           if (connectBtn) {
@@ -2409,6 +2413,7 @@ async function handleConnect() {
 
   if (result.success) {
     isConnected = true;
+    window.isConnected = true; // Update global flag
     document.getElementById('connectBtn').textContent = 'Disconnect MT5';
     document.getElementById('connectBtn').className = 'btn btn-danger';
     showMessage('Connected to MT5 successfully!', 'success');
@@ -2454,8 +2459,14 @@ async function handleRefreshAccount() {
     profitEl.textContent = '$' + data.profit.toFixed(2);
     profitEl.className = 'profit ' + (data.profit >= 0 ? 'positive' : 'negative');
     
-    // Record balance snapshot periodically
-    await recordBalanceSnapshot(data.balance);
+    // Optional: record balance snapshot if helper exists
+    if (typeof recordBalanceSnapshot === 'function') {
+      try {
+        await recordBalanceSnapshot(data.balance);
+      } catch (e) {
+        console.warn('recordBalanceSnapshot failed:', e);
+      }
+    }
   }
 }
 
@@ -2472,7 +2483,9 @@ async function handleRefreshPositions() {
     if (positions.length === 0) {
       container.innerHTML = '<p class="no-data">No open positions</p>';
     } else {
-      container.innerHTML = positions.map(pos => `
+      container.innerHTML = positions.map(pos => {
+        const isTrailing = window.trailingStopManager && window.trailingStopManager.isTrailingEnabled(pos.ticket);
+        return `
         <div class="position-item ${pos.type.toLowerCase()}">
           <div class="position-header">
             <span>${pos.symbol} ${pos.type}</span>
@@ -2485,13 +2498,18 @@ async function handleRefreshPositions() {
           </div>
           <div class="position-details">
             SL: ${(pos.stop_loss && pos.stop_loss > 0) ? pos.stop_loss.toFixed(5) : 'None'} | TP: ${(pos.take_profit && pos.take_profit > 0) ? pos.take_profit.toFixed(5) : 'None'}
+            ${isTrailing ? ' <span style="color: #FFA500; font-weight: bold;">🔄 TRAILING</span>' : ''}
           </div>
           <div class="position-actions">
             <button class="btn btn-small btn-primary" onclick="showModifyModal(${pos.ticket}, ${pos.stop_loss}, ${pos.take_profit})">Modify</button>
+            <button class="btn btn-small ${isTrailing ? 'btn-warning' : 'btn-secondary'}" onclick="toggleTrailingStop(${pos.ticket})" title="Toggle Trailing Stop Loss">
+              ${isTrailing ? '🔄 Trail ON' : '⏸ Trail'}
+            </button>
             <button class="btn btn-small btn-danger" onclick="closePosition(${pos.ticket})">Close</button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
     }
     
     // Update trade journal with current position data
@@ -4451,12 +4469,178 @@ function updatePercentFromPrice(type) {
   percentInput.value = percentChange.toFixed(2);
 }
 
+// Trailing Stop Loss Functions
+async function toggleTrailingStop(ticket) {
+  if (!window.trailingStopManager) {
+    showMessage('Trailing stop manager not initialized', 'error');
+    return;
+  }
+
+  const isEnabled = window.trailingStopManager.isTrailingEnabled(ticket);
+  
+  if (isEnabled) {
+    // Disable trailing
+    const result = await window.trailingStopManager.disableTrailing(ticket);
+    if (result.success) {
+      showMessage('Trailing stop disabled', 'success');
+      handleRefreshPositions();
+    } else {
+      showMessage('Failed to disable trailing stop: ' + result.message, 'error');
+    }
+  } else {
+    // Show modal to configure trailing
+    showTrailingStopModal(ticket);
+  }
+}
+
+function showTrailingStopModal(ticket) {
+  // Find the position
+  const position = currentPositions.find(pos => pos.ticket == ticket);
+  if (!position) {
+    showMessage('Position not found', 'error');
+    return;
+  }
+
+  // Check if modal exists, create if not
+  let modal = document.getElementById('trailingStopModal');
+  if (!modal) {
+    createTrailingStopModal();
+    modal = document.getElementById('trailingStopModal');
+  }
+
+  // Populate modal with position data
+  document.getElementById('trailingTicket').value = ticket;
+  document.getElementById('trailingSymbol').textContent = position.symbol;
+  document.getElementById('trailingType').textContent = position.type;
+  document.getElementById('trailingCurrentPrice').textContent = position.current_price.toFixed(5);
+  
+  // Reset inputs
+  document.getElementById('trailingSLDistance').value = '';
+  document.getElementById('trailingSLPercent').value = '';
+  document.getElementById('trailingTPDistance').value = '';
+  document.getElementById('trailingTPPercent').value = '';
+
+  // Show modal
+  modal.classList.add('show');
+}
+
+function hideTrailingStopModal() {
+  const modal = document.getElementById('trailingStopModal');
+  if (modal) {
+    modal.classList.remove('show');
+  }
+}
+
+function createTrailingStopModal() {
+  const modalHTML = `
+    <div id="trailingStopModal" class="modal">
+      <div class="modal-content trade-confirmation-modal">
+        <h2>Configure Trailing Stop Loss</h2>
+        <input type="hidden" id="trailingTicket">
+        
+        <div class="trade-confirmation-modal-content">
+          <div style="margin-bottom: 15px; padding: 10px; background-color: rgba(76, 175, 80, 0.1); border-left: 3px solid #4CAF50; border-radius: 4px;">
+            <div><strong>Symbol:</strong> <span id="trailingSymbol">-</span></div>
+            <div><strong>Type:</strong> <span id="trailingType">-</span></div>
+            <div><strong>Current Price:</strong> <span id="trailingCurrentPrice">-</span></div>
+          </div>
+          
+          <div style="margin-bottom: 15px; padding: 10px; background-color: rgba(255, 152, 0, 0.1); border-left: 3px solid #FF9800; border-radius: 4px; font-size: 12px; color: #FFA500;">
+            <strong>ℹ️ How it works:</strong><br>
+            Trailing stop will automatically adjust SL and TP every 5 minutes based on price movement.<br>
+            For BUY: SL moves up as price increases, TP moves up as well.<br>
+            For SELL: SL moves down as price decreases, TP moves down as well.<br>
+            Only moves in favorable direction (never against your position).
+          </div>
+          
+          <div class="form-group">
+            <label>Stop Loss Distance:</label>
+            <div class="input-group">
+              <input type="number" id="trailingSLDistance" step="0.00001" placeholder="Absolute distance (price units)">
+              <span class="input-separator">OR</span>
+              <input type="number" id="trailingSLPercent" step="0.1" placeholder="% from current price">
+              <span class="percent-symbol">%</span>
+            </div>
+            <small style="color: #888; font-size: 11px;">Distance from current price for stop loss</small>
+          </div>
+          
+          <div class="form-group">
+            <label>Take Profit Distance:</label>
+            <div class="input-group">
+              <input type="number" id="trailingTPDistance" step="0.00001" placeholder="Absolute distance (price units)">
+              <span class="input-separator">OR</span>
+              <input type="number" id="trailingTPPercent" step="0.1" placeholder="% from current price">
+              <span class="percent-symbol">%</span>
+            </div>
+            <small style="color: #888; font-size: 11px;">Distance from current price for take profit</small>
+          </div>
+        </div>
+        
+        <div class="modal-actions" style="flex-shrink: 0; margin-top: auto; padding-top: 15px; border-top: 1px solid #444;">
+          <button id="confirmTrailingBtn" class="btn btn-primary">Enable Trailing</button>
+          <button id="cancelTrailingBtn" class="btn btn-secondary">Cancel</button>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  document.body.insertAdjacentHTML('beforeend', modalHTML);
+  
+  document.getElementById('confirmTrailingBtn').addEventListener('click', handleEnableTrailing);
+  document.getElementById('cancelTrailingBtn').addEventListener('click', hideTrailingStopModal);
+}
+
+async function handleEnableTrailing() {
+  const ticket = parseInt(document.getElementById('trailingTicket').value);
+  const slDistance = parseFloat(document.getElementById('trailingSLDistance').value) || 0;
+  const slDistancePercent = parseFloat(document.getElementById('trailingSLPercent').value) || 0;
+  const tpDistance = parseFloat(document.getElementById('trailingTPDistance').value) || 0;
+  const tpDistancePercent = parseFloat(document.getElementById('trailingTPPercent').value) || 0;
+
+  // Validate that at least one distance is set
+  if ((slDistance === 0 && slDistancePercent === 0) && (tpDistance === 0 && tpDistancePercent === 0)) {
+    showMessage('Please set at least one distance (SL or TP)', 'error');
+    return;
+  }
+
+  // Get current position to get initial price
+  const position = currentPositions.find(pos => pos.ticket == ticket);
+  if (!position) {
+    showMessage('Position not found', 'error');
+    return;
+  }
+
+  if (!window.trailingStopManager) {
+    showMessage('Trailing stop manager not initialized', 'error');
+    return;
+  }
+
+  hideTrailingStopModal();
+  showMessage('Enabling trailing stop...', 'info');
+
+  const result = await window.trailingStopManager.enableTrailing(ticket, {
+    slDistance: slDistance,
+    slDistancePercent: slDistancePercent,
+    tpDistance: tpDistance,
+    tpDistancePercent: tpDistancePercent,
+    initialPrice: position.current_price
+  });
+
+  if (result.success) {
+    showMessage('Trailing stop enabled! SL and TP will adjust every 5 minutes.', 'success');
+    handleRefreshPositions();
+  } else {
+    showMessage('Failed to enable trailing stop: ' + result.message, 'error');
+  }
+}
+
 // Make functions globally available
 window.closePosition = closePosition;
 window.showModifyModal = showModifyModal;
 window.showSignalPopup = showSignalPopup;
 window.updatePriceFromPercent = updatePriceFromPercent;
 window.updatePercentFromPrice = updatePercentFromPrice;
+window.toggleTrailingStop = toggleTrailingStop;
 
 
 // Node editor percentage calculation functions

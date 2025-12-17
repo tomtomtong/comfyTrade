@@ -211,6 +211,12 @@
           </div>
           
           <div id="openPositionsTab" class="positions-tab active">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+              <h3 style="margin: 0;">Open Positions</h3>
+              <div>
+                <button id="refreshPositionsBtn" class="btn btn-secondary btn-small">Refresh</button>
+              </div>
+            </div>
             <div id="positionsList" class="positions-list">
               <p class="no-data">No open positions</p>
             </div>
@@ -1248,6 +1254,7 @@
   <script src="volume-control.js"></script>
   <script src="resizable-panels.js"></script>
   <script src="node-plugin-manager.js"></script>
+  <script src="trailing-stop-manager.js"></script>
   <script src="renderer.js"></script>
   <link rel="stylesheet" href="tutorial.css">
   <script src="tutorial.js"></script>
