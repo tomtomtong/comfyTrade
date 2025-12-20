@@ -2,6 +2,13 @@
 
 An Electron desktop application that provides a comprehensive trading platform for MetaTrader 5 with visual strategy building, backtesting, and automated execution.
 
+## Screenshots
+
+<div align="center">
+  <img src="https://d112y698adiu2z.cloudfront.net/photos/production/software_photos/004/059/127/datas/original.jpg" alt="MT5 Trading Strategy Executor Screenshot 1" width="48%" />
+  <img src="https://d112y698adiu2z.cloudfront.net/photos/production/software_photos/004/059/128/datas/original.jpg" alt="MT5 Trading Strategy Executor Screenshot 2" width="48%" />
+</div>
+
 ## 🚀 Build AI Trading Agents Easily
 
 **You can easily build powerful AI agents for trading with this tool!** This platform provides everything you need to create sophisticated automated trading systems without extensive coding knowledge. Watch our tutorial to see how simple it is:
