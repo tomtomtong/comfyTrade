@@ -4519,6 +4519,17 @@ function showTrailingStopModal(ticket) {
   document.getElementById('trailingSLPercent').value = '';
   document.getElementById('trailingTPDistance').value = '';
   document.getElementById('trailingTPPercent').value = '';
+  
+  // Reset checkbox and TP distance group visibility
+  const trailSLOnlyCheckbox = document.getElementById('trailSLOnly');
+  const tpDistanceGroup = document.getElementById('tpDistanceGroup');
+  if (trailSLOnlyCheckbox) {
+    trailSLOnlyCheckbox.checked = false;
+  }
+  if (tpDistanceGroup) {
+    tpDistanceGroup.style.opacity = '1';
+    tpDistanceGroup.style.pointerEvents = 'auto';
+  }
 
   // Show modal
   modal.classList.add('show');
@@ -4547,10 +4558,20 @@ function createTrailingStopModal() {
           
           <div style="margin-bottom: 15px; padding: 10px; background-color: rgba(255, 152, 0, 0.1); border-left: 3px solid #FF9800; border-radius: 4px; font-size: 12px; color: #FFA500;">
             <strong>ℹ️ How it works:</strong><br>
-            Trailing stop will automatically adjust SL and TP every 5 minutes based on price movement.<br>
-            For BUY: SL moves up as price increases, TP moves up as well.<br>
-            For SELL: SL moves down as price decreases, TP moves down as well.<br>
+            Trailing stop will automatically adjust SL (and optionally TP) every 5 minutes based on price movement.<br>
+            For BUY: SL moves up as price increases (never down).<br>
+            For SELL: SL moves down as price decreases (never up).<br>
             Only moves in favorable direction (never against your position).
+          </div>
+          
+          <div class="form-group">
+            <label>
+              <input type="checkbox" id="trailSLOnly" style="margin-right: 8px;">
+              <strong>Trail SL only, keep TP fixed</strong>
+            </label>
+            <small style="color: #888; font-size: 11px; display: block; margin-top: 5px;">
+              When enabled, only Stop Loss will trail with price. Take Profit will remain at its current fixed value.
+            </small>
           </div>
           
           <div class="form-group">
@@ -4564,7 +4585,7 @@ function createTrailingStopModal() {
             <small style="color: #888; font-size: 11px;">Distance from current price for stop loss</small>
           </div>
           
-          <div class="form-group">
+          <div class="form-group" id="tpDistanceGroup">
             <label>Take Profit Distance:</label>
             <div class="input-group">
               <input type="number" id="trailingTPDistance" step="0.00001" placeholder="Absolute distance (price units)">
@@ -4572,7 +4593,7 @@ function createTrailingStopModal() {
               <input type="number" id="trailingTPPercent" step="0.1" placeholder="% from current price">
               <span class="percent-symbol">%</span>
             </div>
-            <small style="color: #888; font-size: 11px;">Distance from current price for take profit</small>
+            <small style="color: #888; font-size: 11px;">Distance from current price for take profit (ignored if "Trail SL only" is enabled)</small>
           </div>
         </div>
         
@@ -4588,6 +4609,21 @@ function createTrailingStopModal() {
   
   document.getElementById('confirmTrailingBtn').addEventListener('click', handleEnableTrailing);
   document.getElementById('cancelTrailingBtn').addEventListener('click', hideTrailingStopModal);
+  
+  // Add event listener to toggle TP distance group visibility
+  const trailSLOnlyCheckbox = document.getElementById('trailSLOnly');
+  const tpDistanceGroup = document.getElementById('tpDistanceGroup');
+  if (trailSLOnlyCheckbox && tpDistanceGroup) {
+    trailSLOnlyCheckbox.addEventListener('change', function() {
+      if (this.checked) {
+        tpDistanceGroup.style.opacity = '0.5';
+        tpDistanceGroup.style.pointerEvents = 'none';
+      } else {
+        tpDistanceGroup.style.opacity = '1';
+        tpDistanceGroup.style.pointerEvents = 'auto';
+      }
+    });
+  }
 }
 
 async function handleEnableTrailing() {
@@ -4596,10 +4632,17 @@ async function handleEnableTrailing() {
   const slDistancePercent = parseFloat(document.getElementById('trailingSLPercent').value) || 0;
   const tpDistance = parseFloat(document.getElementById('trailingTPDistance').value) || 0;
   const tpDistancePercent = parseFloat(document.getElementById('trailingTPPercent').value) || 0;
+  const trailSLOnly = document.getElementById('trailSLOnly').checked;
 
-  // Validate that at least one distance is set
-  if ((slDistance === 0 && slDistancePercent === 0) && (tpDistance === 0 && tpDistancePercent === 0)) {
-    showMessage('Please set at least one distance (SL or TP)', 'error');
+  // Validate that SL distance is set (required)
+  if (slDistance === 0 && slDistancePercent === 0) {
+    showMessage('Please set Stop Loss distance', 'error');
+    return;
+  }
+
+  // If not trailing SL only, validate TP distance
+  if (!trailSLOnly && tpDistance === 0 && tpDistancePercent === 0) {
+    showMessage('Please set Take Profit distance or enable "Trail SL only"', 'error');
     return;
   }
 
@@ -4623,11 +4666,15 @@ async function handleEnableTrailing() {
     slDistancePercent: slDistancePercent,
     tpDistance: tpDistance,
     tpDistancePercent: tpDistancePercent,
+    trailSLOnly: trailSLOnly,
     initialPrice: position.current_price
   });
 
   if (result.success) {
-    showMessage('Trailing stop enabled! SL and TP will adjust every 5 minutes.', 'success');
+    const message = trailSLOnly 
+      ? 'Trailing stop enabled! SL will trail with price, TP remains fixed. Updates every 5 minutes.'
+      : 'Trailing stop enabled! SL and TP will adjust every 5 minutes.';
+    showMessage(message, 'success');
     handleRefreshPositions();
   } else {
     showMessage('Failed to enable trailing stop: ' + result.message, 'error');

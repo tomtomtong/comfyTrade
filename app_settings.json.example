@@ -1,15 +1,15 @@
 {
   "openTradingView": false,
   "ai": {
-    "enabled": false,
+    "enabled": true,
     "firecrawl": {
-      "enabled": false,
-      "apiKey": "",
+      "enabled": true,
+      "apiKey": "fc-835a843fa061413391468b8b2fb877da",
       "baseUrl": "https://api.firecrawl.dev"
     },
     "openRouter": {
-      "enabled": false,
-      "apiKey": "",
+      "enabled": true,
+      "apiKey": "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",
       "model": "anthropic/claude-3.5-sonnet",
       "baseUrl": "https://openrouter.ai/api/v1"
     },
@@ -20,8 +20,8 @@
       "baseUrl": "http://localhost:1234/v1"
     },
     "alphavantage": {
-      "enabled": false,
-      "apiKey": "",
+      "enabled": true,
+      "apiKey": "3TAP1GCIZ5EW1J63",
       "baseUrl": "https://www.alphavantage.co/query"
     },
     "features": {
@@ -30,10 +30,13 @@
       "strategyOptimization": false,
       "riskAssessment": true
     },
-    "savedPrompts": {}
+    "savedPrompts": {
+      "bitcoin": "Should I buy or sell bitcoin now?",
+      "default": "You are an investment assistant. Please analyse the data and make guide to me."
+    }
   },
   "twilio": {
-    "enabled": false,
+    "enabled": true,
     "accountSid": "",
     "authToken": "",
     "fromNumber": "",
@@ -47,7 +50,7 @@
     }
   },
   "telegram": {
-    "enabled": false,
+    "enabled": true,
     "botToken": "",
     "chatId": "",
     "alerts": {
@@ -59,8 +62,14 @@
   },
   "volumeControl": {
     "enabled": true,
-    "symbolLimits": {},
-    "maxVolume": 0.01,
+    "symbolLimits": {
+      "XAUUSD": 0.01,
+      "BTCUSD": 0.01,
+      "ETHUSD": 0.01,
+      "HK50.CASH": 0.5,
+      "JP225.CASH": 0.5
+    },
+    "maxVolume": 1,
     "warningThreshold": 0.8,
     "autoReduce": false,
     "reductionFactor": 0.5
@@ -81,7 +90,36 @@
     "applyToOpenPositions": true,
     "applyToClosePositions": false
   },
-  "overtradeHistory": [],
+  "overtradeHistory": [
+    {
+      "timestamp": 1762934193154,
+      "type": "manual",
+      "data": {
+        "symbol": "HK50.cash",
+        "type": "BUY",
+        "volume": 0.5,
+        "stopLoss": 0,
+        "takeProfit": 0,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    },
+    {
+      "timestamp": 1762934199231,
+      "type": "manual",
+      "data": {
+        "symbol": "HK50.cash",
+        "type": "BUY",
+        "volume": 0.5,
+        "stopLoss": 10,
+        "takeProfit": 300000,
+        "action": "executeOrder"
+      },
+      "action": "executeOrder",
+      "positionType": "open"
+    }
+  ],
   "overtradeLastWarning": 0,
   "overtradeWarningCount": 0,
   "ui": {
@@ -156,4 +194,3 @@
     "lastUpdated": null
   }
 }
-

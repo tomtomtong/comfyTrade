@@ -1,6 +1,7 @@
 /**
  * Trailing Stop Loss Manager
  * Automatically adjusts SL and TP for positions every 5 minutes
+ * Supports trailing SL only with fixed TP
  */
 
 class TrailingStopManager {
@@ -30,6 +31,8 @@ class TrailingStopManager {
               tpDistance: pos.tpDistance || 0, // Distance in price units
               tpDistancePercent: pos.tpDistancePercent || 0, // Distance as percentage
               triggerPrice: pos.triggerPrice || 0, // Price at which trailing activates (0 = immediate)
+              fixedTP: pos.fixedTP || null, // Fixed TP value (null means TP trails with SL)
+              trailSLOnly: pos.trailSLOnly || false, // If true, only SL trails, TP stays fixed
               lastPrice: pos.lastPrice || 0,
               lastAdjustment: pos.lastAdjustment || new Date().toISOString(),
               enabled: true
@@ -56,6 +59,8 @@ class TrailingStopManager {
             tpDistance: pos.tpDistance,
             tpDistancePercent: pos.tpDistancePercent,
             triggerPrice: pos.triggerPrice || 0,
+            fixedTP: pos.fixedTP || null,
+            trailSLOnly: pos.trailSLOnly || false,
             lastPrice: pos.lastPrice,
             lastAdjustment: pos.lastAdjustment
           })),
@@ -71,6 +76,23 @@ class TrailingStopManager {
    * Enable trailing stop for a position
    */
   async enableTrailing(ticket, settings) {
+    // Get current position to capture fixed TP if needed
+    let fixedTP = null;
+    if (settings.trailSLOnly && window.mt5API && window.isConnected) {
+      try {
+        const result = await window.mt5API.getPositions();
+        if (result.success && result.data) {
+          const position = result.data.find(p => p.ticket === ticket);
+          if (position) {
+            fixedTP = position.take_profit || position.takeProfit || 0;
+            console.log(`Trailing: Storing fixed TP ${fixedTP} for ticket ${ticket}`);
+          }
+        }
+      } catch (error) {
+        console.error('Error getting position for fixed TP:', error);
+      }
+    }
+    
     const position = {
       ticket: ticket,
       slDistance: settings.slDistance || 0,
@@ -78,6 +100,8 @@ class TrailingStopManager {
       tpDistance: settings.tpDistance || 0,
       tpDistancePercent: settings.tpDistancePercent || 0,
       triggerPrice: settings.triggerPrice || 0, // 0 means activate immediately
+      fixedTP: fixedTP, // Fixed TP value (null means TP trails with SL)
+      trailSLOnly: settings.trailSLOnly || false, // If true, only SL trails, TP stays fixed
       lastPrice: settings.initialPrice || 0,
       lastAdjustment: new Date().toISOString(),
       enabled: true
@@ -156,46 +180,85 @@ class TrailingStopManager {
     let newSL = currentSL;
     let newTP = currentTP;
 
+    // Check if we should only trail SL and keep TP fixed
+    const trailSLOnly = trailing.trailSLOnly || false;
+    const fixedTP = trailing.fixedTP;
+
     // Calculate SL distance (use percentage if provided, otherwise absolute)
     let slDistance = trailing.slDistance;
     if (trailing.slDistancePercent > 0) {
       slDistance = currentPrice * (trailing.slDistancePercent / 100);
     }
 
-    // Calculate TP distance (use percentage if provided, otherwise absolute)
-    let tpDistance = trailing.tpDistance;
-    if (trailing.tpDistancePercent > 0) {
-      tpDistance = currentPrice * (trailing.tpDistancePercent / 100);
+    // Calculate TP distance (only if not using fixed TP)
+    let tpDistance = 0;
+    if (!trailSLOnly) {
+      tpDistance = trailing.tpDistance;
+      if (trailing.tpDistancePercent > 0) {
+        tpDistance = currentPrice * (trailing.tpDistancePercent / 100);
+      }
     }
 
     console.log('Trailing: Distances - SL:', slDistance, 'TP:', tpDistance, 'current price:', currentPrice);
+    console.log('Trailing: trailSLOnly:', trailSLOnly, 'fixedTP:', fixedTP);
 
-    if (isBuy) {
-      // BUY: always recalc from current price
-      if (slDistance > 0) {
+    // Calculate new SL (always trailing if distance is set)
+    if (slDistance > 0) {
+      if (isBuy) {
+        // BUY: SL moves up as price increases (never down)
         newSL = currentPrice - slDistance;
-      }
-      if (tpDistance > 0) {
-        newTP = currentPrice + tpDistance;
-      }
-    } else {
-      // SELL: always recalc from current price
-      if (slDistance > 0) {
+        // Only move SL up, never down
+        if (newSL < currentSL) {
+          newSL = currentSL;
+        }
+      } else {
+        // SELL: SL moves down as price decreases (never up)
         newSL = currentPrice + slDistance;
+        // Only move SL down, never up
+        if (newSL > currentSL) {
+          newSL = currentSL;
+        }
       }
-      if (tpDistance > 0) {
+    }
+
+    // Calculate new TP
+    if (trailSLOnly) {
+      // Use fixed TP value if stored, otherwise use current TP (which becomes the fixed value)
+      if (fixedTP !== null && fixedTP > 0) {
+        newTP = fixedTP;
+        console.log('Trailing: Using fixed TP:', fixedTP);
+      } else {
+        // If fixedTP wasn't captured, use current TP and store it as fixed
+        newTP = currentTP;
+        trailing.fixedTP = currentTP;
+        console.log('Trailing: Storing current TP as fixed TP:', currentTP);
+      }
+    } else if (tpDistance > 0) {
+      // Calculate trailing TP
+      if (isBuy) {
+        newTP = currentPrice + tpDistance;
+      } else {
         newTP = currentPrice - tpDistance;
       }
+    } else {
+      // Keep current TP
+      newTP = currentTP;
     }
 
     // Update last price
     trailing.lastPrice = currentPrice;
     trailing.lastAdjustment = new Date().toISOString();
 
-    // If neither distance is set, nothing to do
-    if (slDistance <= 0 && tpDistance <= 0) {
+    // If SL distance is not set and we're not using fixed TP, nothing to do
+    if (slDistance <= 0 && (trailSLOnly ? (fixedTP === null || fixedTP <= 0) : tpDistance <= 0)) {
       console.log('Trailing: No valid distance set for ticket', position.ticket);
       return null;
+    }
+
+    // Only update if SL actually changed (for trailing SL only mode)
+    if (trailSLOnly && newSL === currentSL) {
+      console.log('Trailing: SL unchanged for ticket', position.ticket, 'current SL:', currentSL, 'new SL:', newSL);
+      return null; // No need to modify if SL hasn't changed
     }
 
     console.log('Trailing: Will update ticket', position.ticket, 'to SL:', newSL, 'TP:', newTP);
@@ -212,10 +275,12 @@ class TrailingStopManager {
    */
   async adjustAllPositions() {
     // Use global isConnected flag from renderer instead of mt5API.isConnected()
-    console.log('Trailing: Checking connection... isConnected =', window.isConnected, 'mt5API =', !!window.mt5API);
+    // Default to false if window.isConnected is undefined (renderer.js not loaded yet)
+    const isConnected = window.isConnected !== undefined ? window.isConnected : false;
+    console.log('Trailing: Checking connection... isConnected =', isConnected, 'mt5API =', !!window.mt5API);
     
-    if (!window.mt5API || !window.isConnected) {
-      console.warn('Trailing: Not connected to MT5. isConnected:', window.isConnected, 'mt5API:', !!window.mt5API);
+    if (!window.mt5API || !isConnected) {
+      console.warn('Trailing: Not connected to MT5. isConnected:', isConnected, 'mt5API:', !!window.mt5API);
       return { adjusted: 0, failed: ['Not connected to MT5'] };
     }
 
@@ -317,7 +382,9 @@ class TrailingStopManager {
    */
   async cleanup() {
     // Use global isConnected flag from renderer instead of mt5API.isConnected()
-    if (!window.mt5API || !window.isConnected) {
+    // Default to false if window.isConnected is undefined (renderer.js not loaded yet)
+    const isConnected = window.isConnected !== undefined ? window.isConnected : false;
+    if (!window.mt5API || !isConnected) {
       return;
     }
 
