@@ -33,6 +33,7 @@ class TrailingStopManager {
               triggerPrice: pos.triggerPrice || 0, // Price at which trailing activates (0 = immediate)
               fixedTP: pos.fixedTP || null, // Fixed TP value (null means TP trails with SL)
               trailSLOnly: pos.trailSLOnly || false, // If true, only SL trails, TP stays fixed
+              maxSL: pos.maxSL || null, // Maximum SL value that cannot be exceeded (null = no limit)
               lastPrice: pos.lastPrice || 0,
               lastAdjustment: pos.lastAdjustment || new Date().toISOString(),
               enabled: true
@@ -61,6 +62,7 @@ class TrailingStopManager {
             triggerPrice: pos.triggerPrice || 0,
             fixedTP: pos.fixedTP || null,
             trailSLOnly: pos.trailSLOnly || false,
+            maxSL: pos.maxSL || null,
             lastPrice: pos.lastPrice,
             lastAdjustment: pos.lastAdjustment
           })),
@@ -102,6 +104,7 @@ class TrailingStopManager {
       triggerPrice: settings.triggerPrice || 0, // 0 means activate immediately
       fixedTP: fixedTP, // Fixed TP value (null means TP trails with SL)
       trailSLOnly: settings.trailSLOnly || false, // If true, only SL trails, TP stays fixed
+      maxSL: settings.maxSL || null, // Maximum SL value that cannot be exceeded (null = no limit)
       lastPrice: settings.initialPrice || 0,
       lastAdjustment: new Date().toISOString(),
       enabled: true
@@ -216,6 +219,34 @@ class TrailingStopManager {
         newSL = currentPrice + slDistance;
         // Only move SL down, never up
         if (newSL > currentSL) {
+          newSL = currentSL;
+        }
+      }
+    }
+
+    // Apply maximum SL limit if set
+    const maxSL = trailing.maxSL;
+    if (maxSL !== null && maxSL > 0) {
+      if (isBuy) {
+        // For BUY: maxSL is the maximum value SL can reach (e.g., if maxSL = 1.1000, SL cannot exceed 1.1000)
+        if (newSL > maxSL) {
+          console.log(`Trailing: SL ${newSL} exceeds maximum ${maxSL}, capping at ${maxSL}`);
+          newSL = maxSL;
+        }
+        // Ensure we don't move SL down even if maxSL is lower than currentSL
+        if (newSL < currentSL) {
+          console.log(`Trailing: Capped SL ${newSL} would move against position (current: ${currentSL}), keeping current SL`);
+          newSL = currentSL;
+        }
+      } else {
+        // For SELL: maxSL is the minimum value SL can reach (e.g., if maxSL = 1.1000, SL cannot go below 1.1000)
+        if (newSL < maxSL) {
+          console.log(`Trailing: SL ${newSL} exceeds maximum ${maxSL}, capping at ${maxSL}`);
+          newSL = maxSL;
+        }
+        // Ensure we don't move SL up even if maxSL is higher than currentSL
+        if (newSL > currentSL) {
+          console.log(`Trailing: Capped SL ${newSL} would move against position (current: ${currentSL}), keeping current SL`);
           newSL = currentSL;
         }
       }

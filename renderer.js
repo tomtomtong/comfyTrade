@@ -4519,6 +4519,7 @@ function showTrailingStopModal(ticket) {
   document.getElementById('trailingSLPercent').value = '';
   document.getElementById('trailingTPDistance').value = '';
   document.getElementById('trailingTPPercent').value = '';
+  document.getElementById('trailingMaxSL').value = '';
   
   // Reset checkbox and TP distance group visibility
   const trailSLOnlyCheckbox = document.getElementById('trailSLOnly');
@@ -4585,6 +4586,12 @@ function createTrailingStopModal() {
             <small style="color: #888; font-size: 11px;">Distance from current price for stop loss</small>
           </div>
           
+          <div class="form-group">
+            <label>Maximum Stop Loss (Optional):</label>
+            <input type="number" id="trailingMaxSL" step="0.00001" placeholder="Maximum SL value (leave empty for no limit)">
+            <small style="color: #888; font-size: 11px;">The trailing SL will never exceed this value. For BUY: max SL cannot be above this. For SELL: max SL cannot be below this.</small>
+          </div>
+          
           <div class="form-group" id="tpDistanceGroup">
             <label>Take Profit Distance:</label>
             <div class="input-group">
@@ -4633,6 +4640,8 @@ async function handleEnableTrailing() {
   const tpDistance = parseFloat(document.getElementById('trailingTPDistance').value) || 0;
   const tpDistancePercent = parseFloat(document.getElementById('trailingTPPercent').value) || 0;
   const trailSLOnly = document.getElementById('trailSLOnly').checked;
+  const maxSLInput = document.getElementById('trailingMaxSL').value.trim();
+  const maxSL = maxSLInput === '' ? null : (parseFloat(maxSLInput) || null);
 
   // Validate that SL distance is set (required)
   if (slDistance === 0 && slDistancePercent === 0) {
@@ -4667,6 +4676,7 @@ async function handleEnableTrailing() {
     tpDistance: tpDistance,
     tpDistancePercent: tpDistancePercent,
     trailSLOnly: trailSLOnly,
+    maxSL: maxSL,
     initialPrice: position.current_price
   });
 
