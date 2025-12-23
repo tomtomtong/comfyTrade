@@ -4520,16 +4520,18 @@ function showTrailingStopModal(ticket) {
   document.getElementById('trailingTPDistance').value = '';
   document.getElementById('trailingTPPercent').value = '';
   document.getElementById('trailingMaxSL').value = '';
+  document.getElementById('trailingMaxTP').value = '';
   
-  // Reset checkbox and TP distance group visibility
-  const trailSLOnlyCheckbox = document.getElementById('trailSLOnly');
+  // Reset TP distance group visibility
   const tpDistanceGroup = document.getElementById('tpDistanceGroup');
-  if (trailSLOnlyCheckbox) {
-    trailSLOnlyCheckbox.checked = false;
-  }
+  const maxTPGroup = document.getElementById('maxTPGroup');
   if (tpDistanceGroup) {
     tpDistanceGroup.style.opacity = '1';
     tpDistanceGroup.style.pointerEvents = 'auto';
+  }
+  if (maxTPGroup) {
+    maxTPGroup.style.opacity = '1';
+    maxTPGroup.style.pointerEvents = 'auto';
   }
 
   // Show modal
@@ -4566,16 +4568,6 @@ function createTrailingStopModal() {
           </div>
           
           <div class="form-group">
-            <label>
-              <input type="checkbox" id="trailSLOnly" style="margin-right: 8px;">
-              <strong>Trail SL only, keep TP fixed</strong>
-            </label>
-            <small style="color: #888; font-size: 11px; display: block; margin-top: 5px;">
-              When enabled, only Stop Loss will trail with price. Take Profit will remain at its current fixed value.
-            </small>
-          </div>
-          
-          <div class="form-group">
             <label>Stop Loss Distance:</label>
             <div class="input-group">
               <input type="number" id="trailingSLDistance" step="0.00001" placeholder="Absolute distance (price units)">
@@ -4592,6 +4584,12 @@ function createTrailingStopModal() {
             <small style="color: #888; font-size: 11px;">The trailing SL will never exceed this value. For BUY: max SL cannot be above this. For SELL: max SL cannot be below this.</small>
           </div>
           
+          <div class="form-group" id="maxTPGroup">
+            <label>Maximum Take Profit (Optional):</label>
+            <input type="number" id="trailingMaxTP" step="0.00001" placeholder="Maximum TP value (leave empty for no limit)">
+            <small style="color: #888; font-size: 11px;">The trailing TP will never exceed this value. For BUY: max TP cannot be above this. For SELL: max TP cannot be below this.</small>
+          </div>
+          
           <div class="form-group" id="tpDistanceGroup">
             <label>Take Profit Distance:</label>
             <div class="input-group">
@@ -4600,7 +4598,7 @@ function createTrailingStopModal() {
               <input type="number" id="trailingTPPercent" step="0.1" placeholder="% from current price">
               <span class="percent-symbol">%</span>
             </div>
-            <small style="color: #888; font-size: 11px;">Distance from current price for take profit (ignored if "Trail SL only" is enabled)</small>
+            <small style="color: #888; font-size: 11px;">Distance from current price for take profit</small>
           </div>
         </div>
         
@@ -4617,20 +4615,6 @@ function createTrailingStopModal() {
   document.getElementById('confirmTrailingBtn').addEventListener('click', handleEnableTrailing);
   document.getElementById('cancelTrailingBtn').addEventListener('click', hideTrailingStopModal);
   
-  // Add event listener to toggle TP distance group visibility
-  const trailSLOnlyCheckbox = document.getElementById('trailSLOnly');
-  const tpDistanceGroup = document.getElementById('tpDistanceGroup');
-  if (trailSLOnlyCheckbox && tpDistanceGroup) {
-    trailSLOnlyCheckbox.addEventListener('change', function() {
-      if (this.checked) {
-        tpDistanceGroup.style.opacity = '0.5';
-        tpDistanceGroup.style.pointerEvents = 'none';
-      } else {
-        tpDistanceGroup.style.opacity = '1';
-        tpDistanceGroup.style.pointerEvents = 'auto';
-      }
-    });
-  }
 }
 
 async function handleEnableTrailing() {
@@ -4639,9 +4623,10 @@ async function handleEnableTrailing() {
   const slDistancePercent = parseFloat(document.getElementById('trailingSLPercent').value) || 0;
   const tpDistance = parseFloat(document.getElementById('trailingTPDistance').value) || 0;
   const tpDistancePercent = parseFloat(document.getElementById('trailingTPPercent').value) || 0;
-  const trailSLOnly = document.getElementById('trailSLOnly').checked;
   const maxSLInput = document.getElementById('trailingMaxSL').value.trim();
   const maxSL = maxSLInput === '' ? null : (parseFloat(maxSLInput) || null);
+  const maxTPInput = document.getElementById('trailingMaxTP').value.trim();
+  const maxTP = maxTPInput === '' ? null : (parseFloat(maxTPInput) || null);
 
   // Validate that SL distance is set (required)
   if (slDistance === 0 && slDistancePercent === 0) {
@@ -4649,9 +4634,9 @@ async function handleEnableTrailing() {
     return;
   }
 
-  // If not trailing SL only, validate TP distance
-  if (!trailSLOnly && tpDistance === 0 && tpDistancePercent === 0) {
-    showMessage('Please set Take Profit distance or enable "Trail SL only"', 'error');
+  // Validate TP distance
+  if (tpDistance === 0 && tpDistancePercent === 0) {
+    showMessage('Please set Take Profit distance', 'error');
     return;
   }
 
@@ -4675,16 +4660,13 @@ async function handleEnableTrailing() {
     slDistancePercent: slDistancePercent,
     tpDistance: tpDistance,
     tpDistancePercent: tpDistancePercent,
-    trailSLOnly: trailSLOnly,
     maxSL: maxSL,
+    maxTP: maxTP,
     initialPrice: position.current_price
   });
 
   if (result.success) {
-    const message = trailSLOnly 
-      ? 'Trailing stop enabled! SL will trail with price, TP remains fixed. Updates every 5 minutes.'
-      : 'Trailing stop enabled! SL and TP will adjust every 5 minutes.';
-    showMessage(message, 'success');
+    showMessage('Trailing stop enabled! SL and TP will adjust every 5 minutes.', 'success');
     handleRefreshPositions();
   } else {
     showMessage('Failed to enable trailing stop: ' + result.message, 'error');

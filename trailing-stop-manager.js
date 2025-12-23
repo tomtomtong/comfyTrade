@@ -1,7 +1,6 @@
 /**
  * Trailing Stop Loss Manager
  * Automatically adjusts SL and TP for positions every 5 minutes
- * Supports trailing SL only with fixed TP
  */
 
 class TrailingStopManager {
@@ -31,9 +30,8 @@ class TrailingStopManager {
               tpDistance: pos.tpDistance || 0, // Distance in price units
               tpDistancePercent: pos.tpDistancePercent || 0, // Distance as percentage
               triggerPrice: pos.triggerPrice || 0, // Price at which trailing activates (0 = immediate)
-              fixedTP: pos.fixedTP || null, // Fixed TP value (null means TP trails with SL)
-              trailSLOnly: pos.trailSLOnly || false, // If true, only SL trails, TP stays fixed
               maxSL: pos.maxSL || null, // Maximum SL value that cannot be exceeded (null = no limit)
+              maxTP: pos.maxTP || null, // Maximum TP value that cannot be exceeded (null = no limit)
               lastPrice: pos.lastPrice || 0,
               lastAdjustment: pos.lastAdjustment || new Date().toISOString(),
               enabled: true
@@ -60,9 +58,8 @@ class TrailingStopManager {
             tpDistance: pos.tpDistance,
             tpDistancePercent: pos.tpDistancePercent,
             triggerPrice: pos.triggerPrice || 0,
-            fixedTP: pos.fixedTP || null,
-            trailSLOnly: pos.trailSLOnly || false,
             maxSL: pos.maxSL || null,
+            maxTP: pos.maxTP || null,
             lastPrice: pos.lastPrice,
             lastAdjustment: pos.lastAdjustment
           })),
@@ -78,23 +75,6 @@ class TrailingStopManager {
    * Enable trailing stop for a position
    */
   async enableTrailing(ticket, settings) {
-    // Get current position to capture fixed TP if needed
-    let fixedTP = null;
-    if (settings.trailSLOnly && window.mt5API && window.isConnected) {
-      try {
-        const result = await window.mt5API.getPositions();
-        if (result.success && result.data) {
-          const position = result.data.find(p => p.ticket === ticket);
-          if (position) {
-            fixedTP = position.take_profit || position.takeProfit || 0;
-            console.log(`Trailing: Storing fixed TP ${fixedTP} for ticket ${ticket}`);
-          }
-        }
-      } catch (error) {
-        console.error('Error getting position for fixed TP:', error);
-      }
-    }
-    
     const position = {
       ticket: ticket,
       slDistance: settings.slDistance || 0,
@@ -102,9 +82,8 @@ class TrailingStopManager {
       tpDistance: settings.tpDistance || 0,
       tpDistancePercent: settings.tpDistancePercent || 0,
       triggerPrice: settings.triggerPrice || 0, // 0 means activate immediately
-      fixedTP: fixedTP, // Fixed TP value (null means TP trails with SL)
-      trailSLOnly: settings.trailSLOnly || false, // If true, only SL trails, TP stays fixed
       maxSL: settings.maxSL || null, // Maximum SL value that cannot be exceeded (null = no limit)
+      maxTP: settings.maxTP || null, // Maximum TP value that cannot be exceeded (null = no limit)
       lastPrice: settings.initialPrice || 0,
       lastAdjustment: new Date().toISOString(),
       enabled: true
@@ -183,27 +162,20 @@ class TrailingStopManager {
     let newSL = currentSL;
     let newTP = currentTP;
 
-    // Check if we should only trail SL and keep TP fixed
-    const trailSLOnly = trailing.trailSLOnly || false;
-    const fixedTP = trailing.fixedTP;
-
     // Calculate SL distance (use percentage if provided, otherwise absolute)
     let slDistance = trailing.slDistance;
     if (trailing.slDistancePercent > 0) {
       slDistance = currentPrice * (trailing.slDistancePercent / 100);
     }
 
-    // Calculate TP distance (only if not using fixed TP)
+    // Calculate TP distance
     let tpDistance = 0;
-    if (!trailSLOnly) {
-      tpDistance = trailing.tpDistance;
-      if (trailing.tpDistancePercent > 0) {
-        tpDistance = currentPrice * (trailing.tpDistancePercent / 100);
-      }
+    tpDistance = trailing.tpDistance;
+    if (trailing.tpDistancePercent > 0) {
+      tpDistance = currentPrice * (trailing.tpDistancePercent / 100);
     }
 
     console.log('Trailing: Distances - SL:', slDistance, 'TP:', tpDistance, 'current price:', currentPrice);
-    console.log('Trailing: trailSLOnly:', trailSLOnly, 'fixedTP:', fixedTP);
 
     // Calculate new SL (always trailing if distance is set)
     if (slDistance > 0) {
@@ -253,18 +225,7 @@ class TrailingStopManager {
     }
 
     // Calculate new TP
-    if (trailSLOnly) {
-      // Use fixed TP value if stored, otherwise use current TP (which becomes the fixed value)
-      if (fixedTP !== null && fixedTP > 0) {
-        newTP = fixedTP;
-        console.log('Trailing: Using fixed TP:', fixedTP);
-      } else {
-        // If fixedTP wasn't captured, use current TP and store it as fixed
-        newTP = currentTP;
-        trailing.fixedTP = currentTP;
-        console.log('Trailing: Storing current TP as fixed TP:', currentTP);
-      }
-    } else if (tpDistance > 0) {
+    if (tpDistance > 0) {
       // Calculate trailing TP
       if (isBuy) {
         newTP = currentPrice + tpDistance;
@@ -276,20 +237,42 @@ class TrailingStopManager {
       newTP = currentTP;
     }
 
+    // Apply maximum TP limit if set
+    const maxTP = trailing.maxTP;
+    if (maxTP !== null && maxTP > 0) {
+      if (isBuy) {
+        // For BUY: maxTP is the maximum value TP can reach (e.g., if maxTP = 1.2000, TP cannot exceed 1.2000)
+        if (newTP > maxTP) {
+          console.log(`Trailing: TP ${newTP} exceeds maximum ${maxTP}, capping at ${maxTP}`);
+          newTP = maxTP;
+        }
+        // Ensure we don't move TP down even if maxTP is lower than currentTP
+        if (newTP < currentTP) {
+          console.log(`Trailing: Capped TP ${newTP} would move against position (current: ${currentTP}), keeping current TP`);
+          newTP = currentTP;
+        }
+      } else {
+        // For SELL: maxTP is the minimum value TP can reach (e.g., if maxTP = 1.2000, TP cannot go below 1.2000)
+        if (newTP < maxTP) {
+          console.log(`Trailing: TP ${newTP} exceeds maximum ${maxTP}, capping at ${maxTP}`);
+          newTP = maxTP;
+        }
+        // Ensure we don't move TP up even if maxTP is higher than currentTP
+        if (newTP > currentTP) {
+          console.log(`Trailing: Capped TP ${newTP} would move against position (current: ${currentTP}), keeping current TP`);
+          newTP = currentTP;
+        }
+      }
+    }
+
     // Update last price
     trailing.lastPrice = currentPrice;
     trailing.lastAdjustment = new Date().toISOString();
 
-    // If SL distance is not set and we're not using fixed TP, nothing to do
-    if (slDistance <= 0 && (trailSLOnly ? (fixedTP === null || fixedTP <= 0) : tpDistance <= 0)) {
+    // If SL distance is not set and TP distance is not set, nothing to do
+    if (slDistance <= 0 && tpDistance <= 0) {
       console.log('Trailing: No valid distance set for ticket', position.ticket);
       return null;
-    }
-
-    // Only update if SL actually changed (for trailing SL only mode)
-    if (trailSLOnly && newSL === currentSL) {
-      console.log('Trailing: SL unchanged for ticket', position.ticket, 'current SL:', currentSL, 'new SL:', newSL);
-      return null; // No need to modify if SL hasn't changed
     }
 
     console.log('Trailing: Will update ticket', position.ticket, 'to SL:', newSL, 'TP:', newTP);
