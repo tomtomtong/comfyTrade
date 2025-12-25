@@ -833,32 +833,22 @@
             <input type="text" id="settingsTwilioFromNumber" placeholder="+1234567890">
             <small>Your Twilio phone number</small>
           </div>
+          <div class="form-group">
+            <label>Default Receive Number:</label>
+            <input type="text" id="settingsRecipientNumber" placeholder="+1987654321">
+            <small>Default phone number for SMS notifications</small>
+          </div>
         </div>
         
         <div class="notification-config-section">
-          <h4>📱 Notification Settings</h4>
-          <div class="twilio-grid">
-            <div class="form-group">
-              <label>Recipient Number:</label>
-              <input type="text" id="settingsRecipientNumber" placeholder="+1987654321">
-              <small>Your phone number</small>
-            </div>
-            <div class="form-group">
-              <label>Method:</label>
-              <select id="settingsNotificationMethod">
-                <option value="sms">SMS</option>
-                <option value="whatsapp">WhatsApp</option>
-              </select>
-            </div>
-          </div>
-          
+          <h4>📱 Alert Types</h4>
           <div class="form-group">
-            <label>Alert Types:</label>
             <div class="checkbox-group twilio-checkbox-grid">
               <label><input type="checkbox" id="settingsAlertTakeProfit" checked> Take Profit</label>
               <label><input type="checkbox" id="settingsAlertStopLoss" checked> Stop Loss</label>
               <label><input type="checkbox" id="settingsAlertPositionOpened"> Position Opened</label>
               <label><input type="checkbox" id="settingsAlertPositionClosed"> Position Closed</label>
+              <label><input type="checkbox" id="settingsAlertPendingOrderExecution" checked> Pending Order Execution</label>
             </div>
           </div>
         </div>

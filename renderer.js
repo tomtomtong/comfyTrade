@@ -2398,7 +2398,6 @@ async function confirmTradeExecution() {
       const tradeDataToRecord = { symbol, type, volume, stopLoss, takeProfit, action: 'executeOrder' };
       await window.overtradeControl.recordTrade('manual', tradeDataToRecord);
       
-      
       handleRefreshAccount();
       handleRefreshPositions();
     } else {
@@ -2528,6 +2527,10 @@ async function handleRefreshPositions() {
   }
 }
 
+// Track pending orders to detect when they execute
+let previousPendingOrderTickets = new Set();
+let notifiedPendingOrderTickets = new Set(); // Track which pending orders we've already notified about
+
 async function handleRefreshPendingOrders() {
   if (!isConnected) return;
 
@@ -2545,6 +2548,52 @@ async function handleRefreshPendingOrders() {
     } else if (result && result.data && Array.isArray(result.data)) {
       orders = result.data;
     }
+
+    // Check for executed pending orders
+    const currentPendingTickets = new Set(orders.map(o => o.ticket));
+    
+    // Find pending orders that disappeared (likely executed)
+    if (previousPendingOrderTickets.size > 0) {
+      for (const ticket of previousPendingOrderTickets) {
+        if (!currentPendingTickets.has(ticket) && !notifiedPendingOrderTickets.has(ticket)) {
+          // Pending order disappeared - likely executed
+          // Try to find corresponding position
+          try {
+            const positionsResult = await window.mt5API.getPositions();
+            if (positionsResult.success && positionsResult.data) {
+              // Find a recently opened position (within last 60 seconds)
+              const recentPositions = positionsResult.data.filter(p => {
+                const openTime = new Date(p.time * 1000);
+                const now = new Date();
+                return (now - openTime) < 60000; // 60 seconds
+              });
+              
+              if (recentPositions.length > 0) {
+                // Send SMS for the most recent position (likely from the executed pending order)
+                const position = recentPositions[0];
+                await sendPendingOrderExecutionSMS(position);
+                notifiedPendingOrderTickets.add(ticket); // Mark as notified
+              } else {
+                // No recent position found - might have been cancelled, don't send notification
+                notifiedPendingOrderTickets.add(ticket); // Mark as processed to avoid checking again
+              }
+            }
+          } catch (error) {
+            console.error('Error checking for executed pending order:', error);
+            notifiedPendingOrderTickets.add(ticket); // Mark as processed even on error
+          }
+        }
+      }
+    }
+    
+    // Clean up old notified tickets (keep only last 100 to prevent memory leak)
+    if (notifiedPendingOrderTickets.size > 100) {
+      const ticketsArray = Array.from(notifiedPendingOrderTickets);
+      notifiedPendingOrderTickets = new Set(ticketsArray.slice(-50));
+    }
+    
+    // Update tracked pending orders
+    previousPendingOrderTickets = currentPendingTickets;
 
     if (orders.length === 0) {
       container.innerHTML = '<p class="no-data">No pending orders</p>';
@@ -8262,13 +8311,13 @@ async function loadTwilioSettings() {
     document.getElementById('settingsTwilioAuthToken').value = twilioSettings.authToken || '';
     document.getElementById('settingsTwilioFromNumber').value = twilioSettings.fromNumber || '';
     document.getElementById('settingsRecipientNumber').value = twilioSettings.recipientNumber || '';
-    document.getElementById('settingsNotificationMethod').value = twilioSettings.method || 'sms';
     
     const twilioAlerts = twilioSettings.alerts || {};
     document.getElementById('settingsAlertTakeProfit').checked = twilioAlerts.take_profit !== false;
     document.getElementById('settingsAlertStopLoss').checked = twilioAlerts.stop_loss !== false;
     document.getElementById('settingsAlertPositionOpened').checked = twilioAlerts.position_opened === true;
     document.getElementById('settingsAlertPositionClosed').checked = twilioAlerts.position_closed === true;
+    document.getElementById('settingsAlertPendingOrderExecution').checked = twilioAlerts.pending_order_execution !== false;
     
     // Load Telegram settings
     const telegramSettings = window.settingsManager.get('telegram') || {};
@@ -8294,12 +8343,13 @@ function getCurrentTwilioSettings() {
     authToken: document.getElementById('settingsTwilioAuthToken').value,
     fromNumber: document.getElementById('settingsTwilioFromNumber').value,
     recipientNumber: document.getElementById('settingsRecipientNumber').value,
-    method: document.getElementById('settingsNotificationMethod').value,
+    method: 'sms', // Default to SMS
     alerts: {
       take_profit: document.getElementById('settingsAlertTakeProfit').checked,
       stop_loss: document.getElementById('settingsAlertStopLoss').checked,
       position_opened: document.getElementById('settingsAlertPositionOpened').checked,
-      position_closed: document.getElementById('settingsAlertPositionClosed').checked
+      position_closed: document.getElementById('settingsAlertPositionClosed').checked,
+      pending_order_execution: document.getElementById('settingsAlertPendingOrderExecution').checked
     }
   };
 }
@@ -8316,6 +8366,77 @@ function getCurrentTelegramSettings() {
       position_closed: document.getElementById('settingsAlertPositionClosed').checked
     }
   };
+}
+
+// Helper function to send SMS notification when pending order executes
+async function sendPendingOrderExecutionSMS(positionData) {
+  try {
+    if (!window.mt5API || !window.mt5API.sendTwilioAlert) {
+      console.log('Twilio alert API not available');
+      return;
+    }
+
+    // Get Twilio settings
+    const twilioSettings = window.settingsManager ? window.settingsManager.get('twilio') : {};
+    
+    if (!twilioSettings.enabled || !twilioSettings.accountSid || !twilioSettings.recipientNumber) {
+      console.log('Twilio not configured or no recipient number set');
+      return;
+    }
+
+    // Check if pending order execution alerts are enabled
+    const alerts = twilioSettings.alerts || {};
+    if (alerts.pending_order_execution === false) {
+      console.log('Pending order execution alerts are disabled');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    
+    let message;
+    if (positionData.symbol) {
+      // Full position data available
+      const { symbol, type, volume, open_price, stop_loss, take_profit, ticket } = positionData;
+      message = `✅ PENDING ORDER EXECUTED!
+
+Symbol: ${symbol}
+Type: ${type}
+Ticket: ${ticket}
+Volume: ${volume}
+Entry Price: ${open_price}
+Stop Loss: ${stop_loss > 0 ? stop_loss : 'None'}
+Take Profit: ${take_profit > 0 ? take_profit : 'None'}
+
+Time: ${timestamp}
+
+MT5 Trader Alert`;
+    } else {
+      // Limited data available
+      const ticket = positionData.ticket || 'Unknown';
+      message = `✅ PENDING ORDER EXECUTED!
+
+Ticket: ${ticket}
+${positionData.note || 'Pending order has been executed'}
+
+Time: ${timestamp}
+
+MT5 Trader Alert`;
+    }
+
+    const result = await window.mt5API.sendTwilioAlert({
+      toNumber: twilioSettings.recipientNumber,
+      method: twilioSettings.method || 'sms',
+      message: message
+    });
+
+    if (result.success) {
+      console.log('SMS notification sent successfully for pending order execution');
+    } else {
+      console.warn('Failed to send SMS notification for pending order:', result.error);
+    }
+  } catch (error) {
+    console.error('Error sending pending order execution SMS:', error);
+  }
 }
 
 async function saveTwilioSettings() {
@@ -8823,11 +8944,11 @@ function setupTwilioChangeTracking() {
     'settingsTelegramBotToken',
     'settingsTelegramChatId',
     'settingsRecipientNumber',
-    'settingsNotificationMethod',
     'settingsAlertTakeProfit',
     'settingsAlertStopLoss',
     'settingsAlertPositionOpened',
-    'settingsAlertPositionClosed'
+    'settingsAlertPositionClosed',
+    'settingsAlertPendingOrderExecution'
   ];
   
   twilioInputs.forEach(inputId => {

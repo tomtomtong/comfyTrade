@@ -52,7 +52,8 @@ class SettingsManager {
           take_profit: true,
           stop_loss: true,
           position_opened: false,
-          position_closed: false
+          position_closed: false,
+          pending_order_execution: true
         },
         scheduledReminders: []
       },
