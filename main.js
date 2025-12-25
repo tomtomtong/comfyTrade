@@ -2,9 +2,11 @@ const { app, BrowserWindow, ipcMain, shell } = require('electron');
 const path = require('path');
 const fs = require('fs').promises;
 const MT5Bridge = require('./mt5-bridge');
+const SMSScheduler = require('./sms-scheduler');
 
 let mainWindow;
 let mt5Bridge;
+let smsScheduler;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -27,6 +29,18 @@ function createWindow() {
 app.whenReady().then(() => {
     createWindow();
     mt5Bridge = new MT5Bridge();
+    
+    // Initialize SMS Scheduler
+    smsScheduler = new SMSScheduler();
+    
+    // Set up error callback to send SMS errors to UI
+    smsScheduler.setErrorCallback((errorMessage) => {
+        if (mainWindow && mainWindow.webContents) {
+            mainWindow.webContents.send('sms:error', errorMessage);
+        }
+    });
+    
+    smsScheduler.start();
 
     app.on('activate', () => {
         if (BrowserWindow.getAllWindows().length === 0) {
@@ -38,6 +52,9 @@ app.whenReady().then(() => {
 app.on('window-all-closed', () => {
     if (mt5Bridge) {
         mt5Bridge.shutdown();
+    }
+    if (smsScheduler) {
+        smsScheduler.stop();
     }
     if (process.platform !== 'darwin') {
         app.quit();
@@ -425,8 +442,106 @@ ipcMain.handle('settings:save', async (event, filename, settings) => {
     try {
         const filePath = path.join(__dirname, filename);
         await fs.writeFile(filePath, JSON.stringify(settings, null, 2), 'utf8');
+        
+        // Reload scheduler if Twilio settings changed
+        if (smsScheduler && settings.twilio) {
+            smsScheduler.reload();
+        }
+        
         return { success: true };
     } catch (error) {
         throw error;
     }
 });
+
+// SMS Scheduler IPC Handlers
+ipcMain.handle('sms:getReminders', async () => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        const reminders = smsScheduler.getReminders();
+        return { success: true, data: reminders };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('sms:addReminder', async (event, reminder) => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        const id = smsScheduler.addReminder(reminder);
+        return { success: true, data: { id } };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('sms:updateReminder', async (event, reminderId, updates) => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        smsScheduler.updateReminder(reminderId, updates);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('sms:deleteReminder', async (event, reminderId) => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        smsScheduler.deleteReminder(reminderId);
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('sms:reloadScheduler', async () => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        smsScheduler.reload();
+        return { success: true };
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+ipcMain.handle('sms:testSend', async (event, { recipientNumber, message }) => {
+    try {
+        if (!smsScheduler) {
+            return { success: false, error: 'Scheduler not initialized' };
+        }
+        
+        // Use the scheduler's twilioAlerts instance
+        if (!smsScheduler.twilioAlerts || !smsScheduler.twilioAlerts.isEnabled()) {
+            return { success: false, error: 'Twilio not configured. Please check your Twilio credentials in settings.' };
+        }
+        
+        if (!recipientNumber) {
+            return { success: false, error: 'Recipient number is required' };
+        }
+        
+        if (!message) {
+            return { success: false, error: 'Message is required' };
+        }
+        
+        const testMessage = `[TEST] ${message}`;
+        const result = await smsScheduler.twilioAlerts.sendCustomAlert(testMessage, recipientNumber, 'sms');
+        
+        return result;
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+});
+
+// Log that SMS handlers are registered
+console.log('✓ SMS Scheduler IPC handlers registered');

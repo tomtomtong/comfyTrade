@@ -47,7 +47,8 @@
       "stop_loss": true,
       "position_opened": false,
       "position_closed": false
-    }
+    },
+    "scheduledReminders": []
   },
   "telegram": {
     "enabled": true,

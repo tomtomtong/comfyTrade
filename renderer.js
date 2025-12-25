@@ -86,6 +86,18 @@ document.addEventListener('DOMContentLoaded', async () => {
   updateStrategyButtons(); // Set initial button state
   window.historyImport.checkBacktestMode();
   
+  // Listen for SMS error events from main process
+  if (window.electronAPI && window.electronAPI.on) {
+    window.electronAPI.on('sms:error', (errorMessage) => {
+      if (window.showMessage) {
+        showMessage(errorMessage, 'error');
+      } else {
+        console.error('SMS Error:', errorMessage);
+        alert('SMS Error: ' + errorMessage);
+      }
+    });
+  }
+  
   // Initialize schedule datetime inputs for trade confirmation modal
   const confirmTradeScheduleDateTime = document.getElementById('confirmTradeScheduleDateTime');
   if (confirmTradeScheduleDateTime) {
@@ -3987,6 +3999,10 @@ async function executeScheduledModifications() {
       if (result.success && result.data.success) {
         showMessage(`Scheduled modification executed successfully for ticket ${modification.ticket}`, 'success');
         removeScheduledModification(modification.id);
+        // Update scheduled actions display to remove the completed item
+        if (window.updateScheduledActionsDisplay) {
+          updateScheduledActionsDisplay();
+        }
       } else {
         // Check if we should retry every hour
         if (modification.retryEveryHour) {
@@ -3995,10 +4011,18 @@ async function executeScheduledModifications() {
           modification.scheduledTime = nextRetry.toISOString();
           saveScheduledModification(modification);
           showMessage(`Modification failed for ticket ${modification.ticket}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+          // Update display to show new scheduled time
+          if (window.updateScheduledActionsDisplay) {
+            updateScheduledActionsDisplay();
+          }
         } else {
           showMessage(`Failed to execute scheduled modification for ticket ${modification.ticket}: ${result.data?.error || result.error}`, 'error');
           // Remove failed modifications to prevent retry loops
           removeScheduledModification(modification.id);
+          // Update scheduled actions display to remove the failed item
+          if (window.updateScheduledActionsDisplay) {
+            updateScheduledActionsDisplay();
+          }
         }
       }
       
@@ -4052,6 +4076,11 @@ async function executeScheduledOrders() {
           
           removeScheduledOrder(order.id);
           
+          // Update scheduled actions display to remove the completed item
+          if (window.updateScheduledActionsDisplay) {
+            updateScheduledActionsDisplay();
+          }
+          
           // Record the trade
           if (window.overtradeControl) {
             const tradeDataToRecord = { 
@@ -4080,9 +4109,17 @@ async function executeScheduledOrders() {
             order.scheduledTime = nextRetry.toISOString();
             saveScheduledOrder(order);
             showMessage(`Order execution failed. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+            // Update display to show new scheduled time
+            if (window.updateScheduledActionsDisplay) {
+              updateScheduledActionsDisplay();
+            }
           } else {
             showMessage(`Failed to execute scheduled order: ${result.data?.error || result.error}`, 'error');
             removeScheduledOrder(order.id);
+            // Update scheduled actions display to remove the failed item
+            if (window.updateScheduledActionsDisplay) {
+              updateScheduledActionsDisplay();
+            }
           }
         }
       } else if (order.type === 'modifyPendingOrder') {
@@ -4100,6 +4137,11 @@ async function executeScheduledOrders() {
           showMessage(`Scheduled pending order modification executed successfully for ticket ${order.ticket}`, 'success');
           removeScheduledOrder(order.id);
           
+          // Update scheduled actions display to remove the completed item
+          if (window.updateScheduledActionsDisplay) {
+            updateScheduledActionsDisplay();
+          }
+          
           // Refresh pending orders
           if (window.handleRefreshPendingOrders) {
             setTimeout(() => handleRefreshPendingOrders(), 1000);
@@ -4112,9 +4154,17 @@ async function executeScheduledOrders() {
             order.scheduledTime = nextRetry.toISOString();
             saveScheduledOrder(order);
             showMessage(`Pending order modification failed for ticket ${order.ticket}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+            // Update display to show new scheduled time
+            if (window.updateScheduledActionsDisplay) {
+              updateScheduledActionsDisplay();
+            }
           } else {
             showMessage(`Failed to execute scheduled pending order modification: ${result.data?.error || result.error}`, 'error');
             removeScheduledOrder(order.id);
+            // Update scheduled actions display to remove the failed item
+            if (window.updateScheduledActionsDisplay) {
+              updateScheduledActionsDisplay();
+            }
           }
         }
       }
@@ -4128,9 +4178,17 @@ async function executeScheduledOrders() {
         saveScheduledOrder(order);
         const orderType = order.type === 'modifyPendingOrder' ? 'pending order modification' : 'order execution';
         showMessage(`Error executing scheduled ${orderType}: ${error.message}. Will retry at ${nextRetry.toLocaleString()}`, 'warning');
+        // Update display to show new scheduled time
+        if (window.updateScheduledActionsDisplay) {
+          updateScheduledActionsDisplay();
+        }
       } else {
         showMessage(`Error executing scheduled order: ${error.message}`, 'error');
         removeScheduledOrder(order.id);
+        // Update scheduled actions display to remove the failed item
+        if (window.updateScheduledActionsDisplay) {
+          updateScheduledActionsDisplay();
+        }
       }
     }
   }
@@ -8221,6 +8279,9 @@ async function loadTwilioSettings() {
     document.getElementById('settingsTelegramChatId').value = telegramSettings.chatId || '';
     
     console.log('Twilio and Telegram settings loaded');
+    
+    // Setup reminder UI
+    setupReminderUI();
   } catch (error) {
     console.error('Error loading Twilio/Telegram settings:', error);
   }
@@ -8284,6 +8345,15 @@ async function saveTwilioSettings() {
     
     console.log('✓ Twilio and Telegram settings saved');
     
+    // Reload scheduler to pick up new Twilio credentials
+    if (window.electronAPI && window.electronAPI.invoke) {
+      try {
+        await window.electronAPI.invoke('sms:reloadScheduler');
+      } catch (error) {
+        console.warn('Could not reload scheduler:', error);
+      }
+    }
+    
     // Also send to backend for runtime use (if connected)
     if (isConnected && window.mt5API) {
       try {
@@ -8329,6 +8399,420 @@ async function saveTwilioSettings() {
   }
 }
 
+
+// Scheduled SMS Reminders Functions
+let reminders = [];
+
+async function loadReminders() {
+  try {
+    if (window.electronAPI && window.electronAPI.invoke) {
+      const response = await window.electronAPI.invoke('sms:getReminders');
+      if (response && response.success) {
+        reminders = response.data || [];
+        renderReminders();
+      }
+    }
+  } catch (error) {
+    console.error('Error loading reminders:', error);
+  }
+}
+
+function renderReminders() {
+  const container = document.getElementById('remindersList');
+  if (!container) return;
+  
+  if (reminders.length === 0) {
+    container.innerHTML = '<p style="color: #888; font-style: italic;">No scheduled reminders. Click "Add Reminder" to create one.</p>';
+    return;
+  }
+  
+  container.innerHTML = reminders.map(reminder => {
+    const nextTime = getNextExecutionTime(reminder);
+    const status = reminder.enabled ? '✓ Enabled' : '✗ Disabled';
+    const statusClass = reminder.enabled ? 'status-enabled' : 'status-disabled';
+    
+    return `
+      <div class="reminder-item" data-id="${reminder.id}" style="
+        border: 1px solid #444;
+        border-radius: 6px;
+        padding: 12px;
+        background: #2a2a2a;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+      ">
+        <div style="flex: 1;">
+          <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
+            <strong>${escapeHtml(reminder.name || 'Unnamed Reminder')}</strong>
+            <span class="${statusClass}" style="
+              font-size: 12px;
+              padding: 2px 8px;
+              border-radius: 3px;
+              background: ${reminder.enabled ? '#2d5a2d' : '#5a2d2d'};
+              color: ${reminder.enabled ? '#8fef8f' : '#ef8f8f'};
+            ">${status}</span>
+          </div>
+          <div style="font-size: 12px; color: #aaa; margin-bottom: 5px;">
+            ${escapeHtml(reminder.message || 'No message')}
+          </div>
+          <div style="font-size: 11px; color: #888;">
+            Type: ${getReminderTypeLabel(reminder.type)} | 
+            ${nextTime ? `Next: ${nextTime}` : 'No next execution'}
+            ${reminder.recipientNumber ? ` | To: ${escapeHtml(reminder.recipientNumber)}` : ''}
+          </div>
+        </div>
+        <div style="display: flex; gap: 5px;">
+          <button class="btn btn-small btn-secondary edit-reminder-btn" data-id="${reminder.id}" title="Edit">✏️</button>
+          <button class="btn btn-small btn-danger delete-reminder-btn" data-id="${reminder.id}" title="Delete">🗑️</button>
+        </div>
+      </div>
+    `;
+  }).join('');
+  
+  // Attach event listeners
+  container.querySelectorAll('.edit-reminder-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.closest('.edit-reminder-btn').dataset.id;
+      editReminder(id);
+    });
+  });
+  
+  container.querySelectorAll('.delete-reminder-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      const id = e.target.closest('.delete-reminder-btn').dataset.id;
+      deleteReminder(id);
+    });
+  });
+}
+
+function getReminderTypeLabel(type) {
+  const labels = {
+    'once': 'Once',
+    'daily': 'Daily',
+    'weekly': 'Weekly',
+    'interval': 'Interval'
+  };
+  return labels[type] || type;
+}
+
+function getNextExecutionTime(reminder) {
+  // This is a simplified version - the actual calculation is done in the scheduler
+  if (reminder.type === 'once' && reminder.dateTime) {
+    const dt = new Date(reminder.dateTime);
+    return dt.toLocaleString();
+  } else if (reminder.type === 'daily' && reminder.time) {
+    return `Daily at ${reminder.time}`;
+  } else if (reminder.type === 'weekly' && reminder.days && reminder.time) {
+    const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    const days = reminder.days.map(d => dayNames[d]).join(', ');
+    return `${days} at ${reminder.time}`;
+  } else if (reminder.type === 'interval' && reminder.interval) {
+    return `Every ${reminder.interval}`;
+  }
+  return null;
+}
+
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function openReminderModal(reminder = null) {
+  const modal = document.getElementById('reminderModal');
+  const title = document.getElementById('reminderModalTitle');
+  
+  if (reminder) {
+    title.textContent = 'Edit Reminder';
+    document.getElementById('reminderId').value = reminder.id;
+    document.getElementById('reminderName').value = reminder.name || '';
+    document.getElementById('reminderMessage').value = reminder.message || '';
+    document.getElementById('reminderRecipientNumber').value = reminder.recipientNumber || '';
+    document.getElementById('reminderType').value = reminder.type || 'once';
+    
+    // Set type-specific fields
+    if (reminder.type === 'once' && reminder.dateTime) {
+      const dt = new Date(reminder.dateTime);
+      const localDateTime = new Date(dt.getTime() - dt.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+      document.getElementById('reminderDateTime').value = localDateTime;
+    } else if (reminder.type === 'daily' && reminder.time) {
+      document.getElementById('reminderDailyTime').value = reminder.time;
+    } else if (reminder.type === 'weekly') {
+      if (reminder.days) {
+        document.querySelectorAll('.reminder-day').forEach(cb => {
+          cb.checked = reminder.days.includes(parseInt(cb.value));
+        });
+      }
+      if (reminder.time) {
+        document.getElementById('reminderWeeklyTime').value = reminder.time;
+      }
+    } else if (reminder.type === 'interval' && reminder.interval) {
+      const match = reminder.interval.match(/^(\d+)([hmsd])$/i);
+      if (match) {
+        document.getElementById('reminderIntervalValue').value = match[1];
+        document.getElementById('reminderIntervalUnit').value = match[2].toLowerCase();
+      }
+    }
+  } else {
+    title.textContent = 'Add Reminder';
+    document.getElementById('reminderId').value = '';
+    document.getElementById('reminderName').value = '';
+    document.getElementById('reminderMessage').value = '';
+    // Load last entered recipient number from localStorage
+    const lastRecipientNumber = localStorage.getItem('smsReminderLastRecipient') || '';
+    document.getElementById('reminderRecipientNumber').value = lastRecipientNumber;
+    document.getElementById('reminderType').value = 'once';
+    document.getElementById('reminderDateTime').value = '';
+    document.getElementById('reminderDailyTime').value = '';
+    document.getElementById('reminderWeeklyTime').value = '';
+    document.querySelectorAll('.reminder-day').forEach(cb => cb.checked = false);
+    document.getElementById('reminderIntervalValue').value = '';
+    document.getElementById('reminderIntervalUnit').value = 'h';
+  }
+  
+  updateReminderTypeFields();
+  modal.style.display = 'flex';
+}
+
+function closeReminderModal() {
+  const modal = document.getElementById('reminderModal');
+  modal.style.display = 'none';
+}
+
+function updateReminderTypeFields() {
+  const type = document.getElementById('reminderType').value;
+  
+  // Hide all type-specific fields
+  document.getElementById('reminderOnceFields').style.display = 'none';
+  document.getElementById('reminderDailyFields').style.display = 'none';
+  document.getElementById('reminderWeeklyFields').style.display = 'none';
+  document.getElementById('reminderIntervalFields').style.display = 'none';
+  
+  // Show relevant fields
+  if (type === 'once') {
+    document.getElementById('reminderOnceFields').style.display = 'block';
+  } else if (type === 'daily') {
+    document.getElementById('reminderDailyFields').style.display = 'block';
+  } else if (type === 'weekly') {
+    document.getElementById('reminderWeeklyFields').style.display = 'block';
+  } else if (type === 'interval') {
+    document.getElementById('reminderIntervalFields').style.display = 'block';
+  }
+}
+
+async function saveReminder() {
+  try {
+    const id = document.getElementById('reminderId').value;
+    const name = document.getElementById('reminderName').value.trim();
+    const message = document.getElementById('reminderMessage').value.trim();
+    const type = document.getElementById('reminderType').value;
+    const enabled = true; // Reminders are always enabled
+    
+    if (!name) {
+      alert('Please enter a reminder name');
+      return;
+    }
+    
+    if (!message) {
+      alert('Please enter a reminder message');
+      return;
+    }
+    
+    // Validate and get recipient number (required)
+    const recipientNumber = document.getElementById('reminderRecipientNumber').value.trim();
+    if (!recipientNumber) {
+      alert('Please enter a recipient number');
+      return;
+    }
+    
+    // Save recipient number to localStorage for next time
+    localStorage.setItem('smsReminderLastRecipient', recipientNumber);
+    
+    const reminder = {
+      name,
+      message,
+      type,
+      enabled,
+      recipientNumber
+    };
+    
+    // Add type-specific fields
+    if (type === 'once') {
+      const dateTime = document.getElementById('reminderDateTime').value;
+      if (!dateTime) {
+        alert('Please select a date and time');
+        return;
+      }
+      reminder.dateTime = new Date(dateTime).toISOString();
+    } else if (type === 'daily') {
+      const time = document.getElementById('reminderDailyTime').value;
+      if (!time) {
+        alert('Please select a time');
+        return;
+      }
+      reminder.time = time;
+    } else if (type === 'weekly') {
+      const selectedDays = Array.from(document.querySelectorAll('.reminder-day:checked'))
+        .map(cb => parseInt(cb.value));
+      if (selectedDays.length === 0) {
+        alert('Please select at least one day');
+        return;
+      }
+      reminder.days = selectedDays;
+      const time = document.getElementById('reminderWeeklyTime').value;
+      if (!time) {
+        alert('Please select a time');
+        return;
+      }
+      reminder.time = time;
+    } else if (type === 'interval') {
+      const value = document.getElementById('reminderIntervalValue').value;
+      const unit = document.getElementById('reminderIntervalUnit').value;
+      if (!value || !unit) {
+        alert('Please enter an interval value');
+        return;
+      }
+      reminder.interval = `${value}${unit}`;
+    }
+    
+    if (window.electronAPI && window.electronAPI.invoke) {
+      if (id) {
+        // Update existing
+        const response = await window.electronAPI.invoke('sms:updateReminder', id, reminder);
+        if (response && response.success) {
+          await loadReminders();
+          closeReminderModal();
+        } else {
+          alert('Failed to update reminder: ' + (response?.error || 'Unknown error'));
+        }
+      } else {
+        // Add new
+        const response = await window.electronAPI.invoke('sms:addReminder', reminder);
+        if (response && response.success) {
+          await loadReminders();
+          closeReminderModal();
+        } else {
+          alert('Failed to add reminder: ' + (response?.error || 'Unknown error'));
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Error saving reminder:', error);
+    alert('Error saving reminder: ' + error.message);
+  }
+}
+
+function editReminder(id) {
+  const reminder = reminders.find(r => r.id === id);
+  if (reminder) {
+    openReminderModal(reminder);
+  }
+}
+
+async function deleteReminder(id) {
+  if (!confirm('Are you sure you want to delete this reminder?')) {
+    return;
+  }
+  
+  try {
+    if (window.electronAPI && window.electronAPI.invoke) {
+      const response = await window.electronAPI.invoke('sms:deleteReminder', id);
+      if (response && response.success) {
+        await loadReminders();
+      } else {
+        alert('Failed to delete reminder: ' + (response?.error || 'Unknown error'));
+      }
+    }
+  } catch (error) {
+    console.error('Error deleting reminder:', error);
+    alert('Error deleting reminder: ' + error.message);
+  }
+}
+
+async function testSendSMS() {
+  const recipientNumber = document.getElementById('reminderRecipientNumber').value.trim();
+  const message = document.getElementById('reminderMessage').value.trim();
+  
+  if (!recipientNumber) {
+    alert('Please enter a recipient number first');
+    return;
+  }
+  
+  if (!message) {
+    alert('Please enter a message to test');
+    return;
+  }
+  
+  const testBtn = document.getElementById('testSendSmsBtn');
+  const originalText = testBtn.textContent;
+  testBtn.disabled = true;
+  testBtn.textContent = 'Sending...';
+  
+  try {
+    if (window.electronAPI && window.electronAPI.invoke) {
+      const response = await window.electronAPI.invoke('sms:testSend', {
+        recipientNumber,
+        message
+      });
+      
+      if (response && response.success) {
+        alert('✓ Test SMS sent successfully!\n\nCheck your phone for the message.');
+      } else {
+        alert('✗ Failed to send test SMS:\n' + (response?.error || 'Unknown error'));
+      }
+    } else {
+      alert('Error: Electron API not available');
+    }
+  } catch (error) {
+    console.error('Error sending test SMS:', error);
+    alert('Error sending test SMS: ' + error.message);
+  } finally {
+    testBtn.disabled = false;
+    testBtn.textContent = originalText;
+  }
+}
+
+// Initialize reminder UI when settings tab is opened
+let reminderUISetup = false;
+function setupReminderUI() {
+  // Only setup once to avoid duplicate event listeners
+  if (reminderUISetup) {
+    loadReminders(); // Just reload reminders if already setup
+    return;
+  }
+  
+  const addBtn = document.getElementById('addReminderBtn');
+  const modal = document.getElementById('reminderModal');
+  const cancelBtn = document.getElementById('cancelReminderBtn');
+  const saveBtn = document.getElementById('saveReminderBtn');
+  const typeSelect = document.getElementById('reminderType');
+  
+  if (addBtn) {
+    addBtn.addEventListener('click', () => openReminderModal());
+  }
+  
+  if (cancelBtn) {
+    cancelBtn.addEventListener('click', closeReminderModal);
+  }
+  
+  if (saveBtn) {
+    saveBtn.addEventListener('click', saveReminder);
+  }
+  
+  const testSendBtn = document.getElementById('testSendSmsBtn');
+  if (testSendBtn) {
+    testSendBtn.addEventListener('click', testSendSMS);
+  }
+  
+  if (typeSelect) {
+    typeSelect.addEventListener('change', updateReminderTypeFields);
+  }
+  
+  reminderUISetup = true;
+  
+  // Load reminders when settings are loaded
+  loadReminders();
+}
 
 // Add Twilio settings to the change tracking
 function setupTwilioChangeTracking() {

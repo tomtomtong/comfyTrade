@@ -39,5 +39,15 @@ contextBridge.exposeInMainWorld('electronAPI', {
   loadSettings: (filename) => ipcRenderer.invoke('settings:load', filename),
   saveSettings: (filename, settings) => ipcRenderer.invoke('settings:save', filename, settings),
   saveChartImage: (imageData, ticket, symbol) => ipcRenderer.invoke('chart:saveImage', { imageData, ticket, symbol }),
-  readChartImage: (filePath) => ipcRenderer.invoke('chart:readImage', filePath)
+  readChartImage: (filePath) => ipcRenderer.invoke('chart:readImage', filePath),
+  invoke: (channel, ...args) => ipcRenderer.invoke(channel, ...args),
+  on: (channel, callback) => {
+    const validChannels = ['sms:error'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.on(channel, (event, ...args) => callback(...args));
+    }
+  },
+  removeAllListeners: (channel) => {
+    ipcRenderer.removeAllListeners(channel);
+  }
 });

@@ -53,7 +53,8 @@ class SettingsManager {
           stop_loss: true,
           position_opened: false,
           position_closed: false
-        }
+        },
+        scheduledReminders: []
       },
       
       // Telegram settings

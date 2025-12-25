@@ -883,6 +883,115 @@
           </div>
         </div>
         
+        <!-- Scheduled SMS Reminders -->
+        <div class="twilio-config-section">
+          <h4>⏰ Scheduled SMS Reminders</h4>
+          <div style="margin-bottom: 15px;">
+            <button id="addReminderBtn" class="btn btn-primary">+ Add Reminder</button>
+          </div>
+          
+          <div id="remindersList" style="display: flex; flex-direction: column; gap: 10px;">
+            <!-- Reminders will be dynamically added here -->
+          </div>
+        </div>
+        
+        <!-- Reminder Modal -->
+        <div id="reminderModal" class="modal" style="display: none;">
+          <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+              <h3 id="reminderModalTitle">Add Scheduled Reminder</h3>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="reminderId">
+              
+              <div class="form-group">
+                <label>Reminder Name:</label>
+                <input type="text" id="reminderName" placeholder="e.g., Check positions">
+              </div>
+              
+              <div class="form-group">
+                <label>Message:</label>
+                <textarea id="reminderMessage" rows="3" placeholder="Enter your reminder message"></textarea>
+              </div>
+              
+              <div class="form-group">
+                <label>Recipient Number:</label>
+                <input type="text" id="reminderRecipientNumber" placeholder="+1987654321" required>
+                <small>Phone number to receive the SMS reminder</small>
+              </div>
+              
+              <div class="form-group">
+                <label>Schedule Type:</label>
+                <select id="reminderType">
+                  <option value="once">Once (Specific Date/Time)</option>
+                  <option value="daily">Daily (Every Day)</option>
+                  <option value="weekly">Weekly (Specific Days)</option>
+                  <option value="interval">Interval (Every X hours/minutes)</option>
+                </select>
+              </div>
+              
+              <!-- Once type fields -->
+              <div id="reminderOnceFields" class="reminder-type-fields">
+                <div class="form-group">
+                  <label>Date & Time:</label>
+                  <input type="datetime-local" id="reminderDateTime">
+                </div>
+              </div>
+              
+              <!-- Daily type fields -->
+              <div id="reminderDailyFields" class="reminder-type-fields" style="display: none;">
+                <div class="form-group">
+                  <label>Time:</label>
+                  <input type="time" id="reminderDailyTime">
+                </div>
+              </div>
+              
+              <!-- Weekly type fields -->
+              <div id="reminderWeeklyFields" class="reminder-type-fields" style="display: none;">
+                <div class="form-group">
+                  <label>Days of Week:</label>
+                  <div class="checkbox-group" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;">
+                    <label><input type="checkbox" class="reminder-day" value="0"> Sun</label>
+                    <label><input type="checkbox" class="reminder-day" value="1"> Mon</label>
+                    <label><input type="checkbox" class="reminder-day" value="2"> Tue</label>
+                    <label><input type="checkbox" class="reminder-day" value="3"> Wed</label>
+                    <label><input type="checkbox" class="reminder-day" value="4"> Thu</label>
+                    <label><input type="checkbox" class="reminder-day" value="5"> Fri</label>
+                    <label><input type="checkbox" class="reminder-day" value="6"> Sat</label>
+                  </div>
+                </div>
+                <div class="form-group">
+                  <label>Time:</label>
+                  <input type="time" id="reminderWeeklyTime">
+                </div>
+              </div>
+              
+              <!-- Interval type fields -->
+              <div id="reminderIntervalFields" class="reminder-type-fields" style="display: none;">
+                <div class="form-group">
+                  <label>Interval:</label>
+                  <div style="display: flex; gap: 10px; align-items: center;">
+                    <input type="number" id="reminderIntervalValue" placeholder="2" min="1" style="width: 80px;">
+                    <select id="reminderIntervalUnit">
+                      <option value="m">Minutes</option>
+                      <option value="h">Hours</option>
+                      <option value="d">Days</option>
+                    </select>
+                  </div>
+                  <small>Format: e.g., "2h" for every 2 hours, "30m" for every 30 minutes</small>
+                </div>
+              </div>
+            </div>
+            <div class="modal-footer" style="display: flex; gap: 10px; justify-content: space-between; align-items: center;">
+              <button id="testSendSmsBtn" class="btn btn-secondary" style="flex: 1;">📱 Test Send SMS</button>
+              <div style="display: flex; gap: 10px;">
+                <button id="saveReminderBtn" class="btn btn-primary">Save</button>
+                <button id="cancelReminderBtn" class="btn btn-secondary">Cancel</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
       </div>
       
       <!-- AI Analysis Tab -->
