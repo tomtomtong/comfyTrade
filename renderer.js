@@ -2394,6 +2394,28 @@ async function confirmTradeExecution() {
     if (result.success && result.data.success) {
       showMessage(`Trade executed successfully! Ticket: ${result.data.ticket}`, 'success');
       
+      console.log('🔍 [TRADE DEBUG] Trade executed successfully, calling sendPositionOpenedSMS...');
+      console.log('🔍 [TRADE DEBUG] Position data:', {
+        symbol,
+        type,
+        ticket: result.data.ticket,
+        volume,
+        price: result.data.price || result.data.open_price,
+        stopLoss,
+        takeProfit
+      });
+      
+      // Send SMS notification for position opened
+      await sendPositionOpenedSMS({
+        symbol,
+        type,
+        ticket: result.data.ticket,
+        volume,
+        price: result.data.price || result.data.open_price,
+        stopLoss,
+        takeProfit
+      });
+      
       // Record the trade in overtrade control after successful execution
       const tradeDataToRecord = { symbol, type, volume, stopLoss, takeProfit, action: 'executeOrder' };
       await window.overtradeControl.recordTrade('manual', tradeDataToRecord);
@@ -2674,6 +2696,46 @@ async function cancelPendingOrder(ticket) {
 
 // Make cancelPendingOrder globally accessible
 window.cancelPendingOrder = cancelPendingOrder;
+
+// Test SMS for pending order
+async function testPendingOrderSMS(ticket, symbol, orderType, volume, price, stopLoss, takeProfit) {
+  try {
+    if (!window.mt5API || !window.mt5API.sendTwilioAlert) {
+      showMessage('Twilio alert API not available', 'error');
+      return;
+    }
+
+    const twilioSettings = window.settingsManager ? window.settingsManager.get('twilio') : {};
+    
+    if (!twilioSettings.enabled || !twilioSettings.accountSid || !twilioSettings.recipientNumber) {
+      showMessage('Twilio not configured. Please configure in Settings.', 'error');
+      return;
+    }
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    
+    const message = `🧪 TEST ${symbol} ${orderType} #${ticket}`;
+
+    showMessage('Sending test SMS...', 'info');
+
+    const result = await window.mt5API.sendTwilioAlert({
+      toNumber: twilioSettings.recipientNumber,
+      method: twilioSettings.method || 'sms',
+      message: message
+    });
+
+    if (result.success) {
+      showMessage('Test SMS sent successfully!', 'success');
+    } else {
+      showMessage('Failed to send test SMS: ' + (result.error || 'Unknown error'), 'error');
+    }
+  } catch (error) {
+    showMessage('Error sending test SMS: ' + error.message, 'error');
+  }
+}
+
+// Make testPendingOrderSMS globally accessible
+window.testPendingOrderSMS = testPendingOrderSMS;
 
 // Modify pending order modal state
 let modifyPendingOrderData = null;
@@ -8418,31 +8480,12 @@ async function sendPendingOrderExecutionSMS(positionData) {
     let message;
     if (positionData.symbol) {
       // Full position data available
-      const { symbol, type, volume, open_price, stop_loss, take_profit, ticket } = positionData;
-      message = `✅ PENDING ORDER EXECUTED!
-
-Symbol: ${symbol}
-Type: ${type}
-Ticket: ${ticket}
-Volume: ${volume}
-Entry Price: ${open_price}
-Stop Loss: ${stop_loss > 0 ? stop_loss : 'None'}
-Take Profit: ${take_profit > 0 ? take_profit : 'None'}
-
-Time: ${timestamp}
-
-MT5 Trader Alert`;
+      const { symbol, type, volume, ticket } = positionData;
+      message = `✅ ${symbol} ${type} executed #${ticket}`;
     } else {
       // Limited data available
       const ticket = positionData.ticket || 'Unknown';
-      message = `✅ PENDING ORDER EXECUTED!
-
-Ticket: ${ticket}
-${positionData.note || 'Pending order has been executed'}
-
-Time: ${timestamp}
-
-MT5 Trader Alert`;
+      message = `✅ Pending order executed #${ticket}`;
     }
 
     const result = await window.mt5API.sendTwilioAlert({
@@ -8458,6 +8501,87 @@ MT5 Trader Alert`;
     }
   } catch (error) {
     console.error('Error sending pending order execution SMS:', error);
+  }
+}
+
+// Helper function to send SMS notification when position is opened
+async function sendPositionOpenedSMS(positionData) {
+  console.log('🔍 [SMS DEBUG] sendPositionOpenedSMS called with data:', positionData);
+  
+  try {
+    // Check API availability
+    if (!window.mt5API) {
+      console.log('❌ [SMS DEBUG] window.mt5API not available');
+      return;
+    }
+    
+    if (!window.mt5API.sendTwilioAlert) {
+      console.log('❌ [SMS DEBUG] window.mt5API.sendTwilioAlert not available');
+      return;
+    }
+    
+    console.log('✅ [SMS DEBUG] Twilio API is available');
+
+    // Get Twilio settings
+    const twilioSettings = window.settingsManager ? window.settingsManager.get('twilio') : {};
+    console.log('🔍 [SMS DEBUG] Twilio settings:', {
+      enabled: twilioSettings.enabled,
+      hasAccountSid: !!twilioSettings.accountSid,
+      hasRecipientNumber: !!twilioSettings.recipientNumber,
+      method: twilioSettings.method,
+      alerts: twilioSettings.alerts
+    });
+    
+    if (!twilioSettings.enabled) {
+      console.log('❌ [SMS DEBUG] Twilio is disabled in settings');
+      return;
+    }
+    
+    if (!twilioSettings.accountSid) {
+      console.log('❌ [SMS DEBUG] No Twilio Account SID configured');
+      return;
+    }
+    
+    if (!twilioSettings.recipientNumber) {
+      console.log('❌ [SMS DEBUG] No recipient number configured');
+      return;
+    }
+
+    // Check if position opened alerts are enabled
+    const alerts = twilioSettings.alerts || {};
+    console.log('🔍 [SMS DEBUG] Alert settings:', alerts);
+    
+    if (alerts.position_opened === false) {
+      console.log('❌ [SMS DEBUG] Position opened alerts are disabled');
+      return;
+    }
+    
+    console.log('✅ [SMS DEBUG] All checks passed, preparing SMS...');
+
+    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+    const { symbol, type, ticket, volume, price, stopLoss, takeProfit } = positionData;
+    
+    const message = `📈 ${symbol} ${type} ${volume} opened #${ticket}`;
+
+    console.log('🔍 [SMS DEBUG] Sending SMS with message:', message);
+    console.log('🔍 [SMS DEBUG] To number:', twilioSettings.recipientNumber);
+    console.log('🔍 [SMS DEBUG] Method:', twilioSettings.method || 'sms');
+
+    const result = await window.mt5API.sendTwilioAlert({
+      toNumber: twilioSettings.recipientNumber,
+      method: twilioSettings.method || 'sms',
+      message: message
+    });
+
+    console.log('🔍 [SMS DEBUG] Twilio API result:', result);
+
+    if (result.success) {
+      console.log('✅ [SMS DEBUG] SMS notification sent successfully for position opened');
+    } else {
+      console.log('❌ [SMS DEBUG] Failed to send SMS notification for position opened:', result.error);
+    }
+  } catch (error) {
+    console.error('❌ [SMS DEBUG] Error sending position opened SMS:', error);
   }
 }
 

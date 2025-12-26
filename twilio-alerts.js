@@ -123,30 +123,11 @@ class TwilioAlerts {
      * @returns {Promise<Object>} Dict with success status and message details
      */
     try {
-      // Format the alert message
       const symbol = positionData.symbol || 'Unknown';
       const ticket = positionData.ticket || 'Unknown';
       const profit = positionData.profit || 0;
-      const volume = positionData.volume || 0;
-      const orderType = positionData.type || 'Unknown';
-      const takeProfit = positionData.take_profit || 0;
-      const currentPrice = positionData.current_price || 0;
       
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      
-      const message = `🎯 TAKE PROFIT HIT!
-
-Symbol: ${symbol}
-Ticket: ${ticket}
-Type: ${orderType}
-Volume: ${volume}
-Profit: $${profit.toFixed(2)}
-TP Level: ${takeProfit}
-Current Price: ${currentPrice}
-
-Time: ${timestamp}
-
-MT5 Trader Alert`;
+      const message = `🎯 ${symbol} TP hit ${profit.toFixed(2)} #${ticket}`;
       
       if (method.toLowerCase() === "whatsapp") {
         return await this.sendWhatsApp(toNumber, message);
@@ -173,26 +154,8 @@ MT5 Trader Alert`;
       const symbol = positionData.symbol || 'Unknown';
       const ticket = positionData.ticket || 'Unknown';
       const profit = positionData.profit || 0;
-      const volume = positionData.volume || 0;
-      const orderType = positionData.type || 'Unknown';
-      const stopLoss = positionData.stop_loss || 0;
-      const currentPrice = positionData.current_price || 0;
       
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      
-      const message = `🛑 STOP LOSS HIT!
-
-Symbol: ${symbol}
-Ticket: ${ticket}
-Type: ${orderType}
-Volume: ${volume}
-Loss: $${profit.toFixed(2)}
-SL Level: ${stopLoss}
-Current Price: ${currentPrice}
-
-Time: ${timestamp}
-
-MT5 Trader Alert`;
+      const message = `🛑 ${symbol} SL hit ${profit.toFixed(2)} #${ticket}`;
       
       if (method.toLowerCase() === "whatsapp") {
         return await this.sendWhatsApp(toNumber, message);
@@ -220,25 +183,8 @@ MT5 Trader Alert`;
       const ticket = positionData.ticket || 'Unknown';
       const volume = positionData.volume || 0;
       const orderType = positionData.type || 'Unknown';
-      const openPrice = positionData.price || positionData.open_price || 0;
-      const stopLoss = positionData.sl || positionData.stop_loss || 0;
-      const takeProfit = positionData.tp || positionData.take_profit || 0;
       
-      const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-      
-      const message = `📈 POSITION OPENED!
-
-Symbol: ${symbol}
-Ticket: ${ticket}
-Type: ${orderType}
-Volume: ${volume}
-Entry Price: ${openPrice}
-Stop Loss: ${stopLoss > 0 ? stopLoss : 'None'}
-Take Profit: ${takeProfit > 0 ? takeProfit : 'None'}
-
-Time: ${timestamp}
-
-MT5 Trader Alert`;
+      const message = `📈 ${symbol} ${orderType} ${volume} opened #${ticket}`;
       
       if (method.toLowerCase() === "whatsapp") {
         return await this.sendWhatsApp(toNumber, message);
@@ -261,16 +207,12 @@ MT5 Trader Alert`;
      * @param {string} method - 'sms' or 'whatsapp'
      * @returns {Promise<Object>} Dict with success status and message details
      */
-    const timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-    const formattedMessage = `${message}\n\nTime: ${timestamp}\nMT5 Trader Alert`;
-    
     if (method.toLowerCase() === "whatsapp") {
-      return await this.sendWhatsApp(toNumber, formattedMessage);
+      return await this.sendWhatsApp(toNumber, message);
     } else {
-      return await this.sendSMS(toNumber, formattedMessage);
+      return await this.sendSMS(toNumber, message);
     }
   }
 }
 
 module.exports = TwilioAlerts;
-
