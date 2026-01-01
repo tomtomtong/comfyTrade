@@ -27,8 +27,14 @@ class NodeEditor {
   }
 
   setupCanvas() {
-    this.canvas.width = this.canvas.offsetWidth;
-    this.canvas.height = this.canvas.offsetHeight;
+    const container = this.canvas.parentElement;
+    if (container) {
+      this.canvas.width = container.clientWidth;
+      this.canvas.height = container.clientHeight;
+    } else {
+      this.canvas.width = this.canvas.offsetWidth;
+      this.canvas.height = this.canvas.offsetHeight;
+    }
   }
 
   setupEventListeners() {
@@ -37,7 +43,23 @@ class NodeEditor {
     this.canvas.addEventListener('mouseup', this.onMouseUp.bind(this));
     this.canvas.addEventListener('wheel', this.onWheel.bind(this));
     this.canvas.addEventListener('contextmenu', (e) => e.preventDefault());
-    window.addEventListener('resize', () => this.setupCanvas());
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      setTimeout(() => this.setupCanvas(), 0);
+    });
+    
+    // Handle container resize using ResizeObserver for better performance
+    if (typeof ResizeObserver !== 'undefined') {
+      const container = this.canvas.parentElement;
+      if (container) {
+        const resizeObserver = new ResizeObserver(() => {
+          this.setupCanvas();
+        });
+        resizeObserver.observe(container);
+      }
+    }
+    
     window.addEventListener('keydown', this.onKeyDown.bind(this));
     window.addEventListener('keyup', this.onKeyUp.bind(this));
   }
