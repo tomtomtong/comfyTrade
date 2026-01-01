@@ -10,18 +10,7 @@ This document outlines the changes made to transform the web demo into a promoti
   - Project name and tagline
   - "View on GitHub" button (primary CTA)
   - "Contact Support" button with email link
-  - **Unique visitor counter** showing real-time stats
 - **Design**: Purple gradient background with white text and prominent buttons
-
-### 2. Visitor Tracking System
-- **Added**: Server-side visitor tracking with persistent storage
-- **Features**:
-  - Tracks unique visitors based on IP + User Agent
-  - Displays visitor count in promotional banner
-  - Shows stats in About modal footer
-  - Persists data to `data/visitor_stats.json`
-  - API endpoint: `/api/stats/visitors`
-- **Display**: Formatted counter with icon (👥) in a styled badge
 
 ### 2. Updated Demo Banner
 - **Changed**: From generic "Demo Mode" to more specific messaging
@@ -99,32 +88,11 @@ This document outlines the changes made to transform the web demo into a promoti
 
 ## Files Modified
 
-1. `web/public/index.html` - Added promotional banner, visitor counter, About modal, updated branding
-2. `web/public/styles.css` - Added promotional styling, visitor counter badge, and About modal styles
-3. `web/public/app.js` - Added About modal functionality, visitor stats loading, and event handlers
-4. `web/public/api.js` - Added statsAPI for visitor tracking
-5. `web/server.js` - Added visitor tracking system, persistence, and API endpoint
-6. `web/README.md` - Completely restructured to promote full version
-7. `web/package.json` - Updated metadata and repository information
-
-## Data Files Created
-
-- `web/data/visitor_stats.json` - Persistent storage for visitor statistics (auto-generated)
-
-## Technical Implementation
-
-### Visitor Tracking
-- **Method**: IP address + User Agent fingerprinting
-- **Storage**: JSON file with Set-based deduplication
-- **Persistence**: Automatic save on new unique visitor
-- **API**: RESTful endpoint at `/api/stats/visitors`
-- **Display**: Real-time counter with number formatting (e.g., "1,234")
-
-### Security & Privacy
-- No personal data stored beyond IP + User Agent hash
-- Visitor IDs are not reversible
-- Stats are aggregated and anonymous
-- Compliant with basic privacy practices
+1. `web/public/index.html` - Added promotional banner, About modal, updated branding
+2. `web/public/styles.css` - Added promotional styling and About modal styles
+3. `web/public/app.js` - Added About modal functionality and event handlers
+4. `web/README.md` - Completely restructured to promote full version
+5. `web/package.json` - Updated metadata and repository information
 
 ## Next Steps (Optional)
 

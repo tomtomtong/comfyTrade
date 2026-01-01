@@ -8,8 +8,6 @@ A web-based demo version of ComfyTrade, the open source MT5 node-based trading s
 
 This is a limited web demo showcasing the core node editor functionality. For the full experience with real MT5 integration, download the desktop application from the GitHub repository.
 
-**Live Stats**: The demo tracks unique visitors to show community interest in the project.
-
 ### Demo Features
 
 - 🎨 Visual node-based strategy builder

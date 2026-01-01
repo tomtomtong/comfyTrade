@@ -9,7 +9,6 @@ document.addEventListener('DOMContentLoaded', async () => {
   initializeNodeEditor();
   setupEventListeners();
   await loadSettings();
-  await loadVisitorStats();
 });
 
 function initializeNodeEditor() {
@@ -325,9 +324,6 @@ async function resetSimulator() {
 // About Modal
 function showAboutModal() {
   document.getElementById('aboutModal').classList.add('show');
-  // Update visitor count in About modal
-  const count = document.getElementById('visitorCount').textContent;
-  document.getElementById('aboutVisitorCount').textContent = count;
 }
 
 function hideAboutModal() {
@@ -519,19 +515,5 @@ async function loadSettings() {
     }
   } catch (err) {
     console.log('Using default settings');
-  }
-}
-
-// Load and display visitor stats
-async function loadVisitorStats() {
-  try {
-    const result = await window.statsAPI.getVisitorStats();
-    if (result.success) {
-      const count = result.data.uniqueVisitors;
-      document.getElementById('visitorCount').textContent = count.toLocaleString();
-    }
-  } catch (err) {
-    console.log('Could not load visitor stats');
-    document.getElementById('visitorCount').textContent = '---';
   }
 }

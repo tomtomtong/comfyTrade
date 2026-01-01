@@ -16,42 +16,56 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- Promotional Banner -->
-    <div class="promo-banner">
-      <div class="promo-content">
-        <div class="promo-text">
-          <strong>🚀 Try ComfyTrade - Open Source MT5 Node Editor</strong>
-          <span class="promo-separator">|</span>
-          <span>Full desktop version with real MT5 integration, advanced features & more!</span>
-          <span class="promo-separator">|</span>
-          <span class="visitor-counter">👥 <span id="visitorCount">Loading...</span> unique visitors</span>
-        </div>
-        <div class="promo-actions">
-          <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" class="promo-btn promo-btn-primary">
-            ⭐ View on GitHub
+    <!-- Large Promotional Header -->
+    <div class="promo-header">
+      <div class="promo-main">
+        <h1 class="promo-title">ComfyTrade - Open Source MT5 Node Editor</h1>
+        <p class="promo-subtitle">Visual Trading Strategy Builder • No Coding Required • Free & Open Source</p>
+        <div class="promo-cta-large">
+          <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" class="cta-btn cta-btn-github">
+            <span class="cta-icon">⭐</span>
+            <span class="cta-text">
+              <strong>View Full Project on GitHub</strong>
+              <small>Download desktop version with real MT5 integration</small>
+            </span>
           </a>
-          <a href="mailto:tomtomtongtong@gmail.com" class="promo-btn promo-btn-secondary">
-            📧 Contact Support
+          <a href="mailto:tomtomtongtong@gmail.com" class="cta-btn cta-btn-contact">
+            <span class="cta-icon">📧</span>
+            <span class="cta-text">
+              <strong>Get Support</strong>
+              <small>tomtomtongtong@gmail.com</small>
+            </span>
           </a>
         </div>
       </div>
     </div>
     
-    <!-- Demo Banner -->
-    <div class="demo-banner">
-      🎮 Web Demo Mode - All trades are simulated. Download the full version for real MT5 trading!
+    <!-- Demo Warning Banner -->
+    <div class="demo-warning">
+      <div class="demo-warning-content">
+        <span class="demo-warning-icon">⚠️</span>
+        <div class="demo-warning-text">
+          <strong>LIMITED WEB DEMO</strong> - This is a simplified demo with simulated data only. 
+          <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" class="demo-download-link">
+            Download the full desktop version
+          </a> for real MT5 trading, backtesting, alerts, and advanced features.
+        </div>
+      </div>
     </div>
 
     <!-- Top Toolbar -->
     <div class="toolbar">
       <div class="toolbar-left">
-        <h1>ComfyTrade <span class="version-badge">Web Demo</span></h1>
+        <h1>ComfyTrade <span class="version-badge">WEB DEMO</span></h1>
         <button id="connectBtn" class="btn btn-primary">Connect Demo</button>
         <button id="showLogBtn" class="btn btn-secondary">Show Log</button>
         <button id="toggleBottomPanelBtn" class="btn btn-secondary">📊 Positions</button>
       </div>
       <div class="toolbar-right">
-        <button id="aboutBtn" class="btn btn-info">ℹ️ About</button>
+        <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" class="btn btn-github-toolbar">
+          ⭐ GitHub Project
+        </a>
+        <button id="aboutBtn" class="btn btn-info">ℹ️ Full Version Info</button>
         <button id="tradeBtn" class="btn btn-success">New Trade</button>
         <button id="settingsBtn" class="btn btn-secondary">⚙ Settings</button>
         <button id="helpBtn" class="btn btn-secondary">❓ Help</button>
@@ -269,63 +283,79 @@
     <!-- About Modal -->
     <div id="aboutModal" class="modal">
       <div class="modal-content about-modal">
-        <h2>About ComfyTrade</h2>
+        <h2>Get the Full ComfyTrade Desktop Version</h2>
         <div class="about-content">
-          <div class="about-section">
-            <h3>🎯 Open Source MT5 Node Editor</h3>
-            <p>ComfyTrade is a powerful, visual node-based trading strategy builder for MetaTrader 5. Build complex trading strategies without coding using an intuitive drag-and-drop interface.</p>
+          
+          <div class="about-highlight-box">
+            <h3>🚀 This is a Limited Web Demo</h3>
+            <p>You're currently using a simplified browser version with simulated data. The full desktop application offers significantly more features and real MT5 integration.</p>
           </div>
           
           <div class="about-section">
-            <h3>✨ Full Version Features</h3>
-            <ul class="feature-list">
-              <li>✅ Real MT5 integration with live trading</li>
-              <li>✅ Advanced risk management & position controls</li>
-              <li>✅ Historical data backtesting</li>
-              <li>✅ Custom indicators (MA, RSI, and more)</li>
-              <li>✅ SMS/WhatsApp alerts via Twilio</li>
-              <li>✅ Plugin system for custom nodes</li>
-              <li>✅ Market sentiment analysis</li>
-              <li>✅ Trade journal & performance tracking</li>
-              <li>✅ Desktop application (Windows, Mac, Linux)</li>
+            <h3>✨ What You Get in the Full Desktop Version</h3>
+            <ul class="feature-list-large">
+              <li><strong>✅ Real MT5 Integration</strong> - Connect directly to your MetaTrader 5 terminal for live trading</li>
+              <li><strong>✅ Historical Backtesting</strong> - Import and test strategies against years of historical data</li>
+              <li><strong>✅ Advanced Risk Management</strong> - Volume limits, overtrade protection, pip-based loss calculations</li>
+              <li><strong>✅ SMS/WhatsApp Alerts</strong> - Get instant notifications via Twilio for all trade events</li>
+              <li><strong>✅ Custom Indicators</strong> - Moving Average, RSI, Bollinger Bands, and more technical indicators</li>
+              <li><strong>✅ Plugin System</strong> - Create custom nodes for any data source, API, or trading logic</li>
+              <li><strong>✅ Market Sentiment Analysis</strong> - Integrate news feeds and sentiment data into your strategies</li>
+              <li><strong>✅ Trade Journal & Analytics</strong> - Track performance, analyze trades, and improve your strategy</li>
+              <li><strong>✅ Cross-Platform Desktop App</strong> - Works on Windows, Mac, and Linux</li>
             </ul>
           </div>
           
           <div class="about-section">
-            <h3>🚀 Get Started</h3>
-            <div class="cta-buttons">
-              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" class="btn btn-primary btn-large">
-                <span class="btn-icon">⭐</span> Star on GitHub
+            <h3>📥 Download & Install</h3>
+            <div class="cta-buttons-large">
+              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" class="btn-mega btn-mega-primary">
+                <span class="btn-mega-icon">⬇️</span>
+                <div class="btn-mega-content">
+                  <strong>Download Full Version</strong>
+                  <small>Get the latest release for Windows, Mac, or Linux</small>
+                </div>
               </a>
-              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" class="btn btn-success btn-large">
-                <span class="btn-icon">⬇️</span> Download Full Version
+              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" class="btn-mega btn-mega-secondary">
+                <span class="btn-mega-icon">⭐</span>
+                <div class="btn-mega-content">
+                  <strong>View on GitHub</strong>
+                  <small>Star the project • Read documentation • Contribute</small>
+                </div>
               </a>
             </div>
           </div>
           
           <div class="about-section">
-            <h3>💬 Need Help?</h3>
-            <p>Have questions, suggestions, or need assistance? We're here to help!</p>
-            <div class="contact-info">
-              <div class="contact-item">
-                <span class="contact-icon">📧</span>
-                <a href="mailto:tomtomtongtong@gmail.com">tomtomtongtong@gmail.com</a>
-              </div>
-              <div class="contact-item">
-                <span class="contact-icon">🐛</span>
-                <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/issues" target="_blank">Report Issues</a>
-              </div>
-              <div class="contact-item">
-                <span class="contact-icon">💡</span>
-                <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/discussions" target="_blank">Join Discussions</a>
-              </div>
+            <h3>💬 Need Help or Have Questions?</h3>
+            <div class="contact-grid">
+              <a href="mailto:tomtomtongtong@gmail.com" class="contact-card">
+                <span class="contact-card-icon">📧</span>
+                <div class="contact-card-content">
+                  <strong>Email Support</strong>
+                  <span>tomtomtongtong@gmail.com</span>
+                </div>
+              </a>
+              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/issues" target="_blank" class="contact-card">
+                <span class="contact-card-icon">🐛</span>
+                <div class="contact-card-content">
+                  <strong>Report Issues</strong>
+                  <span>Bug reports & feature requests</span>
+                </div>
+              </a>
+              <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/discussions" target="_blank" class="contact-card">
+                <span class="contact-card-icon">💡</span>
+                <div class="contact-card-content">
+                  <strong>Community Discussions</strong>
+                  <span>Ask questions & share strategies</span>
+                </div>
+              </a>
             </div>
           </div>
           
-          <div class="about-footer">
-            <p>Made with ❤️ by the ComfyTrade community</p>
-            <p class="license-text">Open Source • MIT License</p>
-            <p class="stats-text">👥 <span id="aboutVisitorCount">---</span> unique visitors have tried this demo</p>
+          <div class="about-footer-large">
+            <p class="about-footer-main">Open Source • MIT License • Free Forever</p>
+            <p class="about-footer-sub">Made with ❤️ by the ComfyTrade community</p>
           </div>
         </div>
         <div class="modal-buttons">
