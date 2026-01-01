@@ -158,17 +158,31 @@ class NodeEditor {
 
   onWheel(e) {
     e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const oldScale = this.scale;
-    this.scale *= delta;
-    this.scale = Math.max(0.1, Math.min(5, this.scale));
-
+    
+    // Get mouse position in canvas coordinates BEFORE zoom
     const rect = this.canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
     const mouseY = e.clientY - rect.top;
-    const scaleChange = this.scale / oldScale - 1;
-    this.panOffset.x -= mouseX * scaleChange;
-    this.panOffset.y -= mouseY * scaleChange;
+    
+    // Convert to world coordinates before zoom
+    const worldBeforeZoom = this.screenToCanvas(mouseX, mouseY);
+    
+    // Calculate new scale
+    const delta = e.deltaY > 0 ? 0.9 : 1.1;
+    const newScale = Math.max(0.1, Math.min(5, this.scale * delta));
+    
+    // Only proceed if scale actually changes
+    if (newScale === this.scale) return;
+    
+    // Update scale
+    this.scale = newScale;
+    
+    // Convert same world point to screen coordinates after zoom
+    const worldAfterZoom = this.screenToCanvas(mouseX, mouseY);
+    
+    // Adjust pan offset to keep the world point under the mouse
+    this.panOffset.x += (worldAfterZoom.x - worldBeforeZoom.x) * this.scale;
+    this.panOffset.y += (worldAfterZoom.y - worldBeforeZoom.y) * this.scale;
   }
 
   onKeyDown(e) {
@@ -506,7 +520,7 @@ class NodeEditor {
 
   drawGrid() {
     const gridSize = 20;
-    this.ctx.strokeStyle = '#2a2a2a';
+    this.ctx.strokeStyle = '#e8e8e8';
     this.ctx.lineWidth = 0.5 / this.scale;
 
     const startX = Math.floor(-this.panOffset.x / this.scale / gridSize) * gridSize - gridSize;
@@ -546,12 +560,23 @@ class NodeEditor {
   drawNode(node) {
     const isSelected = node === this.selectedNode;
 
-    // Node background
-    this.ctx.fillStyle = '#1e1e1e';
-    this.ctx.strokeStyle = isSelected ? '#4CAF50' : '#333';
-    this.ctx.lineWidth = isSelected ? 2 / this.scale : 1 / this.scale;
+    // Node background - white with shadow
+    this.ctx.fillStyle = '#ffffff';
+    this.ctx.strokeStyle = isSelected ? '#4CAF50' : '#d0d0d0';
+    this.ctx.lineWidth = isSelected ? 2.5 / this.scale : 1.5 / this.scale;
+    
+    // Draw shadow
+    this.ctx.shadowColor = 'rgba(0, 0, 0, 0.15)';
+    this.ctx.shadowBlur = 8 / this.scale;
+    this.ctx.shadowOffsetX = 2 / this.scale;
+    this.ctx.shadowOffsetY = 2 / this.scale;
+    
     this.roundRect(node.x, node.y, node.width, node.height, 8);
     this.ctx.fill();
+    this.ctx.shadowColor = 'transparent';
+    this.ctx.shadowBlur = 0;
+    this.ctx.shadowOffsetX = 0;
+    this.ctx.shadowOffsetY = 0;
     this.ctx.stroke();
 
     // Header
@@ -581,7 +606,7 @@ class NodeEditor {
       this.ctx.fillStyle = node.inputs[i] === 'trigger' ? '#ff9800' : '#2196F3';
       this.ctx.fill();
       this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 1 / this.scale;
+      this.ctx.lineWidth = 2 / this.scale;
       this.ctx.stroke();
     }
 
@@ -593,12 +618,12 @@ class NodeEditor {
       this.ctx.fillStyle = node.outputs[i] === 'trigger' ? '#ff9800' : '#2196F3';
       this.ctx.fill();
       this.ctx.strokeStyle = '#fff';
-      this.ctx.lineWidth = 1 / this.scale;
+      this.ctx.lineWidth = 2 / this.scale;
       this.ctx.stroke();
     }
 
     // Parameters preview
-    this.ctx.fillStyle = '#888';
+    this.ctx.fillStyle = '#666666';
     this.ctx.font = `${10 / this.scale}px Arial`;
     this.ctx.textAlign = 'left';
     let paramY = node.y + 50;

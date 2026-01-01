@@ -183,13 +183,39 @@
       }
     }
     
-    // Track page load
+    // Track page load with enhanced source tracking
     window.addEventListener('load', () => {
+      // Get URL parameters for source tracking
+      const urlParams = new URLSearchParams(window.location.search);
+      const utmSource = urlParams.get('utm_source');
+      const utmMedium = urlParams.get('utm_medium');
+      const utmCampaign = urlParams.get('utm_campaign');
+      const referrer = document.referrer;
+      
       trackEvent('page_view', { 
         label: 'demo_loaded',
         page_title: document.title,
-        page_location: window.location.href
+        page_location: window.location.href,
+        utm_source: utmSource,
+        utm_medium: utmMedium,
+        utm_campaign: utmCampaign,
+        referrer: referrer
       });
+      
+      // Track specific referral sources
+      if (referrer) {
+        let referralSource = 'unknown';
+        if (referrer.includes('github.com')) referralSource = 'github';
+        else if (referrer.includes('google.com')) referralSource = 'google';
+        else if (referrer.includes('twitter.com')) referralSource = 'twitter';
+        else if (referrer.includes('linkedin.com')) referralSource = 'linkedin';
+        else if (referrer.includes('reddit.com')) referralSource = 'reddit';
+        
+        trackEvent('referral_source', {
+          label: referralSource,
+          referrer_url: referrer
+        });
+      }
     });
     
     // Track user engagement time
@@ -243,6 +269,13 @@
         <h1 class="promo-title">ComfyTrade - Open Source MT5 Node Editor</h1>
         <p class="promo-subtitle">Visual Trading Strategy Builder • No Coding Required • Free & Open Source</p>
         <div class="promo-cta-large">
+          <a href="https://www.youtube.com/watch?v=M4PLVVUaQo8&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="cta-btn cta-btn-youtube">
+            <span class="cta-icon">🎥</span>
+            <span class="cta-text">
+              <strong>Watch Demo Video</strong>
+              <small>See ComfyTrade in action - full walkthrough</small>
+            </span>
+          </a>
           <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" rel="noopener noreferrer" class="cta-btn cta-btn-github">
             <span class="cta-icon">⭐</span>
             <span class="cta-text">
@@ -530,6 +563,20 @@
           </section>
           
           <section class="about-section">
+            <h3>🎥 Watch ComfyTrade in Action</h3>
+            <div class="video-section">
+              <p>See a complete walkthrough of ComfyTrade's features and capabilities:</p>
+              <a href="https://www.youtube.com/watch?v=M4PLVVUaQo8&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="btn-mega btn-mega-youtube">
+                <span class="btn-mega-icon">🎥</span>
+                <div class="btn-mega-content">
+                  <strong>Watch Demo Video</strong>
+                  <small>Complete feature walkthrough and tutorial</small>
+                </div>
+              </a>
+            </div>
+          </section>
+          
+          <section class="about-section">
             <h3>📥 Download & Install</h3>
             <div class="cta-buttons-large">
               <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" rel="noopener noreferrer" class="btn-mega btn-mega-primary">
@@ -649,6 +696,7 @@
       
       trackExternalLink('a[href*="github.com"]', 'external_link', 'github_click');
       trackExternalLink('a[href*="releases"]', 'external_link', 'download_click');
+      trackExternalLink('a[href*="youtube.com"]', 'external_link', 'youtube_video_click');
       trackExternalLink('a[href^="mailto:"]', 'external_link', 'email_click');
       
       // Track node additions (if node editor is available)
