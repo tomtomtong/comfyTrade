@@ -2,12 +2,12 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs').promises;
-const WebSocket = require('ws');
 const cors = require('cors');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+const PORT = parseInt(process.env.PORT) || 3000;
+const HOST = '0.0.0.0'; // Important: bind to all interfaces for Railway
 
 // Middleware
 app.use(cors());
@@ -378,8 +378,7 @@ app.get('/', (req, res) => {
 
 // Start server
 loadSettings().then(() => {
-  app.listen(PORT, () => {
-    console.log(`MT5 Strategy Builder Web running on port ${PORT}`);
-    console.log(`Open http://localhost:${PORT} in your browser`);
+  app.listen(PORT, HOST, () => {
+    console.log(`MT5 Strategy Builder Web running on ${HOST}:${PORT}`);
   });
 });
