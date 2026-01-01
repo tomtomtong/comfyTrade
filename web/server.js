@@ -33,6 +33,13 @@ let simulatorState = {
   nextTicket: 1000000
 };
 
+// Visitor tracking
+let visitorStats = {
+  uniqueVisitors: 0,
+  totalVisits: 0,
+  visitors: new Set() // Store visitor IPs/fingerprints
+};
+
 // Demo market data (simulated prices)
 const demoMarketData = {
   'EURUSD': { bid: 1.0850, ask: 1.0852, spread: 0.0002 },
@@ -66,6 +73,17 @@ async function loadSettings() {
   } catch (err) {
     console.log('No existing settings, using defaults');
   }
+  
+  // Load visitor stats
+  try {
+    const statsData = await fs.readFile(path.join(__dirname, 'data', 'visitor_stats.json'), 'utf8');
+    const loaded = JSON.parse(statsData);
+    visitorStats.uniqueVisitors = loaded.uniqueVisitors || 0;
+    visitorStats.totalVisits = loaded.totalVisits || 0;
+    visitorStats.visitors = new Set(loaded.visitors || []);
+  } catch (err) {
+    console.log('No existing visitor stats, starting fresh');
+  }
 }
 
 // Save settings to file
@@ -78,6 +96,41 @@ async function saveSettings() {
     );
   } catch (err) {
     console.error('Error saving settings:', err);
+  }
+}
+
+// Save visitor stats to file
+async function saveVisitorStats() {
+  try {
+    await fs.mkdir(path.join(__dirname, 'data'), { recursive: true });
+    await fs.writeFile(
+      path.join(__dirname, 'data', 'visitor_stats.json'),
+      JSON.stringify({
+        uniqueVisitors: visitorStats.uniqueVisitors,
+        totalVisits: visitorStats.totalVisits,
+        visitors: Array.from(visitorStats.visitors)
+      }, null, 2)
+    );
+  } catch (err) {
+    console.error('Error saving visitor stats:', err);
+  }
+}
+
+// Track visitor
+function trackVisitor(req) {
+  // Get visitor identifier (IP + User Agent for better uniqueness)
+  const ip = req.headers['x-forwarded-for'] || req.connection.remoteAddress || 'unknown';
+  const userAgent = req.headers['user-agent'] || '';
+  const visitorId = `${ip}_${userAgent}`;
+  
+  // Increment total visits
+  visitorStats.totalVisits++;
+  
+  // Check if unique visitor
+  if (!visitorStats.visitors.has(visitorId)) {
+    visitorStats.visitors.add(visitorId);
+    visitorStats.uniqueVisitors++;
+    saveVisitorStats(); // Save when new unique visitor
   }
 }
 
@@ -371,8 +424,20 @@ app.get('/api/twilio/config', (req, res) => {
   res.json({ success: true, data: appSettings.twilio || {} });
 });
 
+// Visitor stats endpoint
+app.get('/api/stats/visitors', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      uniqueVisitors: visitorStats.uniqueVisitors,
+      totalVisits: visitorStats.totalVisits
+    }
+  });
+});
+
 // Serve the main app
 app.get('/', (req, res) => {
+  trackVisitor(req);
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 

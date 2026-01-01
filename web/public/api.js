@@ -125,3 +125,11 @@ window.electronAPI = {
     return Promise.resolve({ success: true });
   }
 };
+
+// Stats API
+window.statsAPI = {
+  async getVisitorStats() {
+    const res = await fetch(`${API_BASE}/api/stats/visitors`);
+    return res.json();
+  }
+};

@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   initializeNodeEditor();
   setupEventListeners();
   await loadSettings();
+  await loadVisitorStats();
 });
 
 function initializeNodeEditor() {
@@ -34,6 +35,7 @@ function setupEventListeners() {
   document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
   document.getElementById('clearGraphBtn').addEventListener('click', clearGraph);
   document.getElementById('helpBtn').addEventListener('click', showHelp);
+  document.getElementById('aboutBtn').addEventListener('click', showAboutModal);
   
   // Account
   document.getElementById('refreshAccountBtn').addEventListener('click', refreshAccount);
@@ -48,6 +50,9 @@ function setupEventListeners() {
   // Settings modal
   document.getElementById('closeSettingsBtn').addEventListener('click', hideSettingsModal);
   document.getElementById('resetSimulatorBtn').addEventListener('click', resetSimulator);
+  
+  // About modal
+  document.getElementById('closeAboutBtn').addEventListener('click', hideAboutModal);
   
   // Log modal
   document.getElementById('closeLogBtn').addEventListener('click', hideLogModal);
@@ -68,6 +73,15 @@ function setupEventListeners() {
       const screenY = rect.height / 2 + Math.random() * 100 - 50;
       const canvasPos = nodeEditor.screenToCanvas(screenX, screenY);
       nodeEditor.addNode(type, canvasPos.x, canvasPos.y);
+    });
+  });
+  
+  // Modal overlay clicks
+  document.querySelectorAll('.modal').forEach(modal => {
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('show');
+      }
     });
   });
   
@@ -308,6 +322,18 @@ async function resetSimulator() {
   }
 }
 
+// About Modal
+function showAboutModal() {
+  document.getElementById('aboutModal').classList.add('show');
+  // Update visitor count in About modal
+  const count = document.getElementById('visitorCount').textContent;
+  document.getElementById('aboutVisitorCount').textContent = count;
+}
+
+function hideAboutModal() {
+  document.getElementById('aboutModal').classList.remove('show');
+}
+
 // Log
 function showLogModal() {
   document.getElementById('logModal').classList.add('show');
@@ -493,5 +519,19 @@ async function loadSettings() {
     }
   } catch (err) {
     console.log('Using default settings');
+  }
+}
+
+// Load and display visitor stats
+async function loadVisitorStats() {
+  try {
+    const result = await window.statsAPI.getVisitorStats();
+    if (result.success) {
+      const count = result.data.uniqueVisitors;
+      document.getElementById('visitorCount').textContent = count.toLocaleString();
+    }
+  } catch (err) {
+    console.log('Could not load visitor stats');
+    document.getElementById('visitorCount').textContent = '---';
   }
 }

@@ -18,6 +18,94 @@ body {
   height: 100vh;
 }
 
+/* Promotional Banner */
+.promo-banner {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 12px 20px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+}
+
+.promo-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  max-width: 1400px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.promo-text {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  font-size: 14px;
+}
+
+.promo-text strong {
+  font-size: 15px;
+}
+
+.promo-separator {
+  color: rgba(255,255,255,0.5);
+  font-weight: 300;
+}
+
+.visitor-counter {
+  background: rgba(255,255,255,0.15);
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 13px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.visitor-counter span {
+  color: #fff;
+}
+
+.promo-actions {
+  display: flex;
+  gap: 10px;
+}
+
+.promo-btn {
+  padding: 6px 16px;
+  border-radius: 6px;
+  text-decoration: none;
+  font-weight: 600;
+  font-size: 13px;
+  transition: all 0.2s;
+  display: inline-block;
+}
+
+.promo-btn-primary {
+  background: white;
+  color: #667eea;
+}
+
+.promo-btn-primary:hover {
+  background: #f0f0f0;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+}
+
+.promo-btn-secondary {
+  background: rgba(255,255,255,0.2);
+  color: white;
+  border: 1px solid rgba(255,255,255,0.3);
+}
+
+.promo-btn-secondary:hover {
+  background: rgba(255,255,255,0.3);
+  transform: translateY(-2px);
+}
+
 /* Demo Banner */
 .demo-banner {
   background: linear-gradient(90deg, #ff9800, #f57c00);
@@ -42,6 +130,18 @@ body {
   font-size: 18px;
   color: #4CAF50;
   margin-right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.version-badge {
+  background: #667eea;
+  color: white;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-weight: 600;
 }
 
 .toolbar-left, .toolbar-right {
@@ -91,9 +191,20 @@ body {
   color: #000;
 }
 
+.btn-info {
+  background: #667eea;
+  color: white;
+}
+
 .btn-small {
   padding: 4px 10px;
   font-size: 12px;
+}
+
+.btn-large {
+  padding: 12px 24px;
+  font-size: 15px;
+  font-weight: 600;
 }
 
 /* Main Layout */
@@ -565,5 +676,158 @@ body {
   .modal-content {
     min-width: auto;
     width: 95%;
+  }
+}
+
+/* About Modal */
+.about-modal {
+  min-width: 700px;
+  max-width: 800px;
+}
+
+.about-content {
+  max-height: 70vh;
+  overflow-y: auto;
+}
+
+.about-section {
+  margin-bottom: 25px;
+  padding-bottom: 20px;
+  border-bottom: 1px solid #333;
+}
+
+.about-section:last-of-type {
+  border-bottom: none;
+}
+
+.about-section h3 {
+  color: #667eea;
+  font-size: 16px;
+  margin-bottom: 12px;
+}
+
+.about-section p {
+  color: #b0b0b0;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.feature-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 8px;
+}
+
+.feature-list li {
+  padding: 8px 0;
+  color: #e0e0e0;
+  font-size: 14px;
+}
+
+.cta-buttons {
+  display: flex;
+  gap: 15px;
+  margin-top: 15px;
+  flex-wrap: wrap;
+}
+
+.btn-icon {
+  margin-right: 6px;
+}
+
+.contact-info {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 15px;
+}
+
+.contact-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  background: #2a2a2a;
+  border-radius: 6px;
+  transition: all 0.2s;
+}
+
+.contact-item:hover {
+  background: #333;
+  transform: translateX(5px);
+}
+
+.contact-icon {
+  font-size: 20px;
+}
+
+.contact-item a {
+  color: #4CAF50;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.contact-item a:hover {
+  color: #66BB6A;
+  text-decoration: underline;
+}
+
+.about-footer {
+  text-align: center;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #333;
+}
+
+.about-footer p {
+  margin: 5px 0;
+  color: #888;
+  font-size: 13px;
+}
+
+.license-text {
+  font-size: 12px;
+  color: #666;
+}
+
+.stats-text {
+  font-size: 12px;
+  color: #667eea;
+  font-weight: 600;
+  margin-top: 10px;
+}
+
+/* Responsive adjustments for promo banner */
+@media (max-width: 768px) {
+  .promo-content {
+    flex-direction: column;
+    text-align: center;
+  }
+  
+  .promo-text {
+    justify-content: center;
+  }
+  
+  .promo-actions {
+    width: 100%;
+    justify-content: center;
+  }
+  
+  .about-modal {
+    min-width: 90%;
+  }
+  
+  .feature-list {
+    grid-template-columns: 1fr;
+  }
+  
+  .cta-buttons {
+    flex-direction: column;
+  }
+  
+  .cta-buttons .btn {
+    width: 100%;
   }
 }

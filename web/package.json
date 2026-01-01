@@ -1,7 +1,7 @@
 {
-  "name": "mt5-trader-web",
+  "name": "comfytrade-web-demo",
   "version": "1.0.0",
-  "description": "MT5 Trading Strategy Builder - Web Version",
+  "description": "ComfyTrade - Open Source MT5 Node Editor Web Demo",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
@@ -16,5 +16,20 @@
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "ws": "^8.18.3"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5.git"
+  },
+  "keywords": [
+    "mt5",
+    "metatrader",
+    "trading",
+    "strategy",
+    "node-editor",
+    "forex",
+    "open-source"
+  ],
+  "author": "tomtomtongtong@gmail.com",
+  "license": "MIT"
 }
