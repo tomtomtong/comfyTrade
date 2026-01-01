@@ -157,46 +157,8 @@ class NodeEditor {
   }
 
   onWheel(e) {
-    // Check if the mouse is over the positions panel area
-    const bottomPanel = document.querySelector('.bottom-panel');
-    if (bottomPanel) {
-      const bottomPanelRect = bottomPanel.getBoundingClientRect();
-      const mouseX = e.clientX;
-      const mouseY = e.clientY;
-      
-      // If mouse is over the bottom panel, allow normal scrolling
-      if (mouseX >= bottomPanelRect.left && mouseX <= bottomPanelRect.right &&
-          mouseY >= bottomPanelRect.top && mouseY <= bottomPanelRect.bottom) {
-        return; // Don't prevent default, allow normal scrolling
-      }
-    }
-    
+    // Zoom disabled for web demo - only prevent default to stop page scrolling
     e.preventDefault();
-    
-    // Get mouse position in canvas coordinates BEFORE zoom
-    const rect = this.canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    
-    // Convert to world coordinates before zoom
-    const worldBeforeZoom = this.screenToCanvas(mouseX, mouseY);
-    
-    // Calculate new scale
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    const newScale = Math.max(0.1, Math.min(5, this.scale * delta));
-    
-    // Only proceed if scale actually changes
-    if (newScale === this.scale) return;
-    
-    // Update scale
-    this.scale = newScale;
-    
-    // Convert same world point to screen coordinates after zoom
-    const worldAfterZoom = this.screenToCanvas(mouseX, mouseY);
-    
-    // Adjust pan offset to keep the world point under the mouse
-    this.panOffset.x += (worldAfterZoom.x - worldBeforeZoom.x) * this.scale;
-    this.panOffset.y += (worldAfterZoom.y - worldBeforeZoom.y) * this.scale;
   }
 
   onKeyDown(e) {

@@ -492,7 +492,7 @@ body {
 
 /* Bottom Panel */
 .bottom-panel {
-  height: 180px;
+  height: 250px;
   background: #1a1a1a;
   border-top: 1px solid #333;
   overflow-y: auto;
@@ -810,7 +810,7 @@ body {
   }
   
   .bottom-panel {
-    height: 150px;
+    height: 220px;
   }
 }
 
@@ -853,7 +853,7 @@ body {
   }
   
   .bottom-panel {
-    height: 130px;
+    height: 200px;
   }
 }
 
