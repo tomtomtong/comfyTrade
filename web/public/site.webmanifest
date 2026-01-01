@@ -1,0 +1,61 @@
+{
+  "name": "ComfyTrade - MT5 Trading Strategy Builder",
+  "short_name": "ComfyTrade",
+  "description": "Free open-source visual trading strategy builder for MetaTrader 5. Build automated forex trading strategies with drag-and-drop nodes.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0d0d1a",
+  "theme_color": "#1a1a2e",
+  "orientation": "landscape-primary",
+  "categories": ["finance", "productivity", "business"],
+  "lang": "en",
+  "dir": "ltr",
+  "icons": [
+    {
+      "src": "/favicon-16x16.png",
+      "sizes": "16x16",
+      "type": "image/png"
+    },
+    {
+      "src": "/favicon-32x32.png", 
+      "sizes": "32x32",
+      "type": "image/png"
+    },
+    {
+      "src": "/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png"
+    },
+    {
+      "src": "/logo.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/og-image.png",
+      "sizes": "1200x630",
+      "type": "image/png",
+      "form_factor": "wide",
+      "label": "ComfyTrade node editor interface"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "GitHub Repository",
+      "short_name": "GitHub",
+      "description": "View the ComfyTrade source code and download releases",
+      "url": "https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5",
+      "icons": [{ "src": "/favicon-32x32.png", "sizes": "32x32" }]
+    },
+    {
+      "name": "Discord Community",
+      "short_name": "Discord",
+      "description": "Join the ComfyTrade community for support and discussions",
+      "url": "https://discord.com/invite/4EWYahsGdJ",
+      "icons": [{ "src": "/favicon-32x32.png", "sizes": "32x32" }]
+    }
+  ]
+}

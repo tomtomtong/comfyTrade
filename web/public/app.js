@@ -28,7 +28,6 @@ function setupEventListeners() {
   document.getElementById('tradeBtn').addEventListener('click', showTradeModal);
   document.getElementById('settingsBtn').addEventListener('click', showSettingsModal);
   document.getElementById('showLogBtn').addEventListener('click', showLogModal);
-  document.getElementById('toggleBottomPanelBtn').addEventListener('click', toggleBottomPanel);
   document.getElementById('runStrategyBtn').addEventListener('click', runStrategy);
   document.getElementById('saveGraphBtn').addEventListener('click', saveGraph);
   document.getElementById('loadGraphBtn').addEventListener('click', loadGraph);
@@ -38,8 +37,6 @@ function setupEventListeners() {
   
   // Account
   document.getElementById('refreshAccountBtn').addEventListener('click', refreshAccount);
-  document.getElementById('refreshPositionsBtn').addEventListener('click', refreshPositions);
-  document.getElementById('refreshClosedBtn')?.addEventListener('click', refreshClosedPositions);
   
   // Trade modal
   document.getElementById('confirmTradeBtn').addEventListener('click', executeTrade);

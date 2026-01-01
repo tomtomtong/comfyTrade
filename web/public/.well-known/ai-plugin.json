@@ -9,9 +9,9 @@
   },
   "api": {
     "type": "openapi",
-    "url": "https://comfytrade.up.railway.app/openapi.yaml"
+    "url": "https://comfytrade.app/openapi.yaml"
   },
-  "logo_url": "https://comfytrade.up.railway.app/logo.png",
+  "logo_url": "https://comfytrade.app/logo.png",
   "contact_email": "tomtomtongtong@gmail.com",
   "legal_info_url": "https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/blob/main/LICENSE"
 }

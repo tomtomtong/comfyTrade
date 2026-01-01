@@ -1,50 +1,102 @@
-# ComfyTrade - MT5 Node-Based Trading Strategy Builder
+# ComfyTrade - Open Source MT5 Trading Strategy Builder
 
-> ComfyTrade is a free, open-source visual trading strategy builder for MetaTrader 5. Build automated forex trading strategies using drag-and-drop nodes without writing code.
-
-## What is ComfyTrade?
-
-ComfyTrade is an Electron desktop application that provides a node-based visual editor for creating automated trading strategies for MetaTrader 5 (MT5). It allows traders to build, test, and execute trading strategies without any programming knowledge.
+ComfyTrade is a free, open-source Electron desktop application for building visual trading strategies for MetaTrader 5 (MT5). Create automated forex trading bots without coding using an intuitive drag-and-drop node-based editor.
 
 ## Key Features
 
-- **Visual Node Editor**: Drag-and-drop interface with nodes for triggers, indicators (MA, RSI), logic gates (AND, OR), and trade execution
-- **MetaTrader 5 Integration**: Direct connection to MT5 for real-time trading, price data, and account management
-- **Historical Backtesting**: Import data from MT5 or CSV files to test strategies against historical data
-- **Paper Trading Simulator**: Practice with simulated positions using real market data
-- **Risk Management**: Volume limits, overtrade protection, pip-based loss calculations
-- **Alerts**: SMS and WhatsApp notifications via Twilio
-- **Plugin System**: Extend with custom nodes
-- **Market Sentiment Analysis**: Integrate news and sentiment data
+### Visual Strategy Building
+- Node-based drag-and-drop interface - no coding required
+- Connect triggers, indicators, logic gates, and trade execution nodes
+- Visual canvas with pan/zoom, copy/paste, undo functionality
+- Auto-connect feature for rapid strategy development
+- Save/load strategy graphs for reuse
 
-## Supported Instruments
+### MetaTrader 5 Integration
+- Direct connection to MT5 terminal via Python bridge
+- Real-time price data and account information
+- Live trade execution (market and limit orders)
+- Position management (modify SL/TP, close positions)
+- Support for all MT5 instruments (forex, gold, indices, crypto)
 
-Forex pairs (EURUSD, GBPUSD, USDJPY, AUDUSD, USDCAD), Gold (XAUUSD), Indices, Cryptocurrencies, and any instrument available in MT5.
+### Technical Indicators & Analysis
+- Moving Average (MA) indicator nodes
+- Relative Strength Index (RSI) indicator nodes
+- Conditional check nodes for price comparisons
+- Logic gates (AND, OR) for complex conditions
+- Market sentiment analysis integration
+- Yahoo Finance data integration
+
+### Risk Management
+- Volume control with per-symbol limits
+- Overtrade protection (max positions, daily loss limits)
+- Pip-based loss calculations before trade execution
+- Stop loss and take profit management
+- Position monitoring with real-time alerts
+
+### Backtesting & Simulation
+- Import historical data from MT5 (8 timeframes) or CSV files
+- Paper trading simulator with real market data
+- Automatic TP/SL execution in simulator mode
+- Balance tracking and performance analytics
+- Trade journal for strategy analysis
+
+### Alerts & Notifications
+- SMS and WhatsApp notifications via Twilio integration
+- Configurable alert types (TP hit, SL hit, position events)
+- Custom message templates
+- Alert history tracking
+- Real-time trade event notifications
+
+### Plugin System
+- Extensible architecture for custom nodes
+- HTTP request nodes for external API integration
+- Alpha Vantage market data and sentiment nodes
+- Math calculator and text transformation nodes
+- Community-contributed plugin examples
+
+## Supported Platforms
+Windows, macOS, Linux (desktop application)
+Web demo available at: https://comfytrade.app/
 
 ## Technology Stack
+- Frontend: Electron, HTML5 Canvas, JavaScript ES6+
+- Backend: Node.js, Python 3.8+
+- MT5 Integration: Official MetaTrader5 Python API
+- Communication: WebSocket bridge between Electron and Python
+- Charts: Chart.js with financial candlestick support
+- Notifications: Twilio API for SMS/WhatsApp alerts
 
-- Frontend: Electron, HTML/CSS/JavaScript, Canvas API, Chart.js
-- Backend: Node.js, Python 3.8+, MetaTrader5 Python API
-- Communication: WebSocket (port 8765)
+## Use Cases
+- Forex trading automation without coding
+- Backtesting trading strategies against historical data
+- Paper trading for strategy validation
+- Risk management and position sizing
+- Real-time trade monitoring and alerts
+- Educational tool for learning algorithmic trading concepts
 
-## Platforms
-
-Windows, macOS, Linux (desktop application)
-Web demo available at: https://comfytrade.up.railway.app/
+## Target Users
+- Forex and financial market traders
+- Algorithmic trading enthusiasts
+- Traders wanting to automate strategies without coding
+- Risk-conscious traders needing position management tools
+- Educators teaching trading concepts
+- Developers interested in trading automation
 
 ## License
-
-MIT License - Free and open source
+Open source under MIT License - completely free to use, modify, and distribute
 
 ## Links
-
 - GitHub: https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5
 - Download: https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases
-- Web Demo: https://comfytrade.up.railway.app/
+- Web Demo: https://comfytrade.app/
+- Discord Community: https://discord.com/invite/4EWYahsGdJ
 - Contact: tomtomtongtong@gmail.com
+- Documentation: https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5#readme
+
+## Keywords for Discovery
+MT5, MetaTrader 5, trading bot, strategy builder, node editor, forex automation, algorithmic trading, open source trading, visual programming, trading strategy, forex robot, EA builder, expert advisor, backtesting, paper trading, risk management, trading alerts, automated trading, forex signals, technical indicators, moving average, RSI, trading simulator, financial technology, fintech, drag and drop trading, no code trading, visual trading strategy
 
 ## How to Use
-
 1. Download the desktop version from GitHub releases
 2. Install dependencies: `npm install` and `pip install -r requirements.txt`
 3. Start the application: `npm start`
@@ -54,7 +106,6 @@ MIT License - Free and open source
 7. Run the strategy to execute trades automatically
 
 ## Node Types
-
 - **Trigger**: Starts strategy execution
 - **MT5 Data**: Fetches price data from MT5
 - **Moving Average**: Calculates MA indicator
@@ -66,7 +117,6 @@ MIT License - Free and open source
 - **End Strategy**: Stops execution
 
 ## FAQ
-
 Q: Is ComfyTrade free?
 A: Yes, completely free and open-source under MIT license.
 
@@ -78,3 +128,12 @@ A: Any broker that supports MetaTrader 5.
 
 Q: Can I backtest strategies?
 A: Yes, import historical data from MT5 or CSV files for backtesting.
+
+Q: What trading instruments are supported?
+A: All instruments available in your MT5 broker - forex pairs, gold, indices, cryptocurrencies.
+
+Q: Is there a web version?
+A: Yes, try the limited web demo at https://comfytrade.app/ - full features require the desktop version.
+
+Q: How do I get support?
+A: Join our Discord community at https://discord.com/invite/4EWYahsGdJ or email tomtomtongtong@gmail.com

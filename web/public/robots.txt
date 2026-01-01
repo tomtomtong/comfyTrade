@@ -1,11 +1,11 @@
 # ComfyTrade Web Demo - robots.txt
-# https://comfytrade.up.railway.app/
+# https://comfytrade.app/
 
 User-agent: *
 Allow: /
 
 # Sitemap location
-Sitemap: https://comfytrade.up.railway.app/sitemap.xml
+Sitemap: https://comfytrade.app/sitemap.xml
 
 # Allow all search engines
 User-agent: Googlebot

@@ -1,0 +1,98 @@
+openapi: 3.0.0
+info:
+  title: ComfyTrade API
+  description: API for ComfyTrade - Free open-source visual trading strategy builder for MetaTrader 5
+  version: 1.0.0
+  contact:
+    name: ComfyTrade Support
+    email: tomtomtongtong@gmail.com
+    url: https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5
+  license:
+    name: MIT
+    url: https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/blob/main/LICENSE
+servers:
+  - url: https://comfytrade.app
+    description: ComfyTrade Web Demo
+paths:
+  /:
+    get:
+      summary: ComfyTrade Web Demo
+      description: Access the web demo of ComfyTrade node-based trading strategy builder
+      responses:
+        '200':
+          description: Web demo interface
+          content:
+            text/html:
+              schema:
+                type: string
+  /api/visitor-stats:
+    get:
+      summary: Get visitor statistics
+      description: Retrieve current visitor statistics for the demo
+      responses:
+        '200':
+          description: Visitor statistics
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  success:
+                    type: boolean
+                  data:
+                    type: object
+                    properties:
+                      totalVisitors:
+                        type: integer
+                      todayVisitors:
+                        type: integer
+components:
+  schemas:
+    TradingStrategy:
+      type: object
+      description: A visual trading strategy built with nodes
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        nodes:
+          type: array
+          items:
+            $ref: '#/components/schemas/Node'
+        connections:
+          type: array
+          items:
+            $ref: '#/components/schemas/Connection'
+    Node:
+      type: object
+      description: A single node in the trading strategy
+      properties:
+        id:
+          type: string
+        type:
+          type: string
+          enum: [trigger, indicator-ma, indicator-rsi, conditional-check, logic-and, logic-or, trade-signal, close-position]
+        x:
+          type: number
+        y:
+          type: number
+        params:
+          type: object
+    Connection:
+      type: object
+      description: Connection between two nodes
+      properties:
+        from:
+          type: string
+        to:
+          type: string
+        fromOutput:
+          type: string
+        toInput:
+          type: string
+tags:
+  - name: Demo
+    description: Web demo functionality
+  - name: Trading
+    description: Trading strategy related endpoints

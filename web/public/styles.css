@@ -107,6 +107,18 @@ body {
   border-color: #333333;
 }
 
+.cta-btn-discord {
+  background: #5865f2;
+  color: #ffffff;
+  border-color: #5865f2;
+}
+
+.cta-btn-discord:hover {
+  background: #4752c4;
+  border-color: #4752c4;
+  color: #ffffff;
+}
+
 .cta-icon {
   font-size: 28px;
   flex-shrink: 0;
