@@ -290,6 +290,13 @@
               <small>tomtomtongtong@gmail.com</small>
             </span>
           </a>
+          <a href="https://discord.com/invite/4EWYahsGdJ" target="_blank" rel="noopener noreferrer" class="cta-btn cta-btn-discord">
+            <span class="cta-icon">💬</span>
+            <span class="cta-text">
+              <strong>Join Discord Community</strong>
+              <small>Get help, share strategies, and connect with traders</small>
+            </span>
+          </a>
         </div>
       </div>
     </header>
@@ -333,119 +340,17 @@
       </div>
     </nav>
 
-    <!-- Main Layout -->
-    <main class="main-layout" role="main">
-      <div class="top-section">
-        <!-- Left Sidebar - Node Palette -->
-        <aside class="sidebar left-sidebar" role="complementary" aria-label="Node library">
-          <h3>Node Library</h3>
-          
-          <section class="node-category">
-            <h4>Triggers</h4>
-            <button class="node-btn trigger-btn" data-type="trigger" aria-label="Add trigger node">⚡ Trigger</button>
-          </section>
-
-          <section class="node-category">
-            <h4>Data</h4>
-            <button class="node-btn signal-btn" data-type="string-input" aria-label="Add string input node">📝 String Input</button>
-            <button class="node-btn signal-btn" data-type="string-output" aria-label="Add string output node">📄 String Output</button>
-            <button class="node-btn signal-btn" data-type="mt5-data" aria-label="Add MT5 data node">📊 MT5 Data</button>
-          </section>
-
-          <section class="node-category">
-            <h4>Indicators</h4>
-            <button class="node-btn" data-type="indicator-ma" aria-label="Add Moving Average indicator">Moving Average</button>
-            <button class="node-btn" data-type="indicator-rsi" aria-label="Add RSI indicator">RSI</button>
-          </section>
-
-          <section class="node-category">
-            <h4>Logic</h4>
-            <button class="node-btn" data-type="conditional-check" aria-label="Add conditional check node">Conditional Check</button>
-            <button class="node-btn" data-type="logic-and" aria-label="Add AND gate">AND Gate</button>
-            <button class="node-btn" data-type="logic-or" aria-label="Add OR gate">OR Gate</button>
-          </section>
-
-          <section class="node-category">
-            <h4>Trading</h4>
-            <button class="node-btn" data-type="trade-signal" aria-label="Add open position node">Open Position</button>
-            <button class="node-btn" data-type="close-position" aria-label="Add close position node">Close Position</button>
-            <button class="node-btn" data-type="modify-position" aria-label="Add modify position node">Modify Position</button>
-          </section>
-
-          <section class="node-category">
-            <h4>Control</h4>
-            <button class="node-btn control-btn" data-type="end-strategy" aria-label="Add end strategy node">🏁 End Strategy</button>
-          </section>
-        </aside>
-
-        <!-- Center - Node Editor Canvas -->
-        <section class="editor-container" aria-label="Strategy canvas">
-          <canvas id="nodeCanvas" aria-label="Node editor canvas for building trading strategies"></canvas>
-          <div class="canvas-hint">
-            Click nodes from the left panel to add them to the canvas<br>
-            Connect outputs to inputs to create execution flows<br>
-            <strong>Pan:</strong> Space+Drag or Right Mouse<br>
-            <strong>Hotkeys:</strong> Ctrl+Z (Undo) | Delete (Remove node)
-          </div>
-        </section>
-
-        <!-- Right Sidebar -->
-        <aside class="sidebar right-sidebar" role="complementary" aria-label="Properties and account info">
-          <section class="properties-panel">
-            <h3>Properties</h3>
-            <div id="nodeProperties">
-              <p class="no-selection">Select a node to edit properties</p>
-            </div>
-          </section>
-
-          <section class="account-panel">
-            <h3>Account Info</h3>
-            <div class="info-grid">
-              <div class="info-item">
-                <span class="label">Balance:</span>
-                <span id="balance">-</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Equity:</span>
-                <span id="equity">-</span>
-              </div>
-              <div class="info-item">
-                <span class="label">Profit:</span>
-                <span id="profit" class="profit">-</span>
-              </div>
-            </div>
-            <button id="refreshAccountBtn" class="btn btn-secondary btn-small" aria-label="Refresh account info">Refresh</button>
-          </section>
-        </aside>
-      </div>
-
-      <!-- Bottom Panel - Positions -->
-      <section class="bottom-panel" aria-label="Trading positions">
-        <div class="positions-panel">
-          <div class="positions-tabs" role="tablist">
-            <button class="positions-tab-btn active" data-tab="open" role="tab" aria-selected="true" aria-controls="openPositionsTab">Open Positions</button>
-            <button class="positions-tab-btn" data-tab="closed" role="tab" aria-selected="false" aria-controls="closedPositionsTab">Closed Positions</button>
-          </div>
-          
-          <div id="openPositionsTab" class="positions-tab active" role="tabpanel" aria-labelledby="open-tab">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <h3 style="margin: 0;">Open Positions</h3>
-              <button id="refreshPositionsBtn" class="btn btn-secondary btn-small" aria-label="Refresh open positions">Refresh</button>
-            </div>
-            <div id="positionsList" class="positions-list">
-              <p class="no-data">No open positions</p>
-            </div>
-          </div>
-          
-          <div id="closedPositionsTab" class="positions-tab" role="tabpanel" aria-labelledby="closed-tab">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
-              <h3 style="margin: 0;">Closed Positions</h3>
-              <button id="refreshClosedBtn" class="btn btn-secondary btn-small" aria-label="Refresh closed positions">Refresh</button>
-            </div>
-            <div id="closedPositionsList" class="positions-list">
-              <p class="no-data">No closed positions</p>
-            </div>
-          </div>
+    <!-- Main Layout - Canvas Only -->
+    <main class="main-layout canvas-only" role="main">
+      <!-- Center - Node Editor Canvas -->
+      <section class="editor-container fullscreen" aria-label="Strategy canvas">
+        <canvas id="nodeCanvas" aria-label="Node editor canvas for building trading strategies"></canvas>
+        <div class="canvas-hint">
+          This is a simplified web demo showing only the node editor canvas<br>
+          <strong>Pan:</strong> Space+Drag or Right Mouse<br>
+          <strong>Hotkeys:</strong> Ctrl+Z (Undo) | Delete (Remove node)<br>
+          <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" rel="noopener noreferrer" style="color: #4a9eff;">Download full desktop version</a> for complete features<br>
+          <a href="https://discord.com/invite/4EWYahsGdJ" target="_blank" rel="noopener noreferrer" style="color: #7289da;">💬 Join our Discord community</a> for support and discussions
         </div>
       </section>
     </main>
@@ -674,6 +579,7 @@
     <nav aria-label="Footer links">
       <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" rel="noopener noreferrer" style="color:#4a9eff;margin:0 10px;">GitHub</a>
       <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5/releases" target="_blank" rel="noopener noreferrer" style="color:#4a9eff;margin:0 10px;">Download</a>
+      <a href="https://discord.com/invite/4EWYahsGdJ" target="_blank" rel="noopener noreferrer" style="color:#7289da;margin:0 10px;">Discord</a>
       <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5#readme" target="_blank" rel="noopener noreferrer" style="color:#4a9eff;margin:0 10px;">Documentation</a>
       <a href="mailto:tomtomtongtong@gmail.com" style="color:#4a9eff;margin:0 10px;">Contact</a>
     </nav>
