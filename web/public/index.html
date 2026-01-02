@@ -418,11 +418,23 @@
       <div class="promo-main">
         <h1 class="promo-title">ComfyTrade - Open Source MT5 Node Editor</h1>
         <p class="promo-subtitle">Visual Trading Strategy Builder • No Coding Required • Free & Open Source</p>
+        <div class="promo-video-container">
+          <div class="youtube-embed-container-promo">
+            <iframe 
+              class="youtube-embed-promo"
+              src="https://www.youtube.com/embed/M4PLVVUaQo8" 
+              title="ComfyTrade Demo Video"
+              frameborder="0" 
+              allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+              allowfullscreen>
+            </iframe>
+          </div>
+        </div>
         <div class="promo-cta-large">
           <a href="https://www.youtube.com/watch?v=M4PLVVUaQo8&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="cta-btn cta-btn-youtube">
             <span class="cta-text">
-              <strong>Watch Demo Video</strong>
-              <small>See ComfyTrade in action - full walkthrough</small>
+              <strong>Watch on YouTube</strong>
+              <small>Open in YouTube for full screen viewing</small>
             </span>
           </a>
           <a href="https://github.com/tomtomtong/comfyTrade-node-editor-for-MT5" target="_blank" rel="noopener noreferrer" class="cta-btn cta-btn-github">
@@ -447,6 +459,17 @@
       </div>
     </header>
     
+    <!-- Mobile Reminder Banner -->
+    <aside id="mobileReminder" class="mobile-reminder" role="alert" style="display: none;">
+      <div class="mobile-reminder-content">
+        <div class="mobile-reminder-icon">📱</div>
+        <div class="mobile-reminder-text">
+          <strong>Mobile Device Detected</strong> - For the best experience, please open this website on a desktop computer. The node editor works best with a larger screen and mouse/trackpad.
+        </div>
+        <button class="mobile-reminder-close" onclick="closeMobileReminder()" aria-label="Close reminder">×</button>
+      </div>
+    </aside>
+
     <!-- Demo Warning Banner -->
     <aside class="demo-warning" role="alert">
       <div class="demo-warning-content">
@@ -689,10 +712,20 @@
             <h3>Watch ComfyTrade in Action</h3>
             <div class="video-section">
               <p>See a complete walkthrough of ComfyTrade's features and capabilities:</p>
-              <a href="https://www.youtube.com/watch?v=M4PLVVUaQo8&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="btn-mega btn-mega-youtube">
+              <div class="youtube-embed-container">
+                <iframe 
+                  class="youtube-embed"
+                  src="https://www.youtube.com/embed/M4PLVVUaQo8" 
+                  title="ComfyTrade Demo Video"
+                  frameborder="0" 
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                  allowfullscreen>
+                </iframe>
+              </div>
+              <a href="https://www.youtube.com/watch?v=M4PLVVUaQo8&feature=youtu.be" target="_blank" rel="noopener noreferrer" class="btn-mega btn-mega-youtube" style="margin-top: 15px;">
                 <div class="btn-mega-content">
-                  <strong>Watch Demo Video</strong>
-                  <small>Complete feature walkthrough and tutorial</small>
+                  <strong>Watch on YouTube</strong>
+                  <small>Open in YouTube for full screen viewing</small>
                 </div>
               </a>
             </div>
@@ -802,6 +835,35 @@
   <script src="api.js"></script>
   <script src="node-editor.js"></script>
   <script src="app.js"></script>
+  
+  <!-- Mobile Detection and Reminder -->
+  <script>
+    function isMobileDevice() {
+      return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) || 
+             (window.innerWidth <= 768 && window.innerHeight <= 1024);
+    }
+    
+    function showMobileReminder() {
+      if (isMobileDevice()) {
+        const reminder = document.getElementById('mobileReminder');
+        if (reminder) {
+          reminder.style.display = 'block';
+        }
+      }
+    }
+    
+    document.addEventListener('DOMContentLoaded', showMobileReminder);
+    
+    // Close mobile reminder
+    function closeMobileReminder() {
+      const reminder = document.getElementById('mobileReminder');
+      if (reminder) {
+        reminder.style.display = 'none';
+      }
+    }
+    
+    window.closeMobileReminder = closeMobileReminder;
+  </script>
   
   <!-- Visitor Stats Script -->
   <script>
