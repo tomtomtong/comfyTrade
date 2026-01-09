@@ -7691,6 +7691,12 @@ async function showSettingsModal() {
   document.getElementById('settingsResetTradeCountBtn').onclick = resetTradeCountFromSettings;
   document.getElementById('addVolumeLimitBtn').onclick = addVolumeLimit;
   
+  // External links
+  document.getElementById('openTradingViewBtn').onclick = () => {
+    window.electronAPI.openExternal('https://www.tradingview.com');
+    showMessage('Opening TradingView in your browser...', 'info');
+  };
+  
   // Simulator mode event listeners
   document.getElementById('settingsSimulatorMode').onchange = async (e) => {
     const enabled = e.target.value === 'true';
