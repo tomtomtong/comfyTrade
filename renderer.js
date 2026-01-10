@@ -679,22 +679,23 @@ function setDefaultStopLossTakeProfit(bidPrice = null, askPrice = null, forceUpd
   }
   
   const tradeType = tradeTypeSelect.value;
-  const PERCENTAGE = 0.03; // 3%
+  const SL_PERCENTAGE = 0.03; // 3% for Stop Loss
+  const TP_PERCENTAGE = 0.005; // 0.5% for Take Profit
   
   let stopLoss, takeProfit;
   
   if (tradeType === 'BUY') {
     // For BUY: use ask price
     // Stop Loss: 3% below ask price
-    stopLoss = ask * (1 - PERCENTAGE);
-    // Take Profit: 3% above ask price
-    takeProfit = ask * (1 + PERCENTAGE);
+    stopLoss = ask * (1 - SL_PERCENTAGE);
+    // Take Profit: 0.5% above ask price
+    takeProfit = ask * (1 + TP_PERCENTAGE);
   } else {
     // For SELL: use bid price
     // Stop Loss: 3% above bid price
-    stopLoss = bid * (1 + PERCENTAGE);
-    // Take Profit: 3% below bid price
-    takeProfit = bid * (1 - PERCENTAGE);
+    stopLoss = bid * (1 + SL_PERCENTAGE);
+    // Take Profit: 0.5% below bid price
+    takeProfit = bid * (1 - TP_PERCENTAGE);
   }
   
   // Round to 5 decimal places
@@ -2370,6 +2371,13 @@ async function confirmTradeExecution() {
   const stopLoss = confirmStopLossInput === '' ? 0 : (parseFloat(confirmStopLossInput) || 0);
   const takeProfit = confirmTakeProfitInput === '' ? 0 : (parseFloat(confirmTakeProfitInput) || 0);
   const tradingReason = confirmTradingReasonInput || '';
+  
+  // Require Take Profit to be set before executing
+  if (takeProfit <= 0) {
+    showMessage('Take Profit is required - please enter a valid TP value', 'error');
+    document.getElementById('confirmTradeTakeProfit').focus();
+    return;
+  }
   
   // Update pendingTradeData with the values from confirmation modal
   const { symbol, type, executionType, limitPrice, volume } = pendingTradeData;
