@@ -322,6 +322,9 @@ function setupEventListeners() {
   // RSI Graph button in trade modal
   document.getElementById('showRsiGraphBtn').addEventListener('click', handleShowRsiGraph);
   
+  // RSI Graph button in modify pending order modal
+  document.getElementById('showRsiGraphBtnModifyPending').addEventListener('click', handleShowRsiGraphModifyPending);
+  
   // Execution type change handler - show/hide limit price field
   document.getElementById('executionType').addEventListener('change', (e) => {
     const limitPriceGroup = document.getElementById('limitPriceGroup');
@@ -925,6 +928,51 @@ async function handleShowRsiGraph() {
   
   if (!symbol || symbol.length < 3) {
     showMessage('Please enter a symbol first', 'warning');
+    return;
+  }
+  
+  if (!isConnected) {
+    showMessage('Please connect to MT5 first', 'warning');
+    return;
+  }
+  
+  showMessage(`Generating RSI graph for ${symbol}...`, 'info');
+  
+  try {
+    const result = await window.mt5API.getRSIGraph({
+      symbol: symbol.toUpperCase(),
+      period: 14,
+      bars: 500,
+      timeframe: 'H1',
+      showGraph: true
+    });
+    
+    if (result.success && result.data) {
+      const rsiData = result.data;
+      
+      // Show the RSI graph modal
+      showRsiGraphModal(symbol, 14, rsiData);
+      
+      const statusEmoji = rsiData.status === 'OVERBOUGHT' ? '🔴' : 
+                         rsiData.status === 'OVERSOLD' ? '🟢' : '⚪';
+      showMessage(`RSI(14): ${rsiData.current_rsi?.toFixed(2)} - ${statusEmoji} ${rsiData.status}`, 'success');
+    } else {
+      showMessage(`RSI Graph failed: ${result.error || 'Unknown error'}`, 'error');
+    }
+  } catch (error) {
+    console.error('Error generating RSI graph:', error);
+    showMessage(`RSI Graph error: ${error.message}`, 'error');
+  }
+}
+
+// RSI Graph Handler for Modify Pending Order Modal
+async function handleShowRsiGraphModifyPending() {
+  // Get the symbol from the modify pending order modal
+  const symbolElement = document.getElementById('modifyPendingOrderSymbol');
+  const symbol = symbolElement ? symbolElement.textContent : '';
+  
+  if (!symbol || symbol === '-') {
+    showMessage('No symbol available', 'warning');
     return;
   }
   
