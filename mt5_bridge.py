@@ -1864,20 +1864,8 @@ class MT5Bridge:
                 
                 result['image_base64'] = image_base64
                 
-                # Also save to file
-                charts_dir = os.path.join(os.path.dirname(__file__), 'charts')
-                os.makedirs(charts_dir, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f'rsi_{symbol}_{period}_{timestamp}.png'
-                filepath = os.path.join(charts_dir, filename)
-                
-                buffer.seek(0)
-                with open(filepath, 'wb') as f:
-                    f.write(buffer.getvalue())
-                
-                result['image_path'] = filepath
-                
-                logger.info(f"RSI graph generated successfully for {symbol}, saved to {filepath}")
+                # No longer saving to disk - only return base64 image
+                logger.info(f"RSI graph generated successfully for {symbol}")
             
             return result
             
