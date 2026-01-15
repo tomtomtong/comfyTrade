@@ -1774,13 +1774,20 @@ class MT5Bridge:
             df = pd.DataFrame(rates)
             df['time'] = pd.to_datetime(df['time'], unit='s')
             
-            # Calculate RSI
-            delta = df['close'].diff()
+            # Filter to only include trading days (Monday=0 to Friday=4, exclude Saturday=5 and Sunday=6)
+            df['day_of_week'] = df['time'].dt.dayofweek
+            df_trading_days = df[df['day_of_week'] < 5].copy()
+            
+            # Calculate RSI using only trading days
+            delta = df_trading_days['close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
             
             rs = gain / loss
-            df['rsi'] = 100 - (100 / (1 + rs))
+            df_trading_days['rsi'] = 100 - (100 / (1 + rs))
+            
+            # Merge RSI back to original dataframe for complete visualization
+            df = df.merge(df_trading_days[['time', 'rsi']], on='time', how='left', suffixes=('', '_trading'))
             
             # Get current RSI value
             current_rsi = df['rsi'].iloc[-1]
@@ -1857,20 +1864,8 @@ class MT5Bridge:
                 
                 result['image_base64'] = image_base64
                 
-                # Also save to file
-                charts_dir = os.path.join(os.path.dirname(__file__), 'charts')
-                os.makedirs(charts_dir, exist_ok=True)
-                timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-                filename = f'rsi_{symbol}_{period}_{timestamp}.png'
-                filepath = os.path.join(charts_dir, filename)
-                
-                buffer.seek(0)
-                with open(filepath, 'wb') as f:
-                    f.write(buffer.getvalue())
-                
-                result['image_path'] = filepath
-                
-                logger.info(f"RSI graph generated successfully for {symbol}, saved to {filepath}")
+                # No longer saving to disk - only return base64 image
+                logger.info(f"RSI graph generated successfully for {symbol}")
             
             return result
             
